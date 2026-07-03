@@ -59,3 +59,26 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Auto-deploy: SSH into VPS, pull latest image, recreate landing only (traefik untouched).
+  # Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY (ed25519 private key), DEPLOY_PATH.
+  # User 'deploy' on VPS is in docker group (no sudo) — least privilege.
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    concurrency:
+      group: deploy-vps
+      cancel-in-progress: false  # never cancel a deploy mid-flight
+    steps:
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH }}
+            docker compose pull landing
+            docker compose up -d landing
+            docker image prune -f
