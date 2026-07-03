@@ -1,0 +1,29 @@
+# traefik/traefik.yml — STATIC config only (versioned, no secrets).
+# ACME config goes via docker-compose CLI args — Traefik does NOT interpolate
+# env vars in bind-mounted YAML files (per 01-RESEARCH.md Pattern 1 correction).
+
+api:
+  dashboard: true
+  insecure: false  # Dashboard exposed via router + basicAuth, not insecure port
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: traefik-public
+
+log:
+  level: INFO
+
+accessLog: {}

@@ -1,0 +1,16 @@
+# Secrets — never commit
+.env
+
+# Let's Encrypt cert store (contains private key material — D-13, D-20, T-01-03)
+traefik/letsencrypt/
+traefik/acme.json
+
+# Node / Astro build artifacts
+node_modules/
+dist/
+.astro/
+*.log
+
+# Versioned (do NOT ignore):
+#   traefik/traefik.yml
+#   docker-compose.yml

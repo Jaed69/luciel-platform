@@ -1,0 +1,56 @@
+# docker-compose.yml — root orchestration (D-10: image: not build:).
+# landing image is built by GitHub Actions -> GHCR (plan 01-02).
+services:
+  traefik:
+    image: traefik:v3.7.5
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      # Docker socket :ro — Traefik only needs read access for label discovery (D-19, T-01-01)
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      # acme.json bind-mounted, chmod 600, gitignored (D-13, T-01-03)
+      - ./traefik/letsencrypt/acme.json:/acme.json
+    # ACME config via CLI args — these DO support ${VAR} interpolation by Compose (D-12, D-16)
+    command:
+      - "--certificatesresolvers.le.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.le.acme.storage=/acme.json"
+      - "--certificatesresolvers.le.acme.caServer=${LE_CA_SERVER}"
+      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+    labels:
+      # Dashboard router — always on across restarts (D-17, D-18)
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.luciel.dev`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.entrypoints=websecure"
+      - "traefik.http.routers.dashboard.tls.certresolver=le"
+      - "traefik.http.routers.dashboard.tls.domains[0].main=traefik.luciel.dev"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth"
+      # basicAuth with bcrypt/MD5 hash from .env (T-01-04)
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_USER}:${TRAEFIK_DASHBOARD_PASS_HASH}"
+    networks:
+      - traefik-public
+    security_opt:
+      - no-new-privileges:true
+    user: "65532:65532"  # Traefik image non-root uid (D-19, T-01-02)
+
+  landing:
+    image: ghcr.io/${GITHUB_USER}/luciel-platform-landing:latest
+    container_name: landing
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.landing.rule=Host(`luciel.dev`)"
+      - "traefik.http.routers.landing.entrypoints=websecure"
+      - "traefik.http.routers.landing.tls.certresolver=le"
+      - "traefik.http.routers.landing.tls.domains[0].main=luciel.dev"
+    networks:
+      - traefik-public
+
+networks:
+  traefik-public:
+    external: true
+    name: traefik-public
