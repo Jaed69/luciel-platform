@@ -1,0 +1,22 @@
+---
+import '../styles/tokens.css';
+
+interface Props {
+  title?: string;
+}
+
+const { title = 'luciel.dev' } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content="luciel.dev — a productized portfolio. Under construction." />
+  </head>
+  <body class="font-body bg-canvas text-ink">
+    <slot />
+  </body>
+</html>

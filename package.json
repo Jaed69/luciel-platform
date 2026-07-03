@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "name": "luciel-platform",
+  "type": "module",
+  "packageManager": "pnpm@11.9.0"
+}
