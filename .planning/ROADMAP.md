@@ -33,10 +33,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. A wildcard DNS record means `*.luciel.dev` resolves to the VPS — verified by adding a throwaway Host rule for a fresh subdomain and seeing Traefik serve it
   4. The entire stack starts from a clean checkout via `docker compose up -d` using only `.env.example` (DNS + secrets configured), no manual config edits
   5. The Traefik dashboard is reachable and shows the `luciel.dev` router with a valid cert resolver
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: TBD
+- [ ] 01-01-PLAN.md — Monorepo scaffold + Astro 7 landing + Traefik stack + bootstrap + verify scripts
+- [ ] 01-02-PLAN.md — GitHub Actions arm64 CI/CD → GHCR pipeline
 
 ### Phase 2: Content Hub
 **Goal**: Visitors find a complete, navigable content site at `luciel.dev` with original technical articles — the SEO surface that future AdSense monetization depends on.
@@ -94,7 +95,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure + Landing Scaffold | 0/0 | Not started | - |
+| 1. Infrastructure + Landing Scaffold | 0/2 | In progress | - |
 | 2. Content Hub | 0/0 | Not started | - |
 | 3. Legal + AdSense Readiness | 0/0 | Not started | - |
 | 4. First Tool Pilot (rtk) + Pattern Documentation | 0/0 | Not started | - |
