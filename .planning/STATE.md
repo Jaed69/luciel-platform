@@ -4,11 +4,11 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 01
 current_phase_name: infrastructure-landing-scaffold
-status: verifying
-stopped_at: Completed 01-02-PLAN.md (Phase 1 done, ready for verification)
-last_updated: "2026-07-03T06:56:17.741Z"
+status: human_needed
+stopped_at: Phase 01 verification complete (18/23 in-repo truths VERIFIED; 5 live-site SCs = deploy gate, awaiting user VPS deploy per 01-USER-SETUP.md)
+last_updated: "2026-07-03T02:05:00Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 01 execution complete (both plans done)
+last_activity_desc: Phase 01 verification done — in-repo scaffold complete, deploy gate pending
 progress:
   total_phases: 4
   completed_phases: 1
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02)
 
 **Core value:** Cada subdominio nuevo entrega una herramienta funcional que resuelve un problema real, acompañada de contenido genuino, sobre infraestructura reproducible versionada en git.
-**Current focus:** Phase 01 — infrastructure-landing-scaffold (complete, awaiting verification)
+**Current focus:** Phase 01 — infrastructure-landing-scaffold (in-repo verified, deploy gate pending)
 
 ## Current Position
 
-Phase: 01 (infrastructure-landing-scaffold) — VERIFYING
+Phase: 01 (infrastructure-landing-scaffold) — HUMAN_NEEDED (deploy gate)
 Plan: 2 of 2 (both complete)
-Status: Phase 1 complete — ready for `/gsd-verify-work` + deploy gate (USER-SETUP)
-Last activity: 2026-07-03 — Phase 01 execution finished (01-02 committed)
+Status: In-repo scaffold verified (18/23 truths VERIFIED). 5 live-site SCs are the deploy gate — awaiting user VPS deploy per 01-USER-SETUP.md. VERIFICATION.md written.
+Last activity: 2026-07-03 — Phase 01 verification done (in-repo complete, deploy gate pending)
 
 Progress: [██▌░░░░░░░░] 25%
 
