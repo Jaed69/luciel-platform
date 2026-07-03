@@ -1,0 +1,61 @@
+# Build arm64 landing image and push to GHCR (RESEARCH.md Pattern 5, D-06/D-10).
+# Closes the deploy loop: push to main -> CI build -> GHCR -> VPS pull (docker-compose.yml uses image:).
+name: Build and Push to GHCR
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/landing/**'
+      - '.github/workflows/release.yml'
+
+env:
+  REGISTRY: ghcr.io
+  # github.repository_owner == GITHUB_USER used in docker-compose.yml landing image ref.
+  IMAGE_NAME: ${{ github.repository_owner }}/luciel-platform-landing
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # GITHUB_TOKEN can push to GHCR — no separate PAT needed (T-01-08)
+    steps:
+      - uses: actions/checkout@v4
+
+      # GitHub runners are x86_64 only — QEMU emulates arm64 for the arm64 VPS target (D-06).
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # context: . (repo root) — pnpm workspace needs the root pnpm-lock.yaml (Plan 01-01 note).
+      # file: apps/landing/Dockerfile — multi-stage, root-relative COPY paths.
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./apps/landing/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
