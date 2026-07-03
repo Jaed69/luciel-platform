@@ -7,16 +7,16 @@
 
 ### Infrastructure
 
-- [ ] **INFR-01**: Traefik reverse proxy configurado con entrypoints web/websecure, HTTP-01 challenge para Let's Encrypt, y redirect HTTP→HTTPS
-- [ ] **INFR-02**: `docker-compose.yml` raíz con Traefik como servicio + network compartida para todas las apps
-- [ ] **INFR-03**: DNS configurado (registro A para `@` + wildcard `*` apuntando al VPS)
+- [x] **INFR-01**: Traefik reverse proxy configurado con entrypoints web/websecure, HTTP-01 challenge para Let's Encrypt, y redirect HTTP→HTTPS
+- [x] **INFR-02**: `docker-compose.yml` raíz con Traefik como servicio + network compartida para todas las apps
+- [x] **INFR-03**: DNS configurado (registro A para `@` + wildcard `*` apuntando al VPS)
 - [ ] **INFR-04**: Let's Encrypt staging y prod verificados — `curl -I https://luciel.dev` devuelve 200 con cert válido
-- [ ] **INFR-05**: `.env.example` en raíz con todas las variables requeridas (email Let's Encrypt, secrets)
-- [ ] **INFR-06**: `traefik/traefik.yml` con config estática, certs en volumen gitignored
+- [x] **INFR-05**: `.env.example` en raíz con todas las variables requeridas (email Let's Encrypt, secrets)
+- [x] **INFR-06**: `traefik/traefik.yml` con config estática, certs en volumen gitignored
 
 ### Content Hub
 
-- [ ] **CONT-01**: App `apps/landing/` sirviendo `luciel.dev` como raíz (Astro 7 o Next.js — decidir en Phase 1)
+- [x] **CONT-01**: App `apps/landing/` sirviendo `luciel.dev` como raíz (Astro 7 o Next.js — decidir en Phase 1)
 - [ ] **CONT-02**: Home page con presentación personal + filosofía del proyecto + directorio de herramientas (entradas "próximamente" para herramientas no lanzadas)
 - [ ] **CONT-03**: Blog con 5-8 artículos reales basados en proyectos técnicos existentes (simulador tráfico multi-agente, AGRODROID, sistema RAG, pipeline ABET)
 - [ ] **CONT-04**: Blog usa MDX en Content Collections, con syntax highlighting (Shiki) para código
@@ -90,13 +90,13 @@ Deferred to future release. Tracked but not in current roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFR-01 | Phase 1 | Pending |
-| INFR-02 | Phase 1 | Pending |
-| INFR-03 | Phase 1 | Pending |
+| INFR-01 | Phase 1 | Complete |
+| INFR-02 | Phase 1 | Complete |
+| INFR-03 | Phase 1 | Complete |
 | INFR-04 | Phase 1 | Pending |
-| INFR-05 | Phase 1 | Pending |
-| INFR-06 | Phase 1 | Pending |
-| CONT-01 | Phase 1 | Pending |
+| INFR-05 | Phase 1 | Complete |
+| INFR-06 | Phase 1 | Complete |
+| CONT-01 | Phase 1 | Complete |
 | CONT-02 | Phase 2 | Pending |
 | CONT-03 | Phase 2 | Pending |
 | CONT-04 | Phase 2 | Pending |
@@ -126,6 +126,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | DOCS-02 | Phase 4 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 34 total
 - Mapped to phases: 34
 - Unmapped: 0 ✓
