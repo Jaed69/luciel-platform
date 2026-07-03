@@ -10,7 +10,7 @@
 - [x] **INFR-01**: Traefik reverse proxy configurado con entrypoints web/websecure, HTTP-01 challenge para Let's Encrypt, y redirect HTTP→HTTPS
 - [x] **INFR-02**: `docker-compose.yml` raíz con Traefik como servicio + network compartida para todas las apps
 - [x] **INFR-03**: DNS configurado (registro A para `@` + wildcard `*` apuntando al VPS)
-- [ ] **INFR-04**: Let's Encrypt staging y prod verificados — `curl -I https://luciel.dev` devuelve 200 con cert válido
+- [x] **INFR-04**: Let's Encrypt staging y prod verificados — `curl -I https://luciel.dev` devuelve 200 con cert válido
 - [x] **INFR-05**: `.env.example` en raíz con todas las variables requeridas (email Let's Encrypt, secrets)
 - [x] **INFR-06**: `traefik/traefik.yml` con config estática, certs en volumen gitignored
 
@@ -93,7 +93,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | INFR-01 | Phase 1 | Complete |
 | INFR-02 | Phase 1 | Complete |
 | INFR-03 | Phase 1 | Complete |
-| INFR-04 | Phase 1 | Pending |
+| INFR-04 | Phase 1 | Complete |
 | INFR-05 | Phase 1 | Complete |
 | INFR-06 | Phase 1 | Complete |
 | CONT-01 | Phase 1 | Complete |

@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 01
 current_phase_name: infrastructure-landing-scaffold
-status: executing
-stopped_at: Phase 1 UI-SPEC approved
-last_updated: "2026-07-03T06:51:44.766Z"
+status: verifying
+stopped_at: Completed 01-02-PLAN.md (Phase 1 done, ready for verification)
+last_updated: "2026-07-03T06:56:17.741Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 01 execution started
+last_activity_desc: Phase 01 execution complete (both plans done)
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 25
 ---
 
 # Project State
@@ -24,38 +24,38 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02)
 
 **Core value:** Cada subdominio nuevo entrega una herramienta funcional que resuelve un problema real, acompañada de contenido genuino, sobre infraestructura reproducible versionada en git.
-**Current focus:** Phase 01 — infrastructure-landing-scaffold
+**Current focus:** Phase 01 — infrastructure-landing-scaffold (complete, awaiting verification)
 
 ## Current Position
 
-Phase: 01 (infrastructure-landing-scaffold) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-07-03 — Phase 01 execution started
+Phase: 01 (infrastructure-landing-scaffold) — VERIFYING
+Plan: 2 of 2 (both complete)
+Status: Phase 1 complete — ready for `/gsd-verify-work` + deploy gate (USER-SETUP)
+Last activity: 2026-07-03 — Phase 01 execution finished (01-02 committed)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██▌░░░░░░░░] 25%
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 2
+- Average duration: 5 min
+- Total execution time: 10 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 2 | 10 min | 5 min |
 
 **Recent Trend:**
 
-- Last 5 plans: —
-- Trend: —
+- Last 5 plans: 01-01 (9min), 01-02 (1min)
+- Trend: on track
 
-*Updated after each plan completion*
-| Phase 01 P1 | 9min | 2 tasks | 20 files |
+| Phase 01 P01 | 9min | 2 tasks | 20 files |
+| Phase 01 P02 | 1min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -68,8 +68,11 @@ Recent decisions affecting current work:
 - [Phase 1]: Phase 0 (entendimiento) collapsed into the start of Phase 1 — not a standalone phase, but a confirmation gate before code is written.
 - [Phase 4]: rtk tool domain needs a planning spike — specific token-optimization UX/backend shape is not yet defined (largest research gap).
 - [Cross-phase]: AdSense application is manual by the user — the agent never auto-applies. Phase 3 readies the site; user submits.
-- [Phase ?]: [Phase 1] Tailwind v4 via @tailwindcss/vite registered in vite.plugins (not Astro integrations) — it is a Vite plugin; RESEARCH Pattern 8 misplaced it, causing postcss ENOENT. — Build failed with @tailwindcss/vite in integrations array; moved to vite.plugins per official @tailwindcss/vite usage. Build passes.
-- [Phase ?]: [Phase 1] pnpm v11.9 settings (onlyBuiltDependencies, minimumReleaseAge) live in pnpm-workspace.yaml — v11 ignores the package.json pnpm field. minimumReleaseAge=0 for Astro 7.0.6 (published 2026-07-02, verified legitimate in 01-RESEARCH.md). — pnpm 11.9 default minimumReleaseAge (1d) blocked freshly-published Astro packages; override safe per RESEARCH Package Legitimacy audit.
+- [Phase 1]: Tailwind v4 via @tailwindcss/vite registered in vite.plugins (not Astro integrations) — it is a Vite plugin; RESEARCH Pattern 8 misplaced it, causing postcss ENOENT. Moved to vite.plugins per official usage; build passes.
+- [Phase 1]: pnpm v11.9 settings (onlyBuiltDependencies, minimumReleaseAge) live in pnpm-workspace.yaml — v11 ignores the package.json pnpm field. minimumReleaseAge=0 for Astro 7.0.6 (verified legitimate in 01-RESEARCH.md).
+- [Phase 1]: CI workflow build context = repo root (.), file = apps/landing/Dockerfile — Dockerfile uses root-relative COPY paths for pnpm workspace lockfile (confirmed by reading it; matches 01-01 key-decision). Plan's CRITICAL note was correct.
+- [Phase 1]: GHCR push uses secrets.GITHUB_TOKEN with permissions: packages:write — no separate PAT in CI path (T-01-08). VPS pull uses GHCR_PAT only if package stays private (USER-SETUP).
+- [Phase 1]: CI tag scheme = sha+latest — sha-<short> gives rollback, latest matches docker-compose.yml pull ref (D-10: image: not build:).
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T06:51:07.299Z
-Stopped at: Phase 1 UI-SPEC approved
-Resume file: .planning/phases/01-infrastructure-landing-scaffold/01-UI-SPEC.md
+Last session: 2026-07-03T06:56:08.678Z
+Stopped at: Completed 01-02-PLAN.md (Phase 1 done, ready for verification)
+Resume file: None
