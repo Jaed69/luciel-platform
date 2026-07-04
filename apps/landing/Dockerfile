@@ -3,11 +3,12 @@
 # Build context MUST be repo root — pnpm workspace needs the root lockfile.
 #   docker build -t luciel-platform-landing -f apps/landing/Dockerfile .
 FROM node:22-slim AS build
+ENV PNPM_CONFIG_STRICT_DEP_BUILDS=false
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/landing/package.json apps/landing/
-RUN pnpm install --frozen-lockfile --config.strictDepBuilds=false
+RUN pnpm install --frozen-lockfile
 COPY apps/landing/ apps/landing/
 RUN pnpm --filter @luciel/landing build
 
