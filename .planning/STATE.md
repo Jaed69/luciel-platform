@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 01
-current_phase_name: infrastructure-landing-scaffold
-status: human_needed
-stopped_at: Phase 02.1 planned (2 plans, verification passed)
-last_updated: "2026-07-04T21:50:49.274Z"
-last_activity: 2026-07-03
-last_activity_desc: Phase 01 verification done (in-repo complete, deploy gate pending)
+current_phase: 02.1
+current_phase_name: tours-panel-contable-hotel
+status: executing
+stopped_at: Completed 02.1-01-PLAN.md
+last_updated: "2026-07-04T23:42:32.542Z"
+last_activity: 2026-07-04
+last_activity_desc: Phase 02.1 execution started
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
   percent: 20
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02)
 
 **Core value:** Cada subdominio nuevo entrega una herramienta funcional que resuelve un problema real, acompañada de contenido genuino, sobre infraestructura reproducible versionada en git.
-**Current focus:** Phase 01 — infrastructure-landing-scaffold (in-repo verified, deploy gate pending)
+**Current focus:** Phase 02.1 — tours-panel-contable-hotel
 
 ## Current Position
 
-Phase: 01 (infrastructure-landing-scaffold) — HUMAN_NEEDED (deploy gate)
-Plan: 2 of 2 (both complete)
-Status: In-repo scaffold verified (18/23 truths VERIFIED). 5 live-site SCs are the deploy gate — awaiting user VPS deploy per 01-USER-SETUP.md. VERIFICATION.md written.
-Last activity: 2026-07-03 — Phase 01 verification done (in-repo complete, deploy gate pending)
+Phase: 02.1 (tours-panel-contable-hotel) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-07-04 — Phase 02.1 execution started
 
 Progress: [██▌░░░░░░░░] 25%
 
@@ -56,6 +56,7 @@ Progress: [██▌░░░░░░░░] 25%
 
 | Phase 01 P01 | 9min | 2 tasks | 20 files |
 | Phase 01 P02 | 1min | 1 tasks | 1 files |
+| Phase 02.1 P01 | 58min | 4 tasks | 76 files |
 
 ## Accumulated Context
 
@@ -73,6 +74,8 @@ Recent decisions affecting current work:
 - [Phase 1]: CI workflow build context = repo root (.), file = apps/landing/Dockerfile — Dockerfile uses root-relative COPY paths for pnpm workspace lockfile (confirmed by reading it; matches 01-01 key-decision). Plan's CRITICAL note was correct.
 - [Phase 1]: GHCR push uses secrets.GITHUB_TOKEN with permissions: packages:write — no separate PAT in CI path (T-01-08). VPS pull uses GHCR_PAT only if package stays private (USER-SETUP).
 - [Phase 1]: CI tag scheme = sha+latest — sha-<short> gives rollback, latest matches docker-compose.yml pull ref (D-10: image: not build:).
+- [Phase ?]: Tailwind v4 in Next.js 16 uses @tailwindcss/postcss (not vite plugin)
+- [Phase ?]: pnpm workspace glob apps/* does not recurse into apps/tours/web
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-04T21:50:49.270Z
-Stopped at: Phase 02.1 planned (2 plans, verification passed)
-Resume file: .planning/phases/02.1-tours-panel-contable-hotel/02.1-01-PLAN.md
+Last session: 2026-07-04T23:42:32.538Z
+Stopped at: Completed 02.1-01-PLAN.md
+Resume file: None
