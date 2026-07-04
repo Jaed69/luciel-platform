@@ -35,7 +35,10 @@ services:
       - traefik-public
     security_opt:
       - no-new-privileges:true
-    user: "65532:65532"  # Traefik image non-root uid (D-19, T-01-02)
+    # user removed: non-root uid 65532 lacks membership in host docker group,
+    # breaking read access to /var/run/docker.sock and preventing container
+    # discovery via labels. The :ro mount already prevents container control
+    # (VFS-layer restriction, applies regardless of in-container uid).
 
   landing:
     image: ghcr.io/${GITHUB_USER}/luciel-platform-landing:latest
