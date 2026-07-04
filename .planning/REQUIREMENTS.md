@@ -39,6 +39,19 @@
 - [ ] **SEOA-06**: Structured data (Article schema) en páginas de blog
 - [ ] **SEOA-07**: Cada página del blog tiene meta description única + canonical URL
 
+### Tours — Panel Contable Hotel (Phase 02.1 INSERTED)
+
+- [ ] **TOURS-01**: Nueva carpeta `apps/tours/` con Next.js 16 + TypeScript (App Router) + Tailwind, siguiendo el patrón Traefik labels como `apps/landing/`
+- [ ] **TOURS-02**: Backend FastAPI + SQLAlchemy async + SQLite WAL (no Postgres — override explícito evaluado y rechazado por YAGNI a esta escala)
+- [ ] **TOURS-03**: Traefik router para `tours.luciel.dev` con cert Let's Encrypt propio (HTTP-01, per-subdomain, no wildcard cert)
+- [ ] **TOURS-04**: Auth NextAuth/Credentials + bcrypt + tabla `usuarios` con roles `admin` / `vendedor` / `contabilidad` (reemplaza contraseña hardcodeada "2808" del VBA)
+- [ ] **TOURS-05**: Core contable de partida doble: `cuentas` / `asientos` / `asiento_lineas` con balance validado en FastAPI dentro de la transacción (no SQL trigger)
+- [ ] **TOURS-06**: Módulo Tours con `tours_catalogo` / `liquidaciones` / `tours_servicios` (con `asiento_id` FK al core, `metadata` JSONB híbrido para campos variables) — separado del core, sin tocarlo
+- [ ] **TOURS-07**: `comision_reglas` con prioridad determinística 1-4 (vendedor+tour > vendedor > tour > default global no borrable), endpoint `/simular` para probar antes de guardar
+- [ ] **TOURS-08**: `audit_log` registra cada INSERT/UPDATE/DELETE con `usuario_id` + timestamp + `datos_antes` / `datos_despues` (resuelve el borrado sin rastro de la macro VBA)
+- [ ] **TOURS-09**: Liquidaciones: abrir + cerrar; el cierre genera asientos de distribución/comisión automáticamente (reemplaza suma manual de Sandra en fila Egreso)
+- [ ] **TOURS-10**: Dashboard mínimo: filtros por fecha/agencia/vendedor/moneda + tabla + totales de saldo por cuenta (sin gráficos — full dashboard + charts + export → 2.1.x deferred)
+
 ### Tools — First Pilot (rtk)
 
 - [ ] **TOOL-01**: Nueva carpeta `apps/rtk/` siguiendo el mismo patrón que `apps/landing/`
@@ -105,6 +118,16 @@ Deferred to future release. Tracked but not in current roadmap.
 | CONT-10 | Phase 2 | Pending |
 | CONT-11 | Phase 2 | Pending |
 | CONT-12 | Phase 2 | Pending |
+| TOURS-01 | Phase 02.1 | Pending |
+| TOURS-02 | Phase 02.1 | Pending |
+| TOURS-03 | Phase 02.1 | Pending |
+| TOURS-04 | Phase 02.1 | Pending |
+| TOURS-05 | Phase 02.1 | Pending |
+| TOURS-06 | Phase 02.1 | Pending |
+| TOURS-07 | Phase 02.1 | Pending |
+| TOURS-08 | Phase 02.1 | Pending |
+| TOURS-09 | Phase 02.1 | Pending |
+| TOURS-10 | Phase 02.1 | Pending |
 | CONT-06 | Phase 3 | Pending |
 | CONT-07 | Phase 3 | Pending |
 | CONT-08 | Phase 3 | Pending |
@@ -127,10 +150,10 @@ Deferred to future release. Tracked but not in current roadmap.
 
 **Coverage:**
 
-- v1 requirements: 34 total
-- Mapped to phases: 34
+- v1 requirements: 44 total
+- Mapped to phases: 44
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-07-02*
-*Last updated: 2026-07-02 after initial definition*
+*Last updated: 2026-07-04 — added TOURS-01..10 for Phase 02.1 INSERTED*

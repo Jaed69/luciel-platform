@@ -6,15 +6,15 @@ current_phase: 01
 current_phase_name: infrastructure-landing-scaffold
 status: human_needed
 stopped_at: Phase 01 verification complete (18/23 in-repo truths VERIFIED; 5 live-site SCs = deploy gate, awaiting user VPS deploy per 01-USER-SETUP.md)
-last_updated: "2026-07-03T02:05:00Z"
+last_updated: "2026-07-04T19:25:29.753Z"
 last_activity: 2026-07-03
-last_activity_desc: Phase 01 verification done — in-repo scaffold complete, deploy gate pending
+last_activity_desc: Phase 01 verification done (in-repo complete, deploy gate pending)
 progress:
-  total_phases: 4
+  total_phases: 5
   completed_phases: 1
   total_plans: 2
   completed_plans: 2
-  percent: 25
+  percent: 20
 ---
 
 # Project State
@@ -83,6 +83,10 @@ None yet.
 - DNS provider specifics (A + wildcard record steps) unresolved — resolve during Phase 1 planning. (research gap)
 - Backup strategy destination (separate volume vs external) for SQLite — resolve during Phase 4 planning. (research gap)
 - Deployment method (manual `docker compose up -d` via SSH vs CI/CD) — decide before Phase 4. (research gap)
+
+### Roadmap Evolution
+
+- Phase 02.1 inserted after Phase 2: Tours — Panel contable hotel (URGENT)
 
 ## Deferred Items
 

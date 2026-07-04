@@ -17,6 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Infrastructure + Landing Scaffold** - Traefik + DNS + Let's Encrypt + minimal `luciel.dev` live over HTTPS (completed 2026-07-03)
 - [ ] **Phase 2: Content Hub** - Home, blog (5-8 real articles), Projects page, navigation, RSS, OG tags, 404
+- [ ] **Phase 02.1: Tours — Panel contable hotel** (INSERTED) - Sistema contable para hotel/agencia de tours de Cusco, reemplaza Excel con macros; primer módulo de mini-ERP
 - [ ] **Phase 3: Legal + AdSense Readiness** - Privacy/Terms/Contact pages + sitemap/robots/ads.txt/GSC + per-article SEO
 - [ ] **Phase 4: First Tool Pilot (rtk) + Pattern Documentation** - `rtk.luciel.dev` working end-to-end + `docs/adding-a-new-app.md`
 
@@ -63,6 +64,33 @@ Plans:
 Plans:
 
 - [ ] 02-01: TBD
+
+### Phase 02.1: Tours — Panel contable hotel (INSERTED)
+
+**Goal**: Staff de hotel/agencia de tours registra ventas de tours, cobranzas y liquidaciones en un panel contable multi-usuario con core de partida doble, reemplazando el Excel con macros VBA; accesible en `https://tours.luciel.dev` con cert Let's Encrypt real. Primer inquilino de un mini-ERP modular (core contable + módulo Tours) — el módulo café/Basílica se agrega después sin rehacer el core.
+**Mode**: mvp
+**Depends on**: Phase 1 (reusa Traefik + DNS wildcard + GHCR CI; NO depende de Phase 2 Content Hub)
+**Requirements**: TOURS-01, TOURS-02, TOURS-03, TOURS-04, TOURS-05, TOURS-06, TOURS-07, TOURS-08, TOURS-09, TOURS-10
+**Open decisions**: Resueltos en pre-discusión (ver `02.1-CONTEXT.md`) — SQLite WAL (no Postgres), NextAuth/Credentials + bcrypt + TypeScript, no module_registry framework (YAGNI), no PWA, dashboard mínimo en 2.1 (full en 2.1.x), `packages/ui` local en `apps/tours/`, JSONB híbrido para campos variables, core contable de partida doble desde día 1, 2 plans (scaffold+CRUD / liquidaciones+dashboard+deploy), arranque limpio sin migración de datos Excel.
+**Success Criteria** (what must be TRUE):
+
+  1. `apps/tours/` corre detrás de Traefik con su propio cert Let's Encrypt en `tours.luciel.dev` (separate router, no wildcard cert)
+  2. Usuario con rol `admin` / `vendedor` / `contabilidad` puede loguearse vía NextAuth Credentials + bcrypt y solo ve lo que su rol permite (vendedor no ve totales globales ni audit log)
+  3. Registrar una venta de tour inserta `tours_servicios` + genera asiento balanceado en el core ledger (partida doble) en una sola transacción FastAPI + SQLAlchemy async — el balance debe = haber dentro de la tx, validado en Python no en trigger SQL
+  4. Cada INSERT/UPDATE/DELETE deja entrada en `audit_log` con `usuario_id` + timestamp + datos_antes/datos_despues (la macro VBA actual borra sin rastro — esto lo resuelve)
+  5. Una liquidación puede abrirse y cerrarse; el cierre genera los asientos de distribución/comisión automáticamente (reemplaza la suma manual de Sandra en la fila de Egreso)
+  6. Las reglas de comisión usan precedencia determinística (vendedor+tour > vendedor > tour > default global); existe un default global no borrable; endpoint `/simular` permite probar antes de guardar
+  7. El saldo por cuenta (caja soles, caja dólares, ingresos tours, costos tours) es consultable en un dashboard mínimo filtrable por fecha/agencia/vendedor/moneda — sin gráficos (full dashboard + charts + export Excel/PDF → 2.1.x)
+  8. Los catálogos (agencias, tours, vendedores, formas de pago, monedas) son CRUD via admin UI — no texto libre en formularios (elimina errores de tipeo tipo "VALLE SAGRADO VIP" vs "Valle sagrado  vip")
+  9. El schema separa core contable (`usuarios`, `contactos`, `cuentas`, `asientos`, `asiento_lineas`, `audit_log`, `modulos`) del módulo Tours (`tours_catalogo`, `liquidaciones`, `tours_servicios`, `comision_reglas`) — añadir un módulo futuro (café) no toca el core
+  10. Reproducible desde clean checkout via `docker compose up -d` + `.env.example` (sin pasos manuales fuera de DNS ya configurado en Phase 1)
+
+**Plans**: TBD
+
+Plans:
+
+- [ ] 02.1-01: TBD — Scaffold apps/tours/ Next.js 16 + FastAPI + SQLite WAL + schema + auth + catálogos + CRUD ventas + posting al ledger
+- [ ] 02.1-02: TBD — Liquidaciones cierre automático + comisiones UI + dashboard mínimo + deploy prod
 
 ### Phase 3: Legal + AdSense Readiness
 
