@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 01
 current_phase_name: infrastructure-landing-scaffold
 status: human_needed
-stopped_at: Phase 01 verification complete (18/23 in-repo truths VERIFIED; 5 live-site SCs = deploy gate, awaiting user VPS deploy per 01-USER-SETUP.md)
-last_updated: "2026-07-04T19:25:29.753Z"
+stopped_at: Phase 02.1 context gathered
+last_updated: "2026-07-04T21:13:23.848Z"
 last_activity: 2026-07-03
 last_activity_desc: Phase 01 verification done (in-repo complete, deploy gate pending)
 progress:
@@ -99,6 +99,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-03T06:56:08.678Z
-Stopped at: Completed 01-02-PLAN.md (Phase 1 done, ready for verification)
-Resume file: None
+Last session: 2026-07-04T21:13:23.840Z
+Stopped at: Phase 02.1 context gathered
+Resume file: .planning/phases/02.1-tours-panel-contable-hotel/02.1-CONTEXT.md
