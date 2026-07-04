@@ -27,3 +27,18 @@ log:
   level: INFO
 
 accessLog: {}
+
+# ACME certificate resolver — defined here (not CLI args) because Traefik v3
+# treats config-file and CLI-args as mutually exclusive. When traefik.yml is
+# bind-mounted, Traefik loads it and ignores command: args entirely, which
+# caused "nonexistent certificate resolver" errors.
+# Staging→prod flip: comment the staging caServer line, uncomment the prod one.
+certificatesResolvers:
+  le:
+    acme:
+      email: twofigsthree@gmail.com
+      storage: /acme.json
+      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
+      # caServer: https://acme-v02.api.letsencrypt.org/directory  # prod
+      httpChallenge:
+        entryPoint: web

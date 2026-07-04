@@ -14,12 +14,9 @@ services:
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       # acme.json bind-mounted, chmod 600, gitignored (D-13, T-01-03)
       - ./traefik/letsencrypt/acme.json:/acme.json
-    # ACME config via CLI args — these DO support ${VAR} interpolation by Compose (D-12, D-16)
-    command:
-      - "--certificatesresolvers.le.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.le.acme.storage=/acme.json"
-      - "--certificatesresolvers.le.acme.caServer=${LE_CA_SERVER}"
-      - "--certificatesresolvers.le.acme.httpchallenge.entrypoint=web"
+    # ACME resolver configured in traefik/traefik.yml — CLI args are ignored
+    # when a static config file is bind-mounted (Traefik v3 mutually-exclusive
+    # rule between config-file / CLI-args / env-vars).
     labels:
       # Dashboard router — always on across restarts (D-17, D-18)
       - "traefik.enable=true"
