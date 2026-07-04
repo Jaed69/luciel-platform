@@ -4,6 +4,7 @@
 // that globals.css @theme block maps to Tailwind tokens.
 import type { Metadata } from "next";
 import { Playfair_Display, Nunito_Sans, Yeseva_One } from "next/font/google";
+import { Toast } from "@/components/Toast";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -37,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${playfair.variable} ${nunito.variable} ${yeseva.variable}`}>
       <body className="bg-peach-cream text-text-espresso font-nunito antialiased">
         {children}
+        <Toast />
       </body>
     </html>
   );
