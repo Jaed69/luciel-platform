@@ -38,7 +38,7 @@ certificatesResolvers:
     acme:
       email: twofigsthree@gmail.com
       storage: /acme.json
-      caServer: https://acme-staging-v02.api.letsencrypt.org/directory
-      # caServer: https://acme-v02.api.letsencrypt.org/directory  # prod
+      # caServer: https://acme-staging-v02.api.letsencrypt.org/directory  # staging
+      caServer: https://acme-v02.api.letsencrypt.org/directory  # production
       httpChallenge:
         entryPoint: web
