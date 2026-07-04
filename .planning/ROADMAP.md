@@ -85,12 +85,12 @@ Plans:
   9. El schema separa core contable (`usuarios`, `contactos`, `cuentas`, `asientos`, `asiento_lineas`, `audit_log`, `modulos`) del módulo Tours (`tours_catalogo`, `liquidaciones`, `tours_servicios`, `comision_reglas`) — añadir un módulo futuro (café) no toca el core
   10. Reproducible desde clean checkout via `docker compose up -d` + `.env.example` (sin pasos manuales fuera de DNS ya configurado en Phase 1)
 
-**Plans**: TBD
+**Plans**: 2/2 plans
 
 Plans:
 
-- [ ] 02.1-01: TBD — Scaffold apps/tours/ Next.js 16 + FastAPI + SQLite WAL + schema + auth + catálogos + CRUD ventas + posting al ledger
-- [ ] 02.1-02: TBD — Liquidaciones cierre automático + comisiones UI + dashboard mínimo + deploy prod
+- [ ] 02.1-01-PLAN.md — Scaffold `apps/tours/{web,api}` + Traefik compose + FastAPI core de partida doble + audit_log estructural (before_flush + ContextVar) + auth NextAuth/Credentials + JWT bridge + catálogos CRUD + POST /ventas con asiento balanceado en una sola tx + /simular comisión + UI login/ventas/catálogos/usuarios (TOURS-01..08)
+- [ ] 02.1-02-PLAN.md — Liquidaciones state machine (abierta→cerrada→revertida) con asientos automáticos de comisión + pre-checks + reopen con reversión + dashboard mínimo filtrable (4 cards + tours pendientes) + auditoría viewer admin-only + comisiones reglas UI manager + CI matrix refactor (D-04) + deploy HTTPS prod (TOURS-03, TOURS-09, TOURS-10)
 
 ### Phase 3: Legal + AdSense Readiness
 
