@@ -47,6 +47,9 @@ services:
       - "traefik.http.routers.landing.entrypoints=websecure"
       - "traefik.http.routers.landing.tls.certresolver=le"
       - "traefik.http.routers.landing.tls.domains[0].main=luciel.dev"
+      # nginx escucha en 8080 dentro del container (non-privileged, per Dockerfile).
+      # Traefik defaulta a 80 si no se especifica — causaba 502 Bad Gateway.
+      - "traefik.http.services.landing.loadbalancer.server.port=8080"
     networks:
       - traefik-public
 
