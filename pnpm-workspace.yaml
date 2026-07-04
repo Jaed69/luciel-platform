@@ -1,11 +1,18 @@
 packages:
   - 'apps/*'
+  - 'apps/tours/web'
 
 # pnpm v11+ reads build-script allowlist here (not package.json).
 onlyBuiltDependencies:
   - esbuild
+  - sharp
+  - unrs-resolver
 
 # Astro 7.0.6 + integrations published 2026-07-02 — verified legitimate in
 # .planning/.../01-RESEARCH.md (all from github.com/withastro/astro, [OK]).
 # pnpm 11.9 default minimumReleaseAge (1d) blocks them; override for this project.
 minimumReleaseAge: 0
+
+allowBuilds:
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false

@@ -9,7 +9,15 @@ traefik/acme.json
 node_modules/
 dist/
 .astro/
+.next/
+next-env.d.ts
 *.log
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.pyo
+.venv/
 
 # Versioned (do NOT ignore):
 #   traefik/traefik.yml

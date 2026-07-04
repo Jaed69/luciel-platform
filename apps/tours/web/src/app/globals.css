@@ -1,0 +1,30 @@
+/* apps/tours/web/src/app/globals.css
+   Tailwind v4 CSS-first config — tokens from UI-SPEC §Color + §Typography + §Spacing.
+   All primitives in src/components consume these tokens via Tailwind utility classes (@theme aliases). */
+@import "tailwindcss";
+
+@theme {
+  /* Color tokens (UI-SPEC §Color, verbatim from basilica.md) */
+  --color-peach-cream: #F7E9D3;
+  --color-canvas: #FFFFFF;
+  --color-stone-wall: #EDE1CC;
+  --color-espresso-wine: #2E1512;
+  --color-primary: #6B1E1C;
+  --color-wine-muted: #4A2320;
+  --color-gold: #C9A15A;
+  --color-gold-light: #DFC08A;
+  --color-chili-red: #9C2B2B;
+  --color-chili-tint: hsl(4 62% 40% / 6%);
+  --color-wine-light-tint: hsl(4 55% 30% / 8%);
+  --color-amber-warning: #E0A83E;
+  --color-on-dark: #FFFFFF;
+  --color-on-dark-soft: rgba(255, 255, 255, 0.72);
+  --color-on-primary: #FFFFFF;
+  --color-text-espresso: rgba(46, 21, 18, 0.90);
+  --color-text-espresso-soft: rgba(46, 21, 18, 0.62);
+
+  /* Typography tokens */
+  --font-playfair: var(--font-playfair-display), Georgia, serif;
+  --font-nunito: var(--font-nunito-sans), system-ui, sans-serif;
+  --font-yeseva: var(--font-yeseva-one), var(--font-playfair-display), serif;
+}

@@ -53,7 +53,46 @@ services:
     networks:
       - traefik-public
 
+  tours-web:
+    image: ghcr.io/${GITHUB_USER}/luciel-platform-tours-web:latest
+    container_name: tours-web
+    restart: unless-stopped
+    environment:
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-https://tours.luciel.dev}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - TOURS_API_URL=http://tours-api:8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tours-web.rule=Host(`tours.luciel.dev`)"
+      - "traefik.http.routers.tours-web.entrypoints=websecure"
+      - "traefik.http.routers.tours-web.tls.certresolver=le"
+      - "traefik.http.routers.tours-web.tls.domains[0].main=tours.luciel.dev"
+      # Next.js 16 standalone server.js listens on 3000 inside the container.
+      - "traefik.http.services.tours-web.loadbalancer.server.port=3000"
+    networks:
+      - traefik-public
+
+  tours-api:
+    image: ghcr.io/${GITHUB_USER}/luciel-platform-tours-api:latest
+    container_name: tours-api
+    restart: unless-stopped
+    environment:
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      # Path interno del contenedor tours-api, no el path del host (D-03).
+      - DATABASE_URL=sqlite+aiosqlite:////data/tours.db
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-change-me}
+    volumes:
+      - tours-db-data:/data
+    # NO traefik.http.routers.* labels — interno, sólo accesible vía Docker DNS desde tours-web (D-01).
+    networks:
+      - traefik-public
+
 networks:
   traefik-public:
     external: true
     name: traefik-public
+
+volumes:
+  tours-db-data:
+    name: tours-db-data
