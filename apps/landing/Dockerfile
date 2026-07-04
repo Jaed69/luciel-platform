@@ -7,7 +7,7 @@ WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/landing/package.json apps/landing/
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --config.strictDepBuilds=false
 COPY apps/landing/ apps/landing/
 RUN pnpm --filter @luciel/landing build
 
