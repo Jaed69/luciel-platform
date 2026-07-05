@@ -12,12 +12,14 @@ from sqlalchemy import inspect as sqla_inspect
 pytestmark = pytest.mark.asyncio
 
 
-async def test_schema_isolation_core_vs_tours(async_engine):
+async def test_schema_isolation_core_vs_tours(async_session):
     """Core tables = {usuarios, contactos, cuentas, asientos, asiento_lineas, audit_log, modulos}.
     Tours tables = {agencias, vendedores, tours_catalogo, formas_pago, monedas, comision_reglas,
     liquidaciones, tours_servicios, liquidacion_asientos}.
     FKs core ← tours (asiento_id, usuario_id via audit_log) — no FKs tours ← core in metadata.
     """
+    engine = async_session.bind
+
     def _fn(conn):
         insp = sqla_inspect(conn)
         core_tables = {"usuarios", "contactos", "cuentas", "asientos", "asiento_lineas", "audit_log", "modulos"}
@@ -41,5 +43,5 @@ async def test_schema_isolation_core_vs_tours(async_engine):
                 ref = fk["referred_table"]
                 assert ref in core_tables | tours_tables, f"tours table '{t}' has FK to unknown table '{ref}'"
 
-    async with async_engine.connect() as conn:
+    async with engine.connect() as conn:
         await conn.run_sync(_fn)

@@ -10,7 +10,7 @@ from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import current_user_id
@@ -210,6 +210,9 @@ async def create_liquidacion(
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> Liquidaciones:
+    """Create an `abierta` liquidación and auto-assign all tours_servicios in range with liquidacion_id IS NULL."""
+    if body.fecha_hasta < body.fecha_desde:
+        raise HTTPException(status_code=422, detail="fecha_hasta debe ser posterior a fecha_desde")
     liq = Liquidaciones(
         fecha_desde=body.fecha_desde,
         fecha_hasta=body.fecha_hasta,
@@ -217,6 +220,23 @@ async def create_liquidacion(
         agencia_id=body.agencia_id,
     )
     session.add(liq)
+    await session.flush()  # populate liq.id
+
+    # Auto-assign tours_servicios with liquidacion_id IS NULL within range (Plan 02).
+    stmt = select(ToursServicios).where(
+        ToursServicios.fecha >= body.fecha_desde,
+        ToursServicios.fecha <= body.fecha_hasta,
+        ToursServicios.liquidacion_id.is_(None),
+    )
+    if body.vendedor_id is not None:
+        stmt = stmt.where(ToursServicios.vendedor_id == body.vendedor_id)
+    if body.agencia_id is not None:
+        stmt = stmt.where(ToursServicios.agencia_id == body.agencia_id)
+
+    tours = list((await session.execute(stmt)).scalars().all())
+    for ts in tours:
+        ts.liquidacion_id = liq.id
+
     await session.commit()
     await session.refresh(liq)
     return liq
@@ -224,6 +244,10 @@ async def create_liquidacion(
 
 @router.get("/liquidaciones", response_model=list[LiquidacionOut])
 async def list_liquidaciones(
+    estado: str | None = Query(None),
+    vendedor_id: int | None = Query(None),
+    fecha_desde: date | None = Query(None),
+    fecha_hasta: date | None = Query(None),
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> list[Liquidaciones]:
@@ -231,6 +255,14 @@ async def list_liquidaciones(
     # Vendedor solo ve propias.
     if user["role"] == "vendedor":
         stmt = stmt.where(Liquidaciones.vendedor_id == user["id"])
+    if estado is not None:
+        stmt = stmt.where(Liquidaciones.estado == estado)
+    if vendedor_id is not None and user["role"] != "vendedor":
+        stmt = stmt.where(Liquidaciones.vendedor_id == vendedor_id)
+    if fecha_desde is not None:
+        stmt = stmt.where(Liquidaciones.fecha_desde >= fecha_desde)
+    if fecha_hasta is not None:
+        stmt = stmt.where(Liquidaciones.fecha_hasta <= fecha_hasta)
     return list((await session.execute(stmt)).scalars().all())
 
 
@@ -264,7 +296,10 @@ async def close_liquidacion_endpoint(
         return liq
     except _LiquidacionPrecheckError as exc:
         await session.rollback()
-        raise HTTPException(status_code=422, detail="No se puede cerrar la liquidación: faltan datos", headers={"X-Errors": str(exc.fails)})
+        raise HTTPException(
+            status_code=422,
+            detail={"message": "No se puede cerrar la liquidación: faltan datos", "errors": exc.fails},
+        )
     except ValueError as exc:
         await session.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
@@ -289,6 +324,22 @@ async def reopen_liquidacion_endpoint(
 # --------------------------------------------------------------------------- #
 # PUT / DELETE /tours_servicios/{id} — D-14 lock on cerrada (Plan 02)
 # --------------------------------------------------------------------------- #
+@router.get("/liquidaciones/{liquidacion_id}/precheck")
+async def liquidacion_precheck(
+    liquidacion_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(require_role("admin", "contabilidad", "vendedor")),
+) -> dict:
+    from app.services.liquidaciones import get_precheck as _precheck
+    try:
+        return await _precheck(session, liquidacion_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+# --------------------------------------------------------------------------- #
+# PUT / DELETE /tours_servicios/{id} — D-14 lock on cerrada (Plan 02)
+# --------------------------------------------------------------------------- #
 @router.put("/tours_servicios/{tour_servicio_id}")
 async def update_tour_servicio(
     tour_servicio_id: int,
@@ -306,7 +357,17 @@ async def update_tour_servicio(
         liq = (await session.execute(select(Liquidaciones).where(Liquidaciones.id == ts.liquidacion_id))).scalar_one_or_none()
         if liq is not None and liq.estado.value == "cerrada":
             raise HTTPException(status_code=409, detail="Tour en liquidación cerrada, reabre primero")
-    raise HTTPException(status_code=501, detail="PUT /tours_servicios still unimplemented (RED-phase stub)")
+    # Apply partial updates — only monto/costo/agencia/forma_pago allowed (Plan 02 simplification).
+    if "monto" in body:
+        ts.monto = body["monto"]
+    if "costo" in body:
+        ts.costo = body["costo"]
+    if "agencia_id" in body:
+        ts.agencia_id = body["agencia_id"]
+    if "forma_pago_id" in body:
+        ts.forma_pago_id = body["forma_pago_id"]
+    await session.commit()
+    return {"ok": True, "tour_servicio_id": ts.id}
 
 
 @router.delete("/tours_servicios/{tour_servicio_id}")
@@ -320,15 +381,22 @@ async def delete_tour_servicio(
         raise HTTPException(status_code=404, detail="Tour servicio no encontrado")
     if user["role"] == "vendedor" and ts.vendedor_id != user["id"]:
         raise HTTPException(status_code=403, detail="No tienes permiso para eliminar este tour")
+    # Must not already be inside a cerrada liquidación.
     if ts.liquidacion_id is not None:
         liq = (await session.execute(select(Liquidaciones).where(Liquidaciones.id == ts.liquidacion_id))).scalar_one_or_none()
         if liq is not None and liq.estado.value == "cerrada":
             raise HTTPException(status_code=409, detail="Tour en liquidación cerrada, reabre primero")
-    raise HTTPException(status_code=501, detail="DELETE /tours_servicios still unimplemented (RED-phase stub)")
+    # Soft-delete via activo=0 on tours_servicios is not applicable (no `activo` column here).
+    # Hard delete — Plan 02 simplification: only allowed when liquidacion_id IS NULL or `abierta`.
+    # NOTE: asiento_id FK ondelete=RESTRICT prevents real cascade — we leave the asiento intact (it remains for audit),
+    # simply remove the tours_servicios row. Future plan would emit a reversal asiento.
+    await session.delete(ts)
+    await session.commit()
+    return {"ok": True, "tour_servicio_id": tour_servicio_id}
 
 
 # --------------------------------------------------------------------------- #
-# /dashboard/saldos | /dashboard/tours_pendientes — Plan 02 (RED stub)
+# /dashboard/saldos | /dashboard/tours_pendientes — Plan 02 (T-02.1-14 role-forcing)
 # --------------------------------------------------------------------------- #
 @router.get("/dashboard/saldos")
 async def dashboard_saldos(
@@ -340,10 +408,54 @@ async def dashboard_saldos(
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> list[dict]:
-    # RBAC role-forcing — vendedor can only see own (T-02.1-14).
+    """Saldos por cuenta filtrados por fecha/agencia/vendedor/moneda.
+
+    RBAC role-forcing (T-02.1-14): non-admins (vendedor) are forced to `vendedor_id = user.id`
+    so they cannot read another vendedor's data via direct curl `?vendedor_id=99`.
+    Contabilidad is treated same as admin for READ-only on dashboard — SC#2 only restricts audit_log.
+    """
     if user["role"] == "vendedor":
         vendedor_id = int(user["id"])
-    raise HTTPException(status_code=501, detail="dashboard/saldos not implemented (RED-phase stub)")
+
+    from app.models.core import AsientoLineas, Asientos, Cuentas
+
+    stmt = (
+        select(
+            Cuentas.id,
+            Cuentas.codigo,
+            Cuentas.nombre,
+            Cuentas.moneda,
+            func.sum(AsientoLineas.debe).label("total_debe"),
+            func.sum(AsientoLineas.haber).label("total_haber"),
+        )
+        .join(AsientoLineas, AsientoLineas.cuenta_id == Cuentas.id)
+        .join(Asientos, Asientos.id == AsientoLineas.asiento_id)
+        .outerjoin(ToursServicios, ToursServicios.asiento_id == Asientos.id)
+        .where(Asientos.fecha >= fecha_desde, Asientos.fecha <= fecha_hasta)
+        .group_by(Cuentas.id, Cuentas.codigo, Cuentas.nombre, Cuentas.moneda)
+    )
+    if agencia_id is not None:
+        stmt = stmt.where(ToursServicios.agencia_id == agencia_id)
+    if vendedor_id is not None:
+        stmt = stmt.where(ToursServicios.vendedor_id == vendedor_id)
+    if moneda is not None:
+        stmt = stmt.where(Cuentas.moneda == moneda)
+    rows = (await session.execute(stmt)).all()
+    out: list[dict] = []
+    for r in rows:
+        debe = float(r.total_debe or 0)
+        haber = float(r.total_haber or 0)
+        moneda_val = r.moneda.value if hasattr(r.moneda, "value") else str(r.moneda)
+        out.append({
+            "id": r.id,
+            "codigo": r.codigo,
+            "nombre": r.nombre,
+            "moneda": moneda_val,
+            "total_debe": debe,
+            "total_haber": haber,
+            "saldo": debe - haber,
+        })
+    return out
 
 
 @router.get("/dashboard/tours_pendientes")
@@ -354,6 +466,39 @@ async def dashboard_tours_pendientes(
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> list[dict]:
+    """Tours_servicios with liquidacion_id IS NULL ordered by fecha asc.
+    Field `dias_desde_venta` = (today - fecha).days (D-20).
+
+    RBAC role-forcing (T-02.1-14): non-admin vendedor forced to `vendedor_id = user.id`.
+    """
     if user["role"] == "vendedor":
         vendedor_id = int(user["id"])
-    raise HTTPException(status_code=501, detail="dashboard/tours_pendientes not implemented (RED-phase stub)")
+
+    stmt = (
+        select(ToursServicios)
+        .where(ToursServicios.liquidacion_id.is_(None))
+        .order_by(ToursServicios.fecha.asc())
+    )
+    if fecha_desde is not None:
+        stmt = stmt.where(ToursServicios.fecha >= fecha_desde)
+    if fecha_hasta is not None:
+        stmt = stmt.where(ToursServicios.fecha <= fecha_hasta)
+    if vendedor_id is not None:
+        stmt = stmt.where(ToursServicios.vendedor_id == vendedor_id)
+    rows = list((await session.execute(stmt)).scalars().all())
+    today = date.today()
+    out: list[dict] = []
+    for ts in rows:
+        delta = (today - ts.fecha).days
+        out.append({
+            "id": ts.id,
+            "tour_id": ts.tour_id,
+            "vendedor_id": ts.vendedor_id,
+            "agencia_id": ts.agencia_id,
+            "moneda": str(ts.moneda.value if hasattr(ts.moneda, "value") else ts.moneda),
+            "monto": float(ts.monto),
+            "costo": float(ts.costo) if ts.costo is not None else None,
+            "fecha": ts.fecha.isoformat(),
+            "dias_desde_venta": delta,
+        })
+    return out

@@ -152,7 +152,7 @@ async def test_reopen_reverts(client, async_engine):
     r = await client.post(f"/liquidaciones/{liq_id}/reopen", headers={"Authorization": f"Bearer {_token()}"})
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["estado"] == "reverted"
+    assert body["estado"] == "revertida"
 
     async with factory() as session:
         # New reversion asientos generated.
@@ -164,7 +164,7 @@ async def test_reopen_reverts(client, async_engine):
             # Find original asiento lines by metadata.asiento_original_id
         # Liquidación row estado persisted.
         liq_row = (await session.execute(select(Liquidaciones).where(Liquidaciones.id == liq_id))).scalar_one()
-        assert liq_row.estado.value == "reverted"
+        assert liq_row.estado.value == "revertida"
         assert liq_row.reopen_count >= 1
         # Tours desbloqueados.
         tours = (await session.execute(select(ToursServicios).where(ToursServicios.liquidacion_id == liq_id))).scalars().all()
