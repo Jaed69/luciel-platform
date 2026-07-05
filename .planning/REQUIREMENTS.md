@@ -43,14 +43,14 @@
 
 - [x] **TOURS-01**: Nueva carpeta `apps/tours/` con Next.js 16 + TypeScript (App Router) + Tailwind, siguiendo el patrón Traefik labels como `apps/landing/`
 - [x] **TOURS-02**: Backend FastAPI + SQLAlchemy async + SQLite WAL (no Postgres — override explícito evaluado y rechazado por YAGNI a esta escala)
-- [ ] **TOURS-03**: Traefik router para `tours.luciel.dev` con cert Let's Encrypt propio (HTTP-01, per-subdomain, no wildcard cert)
+- [x] **TOURS-03**: Traefik router para `tours.luciel.dev` con cert Let's Encrypt propio (HTTP-01, per-subdomain, no wildcard cert)
 - [x] **TOURS-04**: Auth NextAuth/Credentials + bcrypt + tabla `usuarios` con roles `admin` / `vendedor` / `contabilidad` (reemplaza contraseña hardcodeada "2808" del VBA)
 - [x] **TOURS-05**: Core contable de partida doble: `cuentas` / `asientos` / `asiento_lineas` con balance validado en FastAPI dentro de la transacción (no SQL trigger)
 - [x] **TOURS-06**: Módulo Tours con `tours_catalogo` / `liquidaciones` / `tours_servicios` (con `asiento_id` FK al core, `metadata` JSONB híbrido para campos variables) — separado del core, sin tocarlo
 - [x] **TOURS-07**: `comision_reglas` con prioridad determinística 1-4 (vendedor+tour > vendedor > tour > default global no borrable), endpoint `/simular` para probar antes de guardar
 - [x] **TOURS-08**: `audit_log` registra cada INSERT/UPDATE/DELETE con `usuario_id` + timestamp + `datos_antes` / `datos_despues` (resuelve el borrado sin rastro de la macro VBA)
-- [ ] **TOURS-09**: Liquidaciones: abrir + cerrar; el cierre genera asientos de distribución/comisión automáticamente (reemplaza suma manual de Sandra en fila Egreso)
-- [ ] **TOURS-10**: Dashboard mínimo: filtros por fecha/agencia/vendedor/moneda + tabla + totales de saldo por cuenta (sin gráficos — full dashboard + charts + export → 2.1.x deferred)
+- [x] **TOURS-09**: Liquidaciones: abrir + cerrar; el cierre genera asientos de distribución/comisión automáticamente (reemplaza suma manual de Sandra en fila Egreso)
+- [x] **TOURS-10**: Dashboard mínimo: filtros por fecha/agencia/vendedor/moneda + tabla + totales de saldo por cuenta (sin gráficos — full dashboard + charts + export → 2.1.x deferred)
 
 ### Tools — First Pilot (rtk)
 
@@ -120,14 +120,14 @@ Deferred to future release. Tracked but not in current roadmap.
 | CONT-12 | Phase 2 | Pending |
 | TOURS-01 | Phase 02.1 | Complete |
 | TOURS-02 | Phase 02.1 | Complete |
-| TOURS-03 | Phase 02.1 | Pending |
+| TOURS-03 | Phase 02.1 | Complete |
 | TOURS-04 | Phase 02.1 | Complete |
 | TOURS-05 | Phase 02.1 | Complete |
 | TOURS-06 | Phase 02.1 | Complete |
 | TOURS-07 | Phase 02.1 | Complete |
 | TOURS-08 | Phase 02.1 | Complete |
-| TOURS-09 | Phase 02.1 | Pending |
-| TOURS-10 | Phase 02.1 | Pending |
+| TOURS-09 | Phase 02.1 | Complete |
+| TOURS-10 | Phase 02.1 | Complete |
 | CONT-06 | Phase 3 | Pending |
 | CONT-07 | Phase 3 | Pending |
 | CONT-08 | Phase 3 | Pending |

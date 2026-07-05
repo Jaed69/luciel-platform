@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Infrastructure + Landing Scaffold** - Traefik + DNS + Let's Encrypt + minimal `luciel.dev` live over HTTPS (completed 2026-07-03)
 - [ ] **Phase 2: Content Hub** - Home, blog (5-8 real articles), Projects page, navigation, RSS, OG tags, 404
-- [ ] **Phase 02.1: Tours — Panel contable hotel** (INSERTED) - Sistema contable para hotel/agencia de tours de Cusco, reemplaza Excel con macros; primer módulo de mini-ERP
+- [x] **Phase 02.1: Tours — Panel contable hotel** (INSERTED) - Sistema contable para hotel/agencia de tours de Cusco, reemplaza Excel con macros; primer módulo de mini-ERP (completed 2026-07-05)
 - [ ] **Phase 3: Legal + AdSense Readiness** - Privacy/Terms/Contact pages + sitemap/robots/ads.txt/GSC + per-article SEO
 - [ ] **Phase 4: First Tool Pilot (rtk) + Pattern Documentation** - `rtk.luciel.dev` working end-to-end + `docs/adding-a-new-app.md`
 
@@ -85,12 +85,12 @@ Plans:
   9. El schema separa core contable (`usuarios`, `contactos`, `cuentas`, `asientos`, `asiento_lineas`, `audit_log`, `modulos`) del módulo Tours (`tours_catalogo`, `liquidaciones`, `tours_servicios`, `comision_reglas`) — añadir un módulo futuro (café) no toca el core
   10. Reproducible desde clean checkout via `docker compose up -d` + `.env.example` (sin pasos manuales fuera de DNS ya configurado en Phase 1)
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 Plans:
 
 - [x] 02.1-01-PLAN.md — Scaffold `apps/tours/{web,api}` + Traefik compose + FastAPI core de partida doble + audit_log estructural (before_flush + ContextVar) + auth NextAuth/Credentials + JWT bridge + catálogos CRUD + POST /ventas con asiento balanceado en una sola tx + /simular comisión + UI login/ventas/catálogos/usuarios (TOURS-01..08)
-- [ ] 02.1-02-PLAN.md — Liquidaciones state machine (abierta→cerrada→revertida) con asientos automáticos de comisión + pre-checks + reopen con reversión + dashboard mínimo filtrable (4 cards + tours pendientes) + auditoría viewer admin-only + comisiones reglas UI manager + CI matrix refactor (D-04) + deploy HTTPS prod (TOURS-03, TOURS-09, TOURS-10)
+- [x] 02.1-02-PLAN.md — Liquidaciones state machine (abierta→cerrada→revertida) con asientos automáticos de comisión + pre-checks + reopen con reversión + dashboard mínimo filtrable (4 cards + tours pendientes) + auditoría viewer admin-only + comisiones reglas UI manager + CI matrix refactor (D-04) + deploy HTTPS prod (TOURS-03, TOURS-09, TOURS-10)
 
 ### Phase 3: Legal + AdSense Readiness
 
