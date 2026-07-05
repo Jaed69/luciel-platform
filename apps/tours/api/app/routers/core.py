@@ -233,6 +233,28 @@ async def delete_catalog(
     return {"ok": True}
 
 
+@router.post("/catalogos/{entidad}/{row_id}/restore")
+async def restore_catalog(
+    entidad: str,
+    row_id: int,
+    session: AsyncSession = Depends(get_session),
+    _user: dict = Depends(require_role("admin", "contabilidad")),
+) -> dict:
+    """D-03 corollary — reactivate a soft-deleted row (activo=true).
+    Monedas has no activo column → 422 (cannot restore a row that's not soft-deletable)."""
+    model = _CATALOG_MODELS.get(entidad)
+    if model is None:
+        raise HTTPException(status_code=404, detail=f"Catálogo '{entidad}' no existe")
+    if not hasattr(model, "activo"):
+        raise HTTPException(status_code=422, detail=f"'{entidad}' no se puede restaurar (no tiene campo activo)")
+    row = (await session.execute(select(model).where(model.id == row_id))).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+    row.activo = True
+    await session.commit()
+    return {"ok": True}
+
+
 # Short aliases used by the UI (UI-SPEC S5): /agencias, /vendedores, /tours, /formas-pago, /monedas
 @router.get("/agencias", response_model=list[CatalogoOut])
 async def list_agencias(session: AsyncSession = Depends(get_session), _user: dict = Depends(get_current_user)) -> list[Agencias]:

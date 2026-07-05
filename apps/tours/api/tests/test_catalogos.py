@@ -174,3 +174,50 @@ async def test_delete_catalogo_monedas_bloqueado_si_hay_cuentas(client):
     cuentas_ref = [ref for ref in referencias if ref["tabla"] == "cuentas"]
     assert len(cuentas_ref) >= 1
     assert cuentas_ref[0]["count"] >= 1
+
+
+async def test_restore_catalog_reactivates_row(client, async_engine):
+    """POST /catalogos/{entidad}/{id}/restore flips activo=true on a soft-deleted row (D-03 corollary)."""
+    # Soft-delete a fresh agencia first.
+    r = await client.post(
+        "/catalogos/agencias",
+        json={"codigo": "AG-RESTORE", "nombre": "Para restaurar"},
+        headers={"Authorization": f"Bearer {_token('admin')}"},
+    )
+    new_id = r.json()["id"]
+    rd = await client.delete(
+        f"/catalogos/agencias/{new_id}",
+        headers={"Authorization": f"Bearer {_token('admin')}"},
+    )
+    assert rd.status_code == 200
+
+    rr = await client.post(
+        f"/catalogos/agencias/{new_id}/restore",
+        headers={"Authorization": f"Bearer {_token('admin')}"},
+    )
+    assert rr.status_code == 200, rr.text
+    assert rr.json() == {"ok": True}
+
+    from app.models.tours import Agencias
+    factory = async_sessionmaker(async_engine, expire_on_commit=False)
+    async with factory() as session:
+        row = (await session.execute(__import__("sqlalchemy").select(Agencias).where(Agencias.id == new_id))).scalar_one()
+        assert row.activo is True
+
+
+async def test_restore_catalog_monedas_returns_422(client):
+    """POST /catalogos/monedas/{id}/restore → 422 (Monedas has no activo column)."""
+    r = await client.post(
+        "/catalogos/monedas/1/restore",
+        headers={"Authorization": f"Bearer {_token('admin')}"},
+    )
+    assert r.status_code == 422, r.text
+
+
+async def test_restore_catalog_vendedor_403(client):
+    """POST restore as vendedor → 403 (admin+contabilidad only — D-13)."""
+    r = await client.post(
+        "/catalogos/agencias/1/restore",
+        headers={"Authorization": f"Bearer {_token('vendedor', user_id=3)}"},
+    )
+    assert r.status_code == 403
