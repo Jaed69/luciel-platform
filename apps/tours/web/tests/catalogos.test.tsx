@@ -1,7 +1,7 @@
 // apps/tours/web/tests/catalogos.test.tsx
 // Plan 02.1-02 — S5 Comisiones tab: 6 sub-nav tabs + default global row Eliminar disabled + tooltip.
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { ComisionesTab } from "../src/app/(app)/catalogos/_components/ComisionesTab";
 
 const MOCK_REGLAS = [
@@ -16,26 +16,26 @@ const TABS = ["Agencias", "Tours", "Vendedores", "Formas de pago", "Monedas", "C
 describe("Catálogos Comisiones tab — S5", () => {
   it("renders 6 sub-nav tabs (Agencias, Tours, Vendedores, Formas de pago, Monedas, Comisiones)", () => {
     render(<ComisionesTab reglas={MOCK_REGLAS} tabs={TABS} />);
+    const nav = screen.getByLabelText("Catálogos sub-nav");
     for (const label of TABS) {
-      expect(screen.getByText(label)).toBeTruthy();
+      expect(within(nav).getByText(label)).toBeTruthy();
     }
   });
 
   it("default global row has Eliminar disabled with 'Regla global por defecto — no eliminable' tooltip", () => {
     render(<ComisionesTab reglas={MOCK_REGLAS} tabs={TABS} />);
-    const defaultRow = MOCK_REGLAS[0];
-    const eliminar = screen.getByTitle(`Regla global por defecto — no eliminable`);
-    expect(eliminar).toBeTruthy();
+    const eliminarButtons = screen.getAllByTitle("Regla global por defecto — no eliminable");
+    expect(eliminarButtons.length).toBe(1);
+    const eliminar = eliminarButtons[0];
     expect(eliminar.hasAttribute("disabled")).toBe(true);
-    // Default row grouped by "global" Origen.
-    expect(screen.getByText("global")).toBeTruthy();
   });
 
   it("Origen column classifies each rule: vendedor+tour, vendedor, tour, global", () => {
     render(<ComisionesTab reglas={MOCK_REGLAS} tabs={TABS} />);
-    expect(screen.getByText("vendedor+tour")).toBeTruthy();
-    expect(screen.getByText("vendedor")).toBeTruthy();
-    expect(screen.getByText("tour")).toBeTruthy();
-    expect(screen.getByText("global")).toBeTruthy();
+    // 4 origins, one each.
+    expect(screen.getAllByText("vendedor+tour").length).toBe(1);
+    expect(screen.getAllByText("vendedor").length).toBe(1);
+    expect(screen.getAllByText("tour").length).toBe(1);
+    expect(screen.getAllByText("global").length).toBe(1);
   });
 });
