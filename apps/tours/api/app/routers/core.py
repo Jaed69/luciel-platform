@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
@@ -105,6 +105,36 @@ _CATALOG_MODELS = {
     "monedas": Monedas,
 }
 
+# D-19 — referential integrity map for DELETE /catalogos/{entidad}/{row_id}.
+# Each entry: list of (tabla, columna, bind_name, uses_activo).
+#   bind_name="id"  → bind :id = row_id (FK is integer pointing at catalog PK).
+#   bind_name="val" → bind :val = row.codigo (FK column stores codigo string,
+#                     e.g. tours_servicios.moneda == "PEN" matches Monedas.codigo).
+#   uses_activo=True → predicate also filters `<tabla>.activo = 1` (active refs only).
+# Derived from models/tours.py + models/core.py FK definitions.
+_REFERENCED_BY: dict[str, list[tuple[str, str, str, bool]]] = {
+    "agencias": [
+        ("tours_servicios", "agencia_id", "id", False),
+        ("liquidaciones", "agencia_id", "id", False),
+    ],
+    "vendedores": [
+        ("tours_servicios", "vendedor_id", "id", False),
+        ("comision_reglas", "vendedor_id", "id", True),
+        ("liquidaciones", "vendedor_id", "id", False),
+    ],
+    "tours": [
+        ("tours_servicios", "tour_id", "id", False),
+        ("comision_reglas", "tour_id", "id", True),
+    ],
+    "formas-pago": [
+        ("tours_servicios", "forma_pago_id", "id", False),
+    ],
+    "monedas": [
+        ("tours_servicios", "moneda", "val", False),
+        ("cuentas", "moneda", "val", True),
+    ],
+}
+
 
 @router.get("/catalogos/{entidad}", response_model=list[CatalogoOut])
 async def list_catalog(
@@ -124,7 +154,7 @@ async def create_catalog(
     entidad: str,
     body: CatalogoIn,
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(require_role("admin")),
+    _user: dict = Depends(require_role("admin", "contabilidad")),
 ) -> Any:
     model = _CATALOG_MODELS.get(entidad)
     if model is None:
@@ -136,19 +166,68 @@ async def create_catalog(
     return row
 
 
-@router.delete("/catalogos/{entidad}/{row_id}")
-async def delete_catalog(
+@router.put("/catalogos/{entidad}/{row_id}", response_model=CatalogoOut)
+async def update_catalog(
     entidad: str,
     row_id: int,
+    body: CatalogoIn,
     session: AsyncSession = Depends(get_session),
-    _user: dict = Depends(require_role("admin")),
-) -> dict:
+    _user: dict = Depends(require_role("admin", "contabilidad")),
+) -> Any:
+    """PUT updates codigo/nombre only — activo is preserved (D-03)."""
     model = _CATALOG_MODELS.get(entidad)
     if model is None:
         raise HTTPException(status_code=404, detail=f"Catálogo '{entidad}' no existe")
     row = (await session.execute(select(model).where(model.id == row_id))).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
+    row.codigo = body.codigo
+    row.nombre = body.nombre
+    # Do NOT touch row.activo — D-03.
+    await session.commit()
+    await session.refresh(row)
+    return row
+
+
+@router.delete("/catalogos/{entidad}/{row_id}")
+async def delete_catalog(
+    entidad: str,
+    row_id: int,
+    session: AsyncSession = Depends(get_session),
+    _user: dict = Depends(require_role("admin", "contabilidad")),
+) -> dict:
+    """Soft-delete (activo=false) if no FK references; 409 with detail.referencias otherwise."""
+    model = _CATALOG_MODELS.get(entidad)
+    if model is None:
+        raise HTTPException(status_code=404, detail=f"Catálogo '{entidad}' no existe")
+    row = (await session.execute(select(model).where(model.id == row_id))).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Registro no encontrado")
+
+    # Referential integrity check (D-19) — before any mutation. For monedas
+    # (no activo column), the 409 path MUST short-circuit before row.activo=False.
+    refs: list[dict] = []
+    for tabla, columna, bind_name, uses_activo in _REFERENCED_BY.get(entidad, []):
+        bind_value = row.codigo if bind_name == "val" else row_id
+        predicate = f"{tabla}.{columna} = :{bind_name}"
+        if uses_activo:
+            predicate += f" AND {tabla}.activo = 1"
+        count = (await session.execute(
+            select(func.count()).select_from(text(tabla)).where(text(predicate).bindparams(**{bind_name: bind_value}))
+        )).scalar_one()
+        if count and int(count) > 0:
+            refs.append({"tabla": tabla, "count": int(count)})
+
+    if refs:
+        total = sum(r["count"] for r in refs)
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "mensaje": f"No se puede desactivar — {total} registros lo referencian",
+                "referencias": refs,
+            },
+        )
+
     row.activo = False  # soft delete
     await session.commit()
     return {"ok": True}
