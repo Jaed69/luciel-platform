@@ -1,5 +1,11 @@
 # Secrets — never commit
 .env
+ssh-key-*.key
+ssh-key-*.key.pub
+*.key
+*.key.pub
+*.pem
+*.ppk
 
 # Let's Encrypt cert store (contains private key material — D-13, D-20, T-01-03)
 traefik/letsencrypt/

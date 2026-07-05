@@ -45,7 +45,8 @@
     "post_planning_gaps": true,
     "security_enforcement": true,
     "security_asvs_level": 1,
-    "security_block_on": "high"
+    "security_block_on": "high",
+    "_auto_chain_active": false
   },
   "ship": {
     "pr_body_sections": [
@@ -87,5 +88,41 @@
   },
   "resolve_model_ids": "omit",
   "mode": "interactive",
-  "granularity": "standard"
+  "granularity": "standard",
+  "model_overrides": {
+    "gsd-planner": "opencode-go/glm-5.2",
+    "gsd-plan-checker": "opencode-go/glm-5.2",
+    "gsd-debugger": "opencode-go/glm-5.2",
+    "gsd-code-reviewer": "opencode-go/glm-5.2",
+    "gsd-security-auditor": "opencode-go/glm-5.2",
+    "gsd-assumptions-analyzer": "opencode-go/glm-5.2",
+    "gsd-roadmapper": "opencode-go/glm-5.2",
+    "gsd-eval-planner": "opencode-go/glm-5.2",
+    "gsd-framework-selector": "opencode-go/glm-5.2",
+    "gsd-ui-researcher": "opencode-go/glm-5.2",
+    "gsd-ui-checker": "opencode-go/glm-5.2",
+    "gsd-verifier": "opencode-go/glm-5.2",
+    "gsd-doc-classifier": "opencode-go/qwen3.7-plus",
+    "gsd-doc-verifier": "opencode-go/qwen3.7-plus",
+    "gsd-mempalace-curator": "opencode-go/qwen3.7-plus",
+    "gsd-user-profiler": "opencode-go/qwen3.7-plus",
+    "gsd-advisor-researcher": "opencode-go/minimax-m3",
+    "gsd-ai-researcher": "opencode-go/minimax-m3",
+    "gsd-code-fixer": "opencode-go/minimax-m3",
+    "gsd-codebase-mapper": "opencode-go/minimax-m3",
+    "gsd-debug-session-manager": "opencode-go/minimax-m3",
+    "gsd-doc-synthesizer": "opencode-go/minimax-m3",
+    "gsd-doc-writer": "opencode-go/minimax-m3",
+    "gsd-domain-researcher": "opencode-go/minimax-m3",
+    "gsd-eval-auditor": "opencode-go/minimax-m3",
+    "gsd-executor": "opencode-go/minimax-m3",
+    "gsd-integration-checker": "opencode-go/minimax-m3",
+    "gsd-intel-updater": "opencode-go/minimax-m3",
+    "gsd-nyquist-auditor": "opencode-go/minimax-m3",
+    "gsd-pattern-mapper": "opencode-go/minimax-m3",
+    "gsd-phase-researcher": "opencode-go/minimax-m3",
+    "gsd-project-researcher": "opencode-go/minimax-m3",
+    "gsd-research-synthesizer": "opencode-go/minimax-m3",
+    "gsd-ui-auditor": "opencode-go/minimax-m3"
+  }
 }
