@@ -94,14 +94,33 @@ Plans:
 
 ### Phase 02.1.1: Tours — CRUD catálogos + gestión usuarios (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** Cierra la brecha de CRUD que Phase 02.1 dejó abierta: catálogos (PUT codigo/nombre + referential check 409 con lista de referencias en DELETE + RBAC contabilidad además de admin), usuarios (CRUD completo con bcrypt + audit_log redaction + last-admin + self-delete + email-unicos guards), self-service password change en /perfil para cualquier rol, y Perfil + Catálogos visibles en el nav. Backend expone el surface; frontend wirea los modales + páginas + Route Handlers.
+**Mode**: standard (granularity=standard; phase.mvp-mode=false per query)
 **Depends on:** Phase 02.1
-**Plans:** 0 plans
+**Requirements**: TOURS-04, TOURS-06, TOURS-08 (gaps que Phase 02.1.1 cierra — ya estaban complete pero sin CRUD UI/backend)
+**Open decisions**: Resueltos en pre-discusión (ver `02.1.1-CONTEXT.md`) — D-13 RBAC contabilidad para catalogos, D-18/D-19 referential check 409 con detalle.referencias, D-11 last-admin + D-12 self-delete guards, D-08/D-09 password endpoints con bcrypt, D-21 frontend muestra la lista de referencias en el toast, Restaurar via POST .../restore dedicado (D-03 corollary).
+**Success Criteria** (what must be TRUE):
+  1. `PUT /catalogos/{entidad}/{id}` actualiza codigo/nombre; preserva `activo`; admin y contabilidad pueden llamarlo; vendedor recibe 403
+  2. `DELETE /catalogos/{entidad}/{id}` retorna 409 + `{"detail":{"mensaje":"...","referencias":[{"tabla":...,"count":N},...]}}` cuando hay referencias activas; retorna 200/204 cuando no
+  3. `POST /usuarios` crea usuario con password hasheada con bcrypt; retorna 201 sin password_hash; email duplicado retorna 409; vendedor recibe 403
+  4. `PUT /usuarios/{id}` edita email/username/rol/activo (NO password — endpoint dedicado); admin-only; rechaza cambio de rol que deje 0 admins con 409
+  5. `DELETE /usuarios/{id}` soft-delete (activo=false); admin-only; rechaza self-delete y last-admin con 409
+  6. `PUT /usuarios/me/password` requiere current_password correcta; hashea new_password; cualquier usuario autenticado puede usarlo; 401 si current es incorrecta
+  7. `PUT /usuarios/{id}/password` admin-only; hashea new_password; NO requiere current_password
+  8. Cada op CRUD sobre `usuarios` deja entrada en `audit_log` con `password_hash = null` en datos_antes/datos_despues (D-26 — verificado vía /admin/auditoria)
+  9. Frontend `<CatalogoFormModal>` se abre para Agregar + Editar; submit POST/PUT; toast on success/error; 409 con detail.referencias se muestra en el toast (D-21)
+  10. Frontend acción "Restaurar" reactiva item soft-deleted via POST /catalogos/{entidad}/{id}/restore
+  11. Frontend `/admin/usuarios` renderiza usuarios reales desde /api/usuarios; Nuevo/Editar/Restablecer/Eliminar wired; self-delete y last-admin Eliminar links visualmente deshabilitados
+  12. Frontend `/perfil` página permite cambio de contraseña para cualquier usuario autenticado
+  13. Nav muestra "Perfil" para los 3 roles; "Catálogos" visible para admin + contabilidad (no solo admin)
+  14. Middleware permite contabilidad en /catalogos; /perfil protegido (cualquier autenticado); /admin/* sigue admin-only
+
+**Plans:** 2 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 02.1.1 to break down)
+- [ ] 02.1.1-01-PLAN.md — Backend: PUT catalogos + DELETE referential check + RBAC admin+contabilidad; nuevo /usuarios router (CRUD + 2 password endpoints) con guards + audit redaction (TOURS-04, TOURS-06, TOURS-08)
+- [ ] 02.1.1-02-PLAN.md — Frontend: proxyJson helper + 5 Route Handlers + 2 modals (Catalogo/Usuario); /perfil + /admin/usuarios real fetch; catalogos page wired (Agregar/Editar/Restaurar); nav + middleware update (TOURS-04, TOURS-06, TOURS-08)
 
 ### Phase 3: Legal + AdSense Readiness
 
