@@ -1,5 +1,8 @@
-# Build arm64 landing image and push to GHCR (RESEARCH.md Pattern 5, D-06/D-10).
+# Build arm64 images and push to GHCR (RESEARCH.md Pattern 5, D-06/D-10/D-04).
 # Closes the deploy loop: push to main -> CI build -> GHCR -> VPS pull (docker-compose.yml uses image:).
+#
+# D-04 matrix refactor: build/push landing + tours-web + tours-api images in parallel matrix jobs,
+# then a single deploy job SSH's into VPS and `docker compose pull + up -d` recreates the three.
 name: Build and Push to GHCR
 
 on:
@@ -7,12 +10,11 @@ on:
     branches: [main]
     paths:
       - 'apps/landing/**'
+      - 'apps/tours/**'
       - '.github/workflows/release.yml'
 
 env:
   REGISTRY: ghcr.io
-  # github.repository_owner == GITHUB_USER used in docker-compose.yml landing image ref.
-  IMAGE_NAME: ${{ github.repository_owner }}/luciel-platform-landing
 
 jobs:
   build-and-push:
@@ -20,6 +22,26 @@ jobs:
     permissions:
       contents: read
       packages: write  # GITHUB_TOKEN can push to GHCR — no separate PAT needed (T-01-08)
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [landing, tours-web, tours-api]
+        include:
+          - app: landing
+            context: "."
+            file: ./apps/landing/Dockerfile
+            image_suffix: landing
+          - app: tours-web
+            context: "."
+            file: ./apps/tours/web/Dockerfile
+            image_suffix: tours-web
+          # tours-api context MUST be apps/tours/api — its Dockerfile is self-contained
+          # (COPY pyproject.toml / COPY app/) and does NOT use root-relative paths
+          # (using "." here would break the build — BLOCKER fix per Plan 02.1-02 D-04).
+          - app: tours-api
+            context: apps/tours/api
+            file: ./apps/tours/api/Dockerfile
+            image_suffix: tours-api
     steps:
       - uses: actions/checkout@v4
 
@@ -41,18 +63,17 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # github.repository_owner is GHCR user (case-folded). lowercase via github mechanism.
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/luciel-platform-${{ matrix.image_suffix }}
           tags: |
             type=sha,prefix=sha-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      # context: . (repo root) — pnpm workspace needs the root pnpm-lock.yaml (Plan 01-01 note).
-      # file: apps/landing/Dockerfile — multi-stage, root-relative COPY paths.
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./apps/landing/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -60,9 +81,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Auto-deploy: SSH into VPS, pull latest image, recreate landing only (traefik untouched).
-  # Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY (ed25519 private key), DEPLOY_PATH.
-  # User 'deploy' on VPS is in docker group (no sudo) — least privilege.
+  # Auto-deploy: single SSH into VPS, pull latest images for all 3 services, recreate them.
+  # Traefik is never touched (D-01 — infra existed since Phase 1).
+  # Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY (ed25519), DEPLOY_PATH — already configured in Phase 01-02.
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -79,6 +100,6 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd ${{ secrets.DEPLOY_PATH }}
-            docker compose pull landing
-            docker compose up -d landing
+            docker compose pull landing tours-web tours-api
+            docker compose up -d landing tours-web tours-api
             docker image prune -f
