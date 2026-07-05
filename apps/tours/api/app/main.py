@@ -49,7 +49,9 @@ async def health() -> dict:
 from app.routers import auth as auth_router  # noqa: E402
 from app.routers import core as core_router  # noqa: E402
 from app.routers import tours as tours_router  # noqa: E402
+from app.routers import usuarios as usuarios_router  # noqa: E402
 
 app.include_router(auth_router.router)
 app.include_router(core_router.router)
 app.include_router(tours_router.router)
+app.include_router(usuarios_router.router)
