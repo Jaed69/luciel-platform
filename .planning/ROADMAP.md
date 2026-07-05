@@ -92,6 +92,17 @@ Plans:
 - [x] 02.1-01-PLAN.md — Scaffold `apps/tours/{web,api}` + Traefik compose + FastAPI core de partida doble + audit_log estructural (before_flush + ContextVar) + auth NextAuth/Credentials + JWT bridge + catálogos CRUD + POST /ventas con asiento balanceado en una sola tx + /simular comisión + UI login/ventas/catálogos/usuarios (TOURS-01..08)
 - [x] 02.1-02-PLAN.md — Liquidaciones state machine (abierta→cerrada→revertida) con asientos automáticos de comisión + pre-checks + reopen con reversión + dashboard mínimo filtrable (4 cards + tours pendientes) + auditoría viewer admin-only + comisiones reglas UI manager + CI matrix refactor (D-04) + deploy HTTPS prod (TOURS-03, TOURS-09, TOURS-10)
 
+### Phase 02.1.1: Tours — CRUD catálogos + gestión usuarios (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 02.1
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 02.1.1 to break down)
+
 ### Phase 3: Legal + AdSense Readiness
 
 **Goal**: The site satisfies all legal and Google AdSense acceptance prerequisites — ready for the user to apply to AdSense manually (the agent never auto-applies).

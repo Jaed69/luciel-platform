@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02.1
-current_phase_name: tours-panel-contable-hotel
+current_phase: 02.1.1
+current_phase_name: tours-crud-catalogos-gestion-usuarios
 status: verifying
 stopped_at: "Completed 02.1-02-PLAN.md (Task 4 checkpoint:human-verify pending prod HTTPS verification by user)"
-last_updated: "2026-07-05T00:35:32.918Z"
-last_activity: 2026-07-04
-last_activity_desc: Phase 02.1 execution started
+last_updated: "2026-07-05T04:09:49.724Z"
+last_activity: 2026-07-05
+last_activity_desc: Completed 02.1-02-PLAN.md
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 2
   total_plans: 4
   completed_plans: 4
-  percent: 40
+  percent: 33
 ---
 
 # Project State
@@ -98,6 +98,7 @@ None yet.
 ### Roadmap Evolution
 
 - Phase 02.1 inserted after Phase 2: Tours — Panel contable hotel (URGENT)
+- Phase 02.1.1 inserted after Phase 02.1: Tours — CRUD catálogos + gestión usuarios (URGENT)
 
 ## Deferred Items
 
