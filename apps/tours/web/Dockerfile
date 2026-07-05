@@ -19,6 +19,6 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/apps/tours/web/.next/standalone ./
 COPY --from=build /app/apps/tours/web/.next/static ./apps/tours/web/.next/static
-COPY --from=build /app/apps/tours/web/public ./apps/tours/web/public 2>/dev/null || true
+COPY --from=build /app/apps/tours/web/public ./apps/tours/web/public
 EXPOSE 3000
 CMD ["node", "apps/tours/web/server.js"]
