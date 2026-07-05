@@ -122,3 +122,18 @@ class ToursServicios(Base, Auditable):
     asiento_id: Mapped[int] = mapped_column(ForeignKey("asientos.id", ondelete="RESTRICT"), nullable=False)  # D-15
     liquidacion_id: Mapped[int | None] = mapped_column(ForeignKey("liquidaciones.id"), nullable=True)
     metadata_: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)  # JSON serialized
+
+
+class LiquidacionAsientos(Base):
+    """Pivote liquidación ↔ asiento, distingue cierre vs reversiones.
+
+    NO es `Auditable` — es puramente bookkeeping (no genera audit_log propio),
+    el asiento referenciado ya es auditable.
+    """
+    __tablename__ = "liquidacion_asientos"
+    __auditable__ = False
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    liquidacion_id: Mapped[int] = mapped_column(ForeignKey("liquidaciones.id", ondelete="RESTRICT"), nullable=False)
+    asiento_id: Mapped[int] = mapped_column(ForeignKey("asientos.id", ondelete="RESTRICT"), nullable=False)
+    tipo: Mapped[str] = mapped_column(String(16), nullable=False)  # cierre | reversion

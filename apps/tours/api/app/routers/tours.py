@@ -37,6 +37,7 @@ from app.schemas.tours import (
 )
 from app.services.accounting import post_venta_tour
 from app.services.commission import resolve_comision, simular_comision
+from app.services.liquidaciones import LiquidacionPrecheckError as _LiquidacionPrecheckError, close_liquidacion, reopen_liquidacion
 
 router = APIRouter(tags=["tours"])
 
@@ -245,3 +246,114 @@ async def get_liquidacion(
     if user["role"] == "vendedor" and liq.vendedor_id != user["id"]:
         raise HTTPException(status_code=403, detail="No tienes permiso para ver esta liquidación")
     return liq
+
+
+# --------------------------------------------------------------------------- #
+# /liquidaciones/{id}/close | /reopen | /precheck — Plan 02 (RED stub)
+# --------------------------------------------------------------------------- #
+@router.post("/liquidaciones/{liquidacion_id}/close", response_model=LiquidacionOut)
+async def close_liquidacion_endpoint(
+    liquidacion_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(require_role("admin", "contabilidad")),
+) -> Liquidaciones:
+    try:
+        liq = await close_liquidacion(session, liquidacion_id, current_user=user)
+        await session.commit()
+        await session.refresh(liq)
+        return liq
+    except _LiquidacionPrecheckError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=422, detail="No se puede cerrar la liquidación: faltan datos", headers={"X-Errors": str(exc.fails)})
+    except ValueError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.post("/liquidaciones/{liquidacion_id}/reopen", response_model=LiquidacionOut)
+async def reopen_liquidacion_endpoint(
+    liquidacion_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(require_role("admin", "contabilidad")),
+) -> Liquidaciones:
+    try:
+        liq = await reopen_liquidacion(session, liquidacion_id, current_user=user)
+        await session.commit()
+        await session.refresh(liq)
+        return liq
+    except ValueError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+# --------------------------------------------------------------------------- #
+# PUT / DELETE /tours_servicios/{id} — D-14 lock on cerrada (Plan 02)
+# --------------------------------------------------------------------------- #
+@router.put("/tours_servicios/{tour_servicio_id}")
+async def update_tour_servicio(
+    tour_servicio_id: int,
+    body: dict,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    ts = (await session.execute(select(ToursServicios).where(ToursServicios.id == tour_servicio_id))).scalar_one_or_none()
+    if ts is None:
+        raise HTTPException(status_code=404, detail="Tour servicio no encontrado")
+    if user["role"] == "vendedor" and ts.vendedor_id != user["id"]:
+        raise HTTPException(status_code=403, detail="No tienes permiso para editar este tour")
+    # D-14 — if liquidación cerrada, refuse.
+    if ts.liquidacion_id is not None:
+        liq = (await session.execute(select(Liquidaciones).where(Liquidaciones.id == ts.liquidacion_id))).scalar_one_or_none()
+        if liq is not None and liq.estado.value == "cerrada":
+            raise HTTPException(status_code=409, detail="Tour en liquidación cerrada, reabre primero")
+    raise HTTPException(status_code=501, detail="PUT /tours_servicios still unimplemented (RED-phase stub)")
+
+
+@router.delete("/tours_servicios/{tour_servicio_id}")
+async def delete_tour_servicio(
+    tour_servicio_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    ts = (await session.execute(select(ToursServicios).where(ToursServicios.id == tour_servicio_id))).scalar_one_or_none()
+    if ts is None:
+        raise HTTPException(status_code=404, detail="Tour servicio no encontrado")
+    if user["role"] == "vendedor" and ts.vendedor_id != user["id"]:
+        raise HTTPException(status_code=403, detail="No tienes permiso para eliminar este tour")
+    if ts.liquidacion_id is not None:
+        liq = (await session.execute(select(Liquidaciones).where(Liquidaciones.id == ts.liquidacion_id))).scalar_one_or_none()
+        if liq is not None and liq.estado.value == "cerrada":
+            raise HTTPException(status_code=409, detail="Tour en liquidación cerrada, reabre primero")
+    raise HTTPException(status_code=501, detail="DELETE /tours_servicios still unimplemented (RED-phase stub)")
+
+
+# --------------------------------------------------------------------------- #
+# /dashboard/saldos | /dashboard/tours_pendientes — Plan 02 (RED stub)
+# --------------------------------------------------------------------------- #
+@router.get("/dashboard/saldos")
+async def dashboard_saldos(
+    fecha_desde: date = Query(...),
+    fecha_hasta: date = Query(...),
+    agencia_id: int | None = Query(None),
+    vendedor_id: int | None = Query(None),
+    moneda: str | None = Query(None),
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> list[dict]:
+    # RBAC role-forcing — vendedor can only see own (T-02.1-14).
+    if user["role"] == "vendedor":
+        vendedor_id = int(user["id"])
+    raise HTTPException(status_code=501, detail="dashboard/saldos not implemented (RED-phase stub)")
+
+
+@router.get("/dashboard/tours_pendientes")
+async def dashboard_tours_pendientes(
+    fecha_desde: date | None = Query(None),
+    fecha_hasta: date | None = Query(None),
+    vendedor_id: int | None = Query(None),
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> list[dict]:
+    if user["role"] == "vendedor":
+        vendedor_id = int(user["id"])
+    raise HTTPException(status_code=501, detail="dashboard/tours_pendientes not implemented (RED-phase stub)")
