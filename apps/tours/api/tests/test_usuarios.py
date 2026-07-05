@@ -91,25 +91,25 @@ async def test_put_usuario_updates_fields(client, async_engine):
     """PUT /usuarios/{id} updates email/username/rol/activo."""
     r = await client.post(
         "/usuarios",
-        json={"email": "u3@tours.luciel.dev", "username": "u3", "password": "longenough", "rol": "vendedor"},
+        json={"email": "u-three@tours.luciel.dev", "username": "u_three", "password": "longenough", "rol": "vendedor"},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     new_id = r.json()["id"]
     r2 = await client.put(
         f"/usuarios/{new_id}",
-        json={"email": "u3renamed@tours.luciel.dev", "username": "u3renamed", "rol": "contabilidad", "activo": True},
+        json={"email": "u-three-renamed@tours.luciel.dev", "username": "u_three_renamed", "rol": "contabilidad", "activo": True},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     assert r2.status_code == 200, r2.text
     data = r2.json()
-    assert data["email"] == "u3renamed@tours.luciel.dev"
+    assert data["email"] == "u-three-renamed@tours.luciel.dev"
     assert data["rol"] == "contabilidad"
 
     from app.models.core import Usuarios
     factory = async_sessionmaker(async_engine, expire_on_commit=False)
     async with factory() as session:
         row = (await session.execute(select(Usuarios).where(Usuarios.id == new_id))).scalar_one()
-        assert row.email == "u3renamed@tours.luciel.dev"
+        assert row.email == "u-three-renamed@tours.luciel.dev"
         assert row.rol.value == "contabilidad"
 
 
@@ -117,13 +117,13 @@ async def test_put_usuario_no_password(client):
     """PUT /usuarios/{id} with `password` field → 422 (extra='forbid')."""
     r = await client.post(
         "/usuarios",
-        json={"email": "u4@tours.luciel.dev", "username": "u4", "password": "longenough", "rol": "vendedor"},
+        json={"email": "u-four@tours.luciel.dev", "username": "u_four", "password": "longenough", "rol": "vendedor"},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     new_id = r.json()["id"]
     r2 = await client.put(
         f"/usuarios/{new_id}",
-        json={"email": "u4@tours.luciel.dev", "username": "u4", "rol": "vendedor", "activo": True, "password": "x"},
+        json={"email": "u-four@tours.luciel.dev", "username": "u_four", "rol": "vendedor", "activo": True, "password": "x"},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     assert r2.status_code == 422, r2.text

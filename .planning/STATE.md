@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 02.1
-current_phase_name: tours-panel-contable-hotel
-status: verifying
+current_phase: 02.1.1
+current_phase_name: tours-crud-cat-logos-gesti-n-usuarios
+status: executing
 stopped_at: Phase 02.1.1 context gathered
-last_updated: "2026-07-05T04:38:16.716Z"
+last_updated: "2026-07-05T07:42:07.161Z"
 last_activity: 2026-07-05
-last_activity_desc: Completed 02.1-02-PLAN.md
+last_activity_desc: Phase 02.1.1 execution started
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
-  percent: 33
+  completed_phases: 3
+  total_plans: 6
+  completed_plans: 6
+  percent: 50
 ---
 
 # Project State
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-02)
 
 **Core value:** Cada subdominio nuevo entrega una herramienta funcional que resuelve un problema real, acompañada de contenido genuino, sobre infraestructura reproducible versionada en git.
-**Current focus:** Phase 02.1 — tours-panel-contable-hotel
+**Current focus:** Phase 02.1.1 — tours-crud-cat-logos-gesti-n-usuarios
 
 ## Current Position
 
-Phase: 02.1 (tours-panel-contable-hotel) — VERIFYING
-Plan: 2 of 2
-Status: Phase complete — ready for verification (Task 4 blocking human-verify pending prod HTTPS by user)
-Last activity: 2026-07-05 — Completed 02.1-02-PLAN.md
+Phase: 02.1.1 (tours-crud-cat-logos-gesti-n-usuarios) — EXECUTING
+Plan: 1 of 2
+Status: Executing Phase 02.1.1
+Last activity: 2026-07-05 — Phase 02.1.1 execution started
 
 Progress: [████░░░░░░] 40%
 
@@ -58,6 +58,8 @@ Progress: [████░░░░░░] 40%
 | Phase 01 P02 | 1min | 1 tasks | 1 files |
 | Phase 02.1 P01 | 58min | 4 tasks | 76 files |
 | Phase 02.1 P02 | 23 min | 3 tasks | 26 files |
+| Phase 02.1.1 P01 | 8 | 2 tasks | 6 files |
+| Phase 02.1.1 P02 | 12 | 3 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -82,6 +84,7 @@ Recent decisions affecting current work:
 - [Phase 02.1 P02]: CI matrix D-04 — release.yml over [landing, tours-web, tours-api] with `include` providing context/file/image_suffix; tours-api MUST use `context: apps/tours/api` (NOT '.') because Plan 01 Dockerfile is self-contained with `COPY pyproject.toml / COPY app/`
 - [Phase 02.1 P02]: EstadoLiquidacion enum uses Spanish `revertida` (NOT English `reverted`) — UI-SPEC S4 StatusBadge uses Spanish variant; plan prose inconsistency resolved to enum-driven Spanish
 - [Phase 02.1 P02]: vitest setup.ts needs afterEach(cleanup) — @testing-library/react renders accumulate between tests by default, breaking getByText queries
+- [Phase ?]: Phase 02.1.1 frontend wiring
 
 ### Pending Todos
 
@@ -111,6 +114,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-05T04:38:16.711Z
+Last session: 2026-07-05T07:42:07.157Z
 Stopped at: Phase 02.1.1 context gathered
 Resume file: .planning/phases/02.1.1-tours-crud-cat-logos-gesti-n-usuarios/02.1.1-CONTEXT.md
