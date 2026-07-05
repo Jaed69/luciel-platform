@@ -21,17 +21,17 @@ describe("PasswordForm (perfil)", () => {
 
   it("renders 3 password inputs + submit button", () => {
     render(<PasswordForm />);
-    expect(screen.getByLabelText(/contraseña actual/i)).toBeTruthy();
-    expect(screen.getByLabelText(/nueva contraseña/i)).toBeTruthy();
-    expect(screen.getByLabelText(/confirmar nueva contraseña/i)).toBeTruthy();
+    expect(screen.getByLabelText("Contraseña actual")).toBeTruthy();
+    expect(screen.getByLabelText("Nueva contraseña")).toBeTruthy();
+    expect(screen.getByLabelText("Confirmar nueva contraseña")).toBeTruthy();
     expect(screen.getByRole("button", { name: /cambiar contraseña/i })).toBeTruthy();
   });
 
   it("shows inline error when new password below 8 chars", async () => {
     render(<PasswordForm />);
-    fireEvent.change(screen.getByLabelText(/contraseña actual/i), { target: { value: "old" } });
-    fireEvent.change(screen.getByLabelText(/nueva contraseña/i), { target: { value: "short" } });
-    fireEvent.change(screen.getByLabelText(/confirmar nueva contraseña/i), { target: { value: "short" } });
+    fireEvent.change(screen.getByLabelText("Contraseña actual"), { target: { value: "old" } });
+    fireEvent.change(screen.getByLabelText("Nueva contraseña"), { target: { value: "short" } });
+    fireEvent.change(screen.getByLabelText("Confirmar nueva contraseña"), { target: { value: "short" } });
     fireEvent.click(screen.getByRole("button", { name: /cambiar contraseña/i }));
     await waitFor(() => {
       expect(screen.getByText(/al menos 8 caracteres/i)).toBeTruthy();
@@ -40,9 +40,9 @@ describe("PasswordForm (perfil)", () => {
 
   it("shows inline error when confirm does not match new", async () => {
     render(<PasswordForm />);
-    fireEvent.change(screen.getByLabelText(/contraseña actual/i), { target: { value: "old" } });
-    fireEvent.change(screen.getByLabelText(/nueva contraseña/i), { target: { value: "long-enough" } });
-    fireEvent.change(screen.getByLabelText(/confirmar nueva contraseña/i), { target: { value: "different-stuff" } });
+    fireEvent.change(screen.getByLabelText("Contraseña actual"), { target: { value: "old" } });
+    fireEvent.change(screen.getByLabelText("Nueva contraseña"), { target: { value: "long-enough" } });
+    fireEvent.change(screen.getByLabelText("Confirmar nueva contraseña"), { target: { value: "different-stuff" } });
     fireEvent.click(screen.getByRole("button", { name: /cambiar contraseña/i }));
     await waitFor(() => {
       expect(screen.getByText(/no coinciden/i)).toBeTruthy();
@@ -53,9 +53,9 @@ describe("PasswordForm (perfil)", () => {
     const fetchSpy = vi.fn().mockResolvedValue(OK_RESPONSE);
     (globalThis as any).fetch = fetchSpy;
     render(<PasswordForm />);
-    fireEvent.change(screen.getByLabelText(/contraseña actual/i), { target: { value: "currentpass" } });
-    fireEvent.change(screen.getByLabelText(/nueva contraseña/i), { target: { value: "newpass123" } });
-    fireEvent.change(screen.getByLabelText(/confirmar nueva contraseña/i), { target: { value: "newpass123" } });
+    fireEvent.change(screen.getByLabelText("Contraseña actual"), { target: { value: "currentpass" } });
+    fireEvent.change(screen.getByLabelText("Nueva contraseña"), { target: { value: "newpass123" } });
+    fireEvent.change(screen.getByLabelText("Confirmar nueva contraseña"), { target: { value: "newpass123" } });
     fireEvent.click(screen.getByRole("button", { name: /cambiar contraseña/i }));
     await waitFor(() => {
       expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -73,9 +73,9 @@ describe("PasswordForm (perfil)", () => {
     const fetchSpy = vi.fn().mockResolvedValue(UNAUTHORIZED);
     (globalThis as any).fetch = fetchSpy;
     render(<PasswordForm />);
-    fireEvent.change(screen.getByLabelText(/contraseña actual/i), { target: { value: "wrong" } });
-    fireEvent.change(screen.getByLabelText(/nueva contraseña/i), { target: { value: "newpass123" } });
-    fireEvent.change(screen.getByLabelText(/confirmar nueva contraseña/i), { target: { value: "newpass123" } });
+    fireEvent.change(screen.getByLabelText("Contraseña actual"), { target: { value: "wrong" } });
+    fireEvent.change(screen.getByLabelText("Nueva contraseña"), { target: { value: "newpass123" } });
+    fireEvent.change(screen.getByLabelText("Confirmar nueva contraseña"), { target: { value: "newpass123" } });
     fireEvent.click(screen.getByRole("button", { name: /cambiar contraseña/i }));
     await waitFor(() => {
       expect(showToast).toHaveBeenCalledWith("error", expect.stringMatching(/actual incorrecta/i));

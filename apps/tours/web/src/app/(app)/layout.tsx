@@ -8,9 +8,10 @@ const NAV_ITEMS = [
   { label: "Resumen contable", href: "/", roles: ["admin", "contabilidad"] },
   { label: "Ventas", href: "/ventas", roles: ["admin", "contabilidad", "vendedor"] },
   { label: "Liquidaciones", href: "/liquidaciones", roles: ["admin", "contabilidad", "vendedor"] },
-  { label: "Catálogos", href: "/catalogos/agencias", roles: ["admin"] },
+  { label: "Catálogos", href: "/catalogos/agencias", roles: ["admin", "contabilidad"] },
   { label: "Auditoría", href: "/admin/auditoria", roles: ["admin"] },
   { label: "Usuarios", href: "/admin/usuarios", roles: ["admin"] },
+  { label: "Perfil", href: "/perfil", roles: ["admin", "contabilidad", "vendedor"] },
 ];
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
