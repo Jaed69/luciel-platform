@@ -86,13 +86,29 @@ Seed inicial (chart of cuentas + admin user + default comisión 50/50 + catálog
 Push a `main` dispara `.github/workflows/release.yml` (D-04 matrix):
 
 1. **build-and-push** matrix job sobre `[landing, tours-web, tours-api]` — QEMU emula arm64 (VPS target), Buildx push a GHCR con tags `sha-<short>` + `latest`.
-2. **deploy** job SSH al VPS (`appleboy/ssh-action@v1`, secrets `VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY`/`DEPLOY_PATH` ya configurados desde Phase 01-02) ejecuta:
-   ```bash
-   docker compose pull landing tours-web tours-api
-   docker compose up -d landing tours-web tours-api
-   docker image prune -f
-   ```
-   Traefik nunca se toca (D-01 — infra existed desde Phase 1).
+2. **deploy** job SSH al VPS (`appleboy/ssh-action@v1`) ejecuta:
+   - `git fetch origin && git reset --hard origin/main` — sincroniza el `docker-compose.yml` + configs del VPS con `main` (fix del bug donde el VPS se quedaba en Phase 01 compose cuando main ya tenía tours-web/tours-api).
+   - Regenera `.env` desde GitHub repo secrets (heredoc) — vars nunca viven en git, VPS siempre sincronizado, sin edits manuales. Traefik never se toca (D-01 — infra existed desde Phase 1).
+   - `docker compose pull landing tours-web tours-api` (login GHCR previo solo si `GHCR_PAT` set)
+   - `docker compose up -d landing tours-web tours-api`
+   - `docker image prune -f`
+
+### GitHub repo secrets requeridos
+
+Setea con `gh secret set NAME -b "value"` desde elrepo raíz:
+
+| Secret | Uso |
+|---|---|
+| `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `DEPLOY_PATH` | Conexión SSH + path del repo en VPS (Phase 01-02) |
+| `NEXTAUTH_SECRET` | JWT HS256 firma (NextAuth + pyjwt bridge — D-02). Gen: `openssl rand -base64 48 \| tr -d '\n' \| head -c 64` |
+| `ADMIN_INITIAL_PASSWORD` | Password seed admin@tours.luciel.dev. Gen: `openssl rand -base64 24 \| tr -d '\n' \| head -c 20` |
+| `NEXTAUTH_URL` | `https://tours.luciel.dev` |
+| `JWT_ALGORITHM` | `HS256` |
+| `TRAEFIK_DASHBOARD_USER`, `TRAEFIK_DASHBOARD_PASS_HASH` | Traefik dashboard basic-auth (D-17) |
+| `GHCR_OWNER` | Owner lowercase del namespace GHCR (default en compose: `jaed69`) |
+| `GHCR_PAT` (optional) | PAT solo si GHCR package es private — login al pull |
+
+Para agregar un nuevo var: (1) añade a `.env.example`, (2) `gh secret set`, (3) añade a `env:` + body del heredoc en `release.yml` deploy job.
 
 Post-deploy verification:
 

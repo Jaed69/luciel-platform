@@ -81,9 +81,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Auto-deploy: single SSH into VPS, pull latest images for all 3 services, recreate them.
-  # Traefik is never touched (D-01 — infra existed since Phase 1).
-  # Secrets: VPS_HOST, VPS_USER, VPS_SSH_KEY (ed25519), DEPLOY_PATH — already configured in Phase 01-02.
+  # Auto-deploy: single SSH into VPS — git pull main, regenerate .env from GH repo
+  # secrets, pull latest images, recreate the three services. Traefik is never
+  # touched (D-01 — infra existed since Phase 1).
+  #
+  # GH repo secrets required (set via `gh secret set NAME -b "value"`):
+  #   VPS_HOST, VPS_USER, VPS_SSH_KEY, DEPLOY_PATH          (Phase 01-02)
+  #   NEXTAUTH_SECRET, ADMIN_INITIAL_PASSWORD, NEXTAUTH_URL, # tours app (02.1)
+  #   JWT_ALGORITHM
+  #   TRAEFIK_DASHBOARD_USER, TRAEFIK_DASHBOARD_PASS_HASH     # Phase 01 dashboard
+  #   GHCR_OWNER                                             # GHCR owner (lowercase)
+  #   GHCR_PAT (optional — only if GHCR package is private)
+  #
+  # To add a new env var: (1) add to .env.example, (2) `gh secret set NAME`,
+  # (3) add to `env:` below + to the heredoc body in `script`.
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -94,12 +105,62 @@ jobs:
     steps:
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1
+        env:
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+          JWT_ALGORITHM: ${{ secrets.JWT_ALGORITHM }}
+          TRAEFIK_DASHBOARD_USER: ${{ secrets.TRAEFIK_DASHBOARD_USER }}
+          TRAEFIK_DASHBOARD_PASS_HASH: ${{ secrets.TRAEFIK_DASHBOARD_PASS_HASH }}
+          GHCR_OWNER: ${{ secrets.GHCR_OWNER }}
+          GHCR_PAT: ${{ secrets.GHCR_PAT }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          envs: NEXTAUTH_SECRET,ADMIN_INITIAL_PASSWORD,NEXTAUTH_URL,JWT_ALGORITHM,TRAEFIK_DASHBOARD_USER,TRAEFIK_DASHBOARD_PASS_HASH,GHCR_PAT,GHCR_OWNER
           script: |
+            set -eu
             cd ${{ secrets.DEPLOY_PATH }}
+
+            # Sync compose + configs from main (fixes Phase-01-stale-VPS bug
+            # discovered during Phase 02.1 deploy — VPS had Phase 01 compose
+            # while local main had tours-web/tours-api; deploy silently failed).
+            git fetch origin
+            git reset --hard origin/main
+
+            # Regenerate .env from GH repo secrets (idempotent — overwrites on
+            # every CI deploy). Any manual edits on the VPS will be wiped. To
+            # add a var, see the workflow header comment.
+            cat > .env <<EOF_ENV
+            # Managed by .github/workflows/release.yml deploy job.
+            # Regenerated on every CI deploy — local manual edits will be wiped.
+            # Generated: $(date -u +%FT%TZ)
+
+            # GHCR image refs (GHCR_OWNER lowercase — GitHub case-folds)
+            GHCR_OWNER=${GHCR_OWNER}
+            GHCR_PAT=${GHCR_PAT}
+
+            # Traefik dashboard basic-auth (D-17)
+            TRAEFIK_DASHBOARD_USER=${TRAEFIK_DASHBOARD_USER}
+            TRAEFIK_DASHBOARD_PASS_HASH=${TRAEFIK_DASHBOARD_PASS_HASH}
+
+            # Tours (Phase 02.1) — JWT bridge NextAuth <-> FastAPI (D-02)
+            NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+            NEXTAUTH_URL=${NEXTAUTH_URL}
+            JWT_ALGORITHM=${JWT_ALGORITHM}
+            ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD}
+            EOF_ENV
+            chmod 600 .env
+
+            # GHCR login only when a PAT is provided (private packages).
+            # Public packages pull anonymously.
+            if [ -n "${GHCR_PAT}" ]; then
+              printf '%s' "${GHCR_PAT}" | docker login ghcr.io -u "${GHCR_OWNER}" --password-stdin
+            fi
+
             docker compose pull landing tours-web tours-api
             docker compose up -d landing tours-web tours-api
             docker image prune -f
+
+            [ -n "${GHCR_PAT}" ] && docker logout ghcr.io 2>/dev/null || true

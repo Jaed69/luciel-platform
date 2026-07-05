@@ -38,7 +38,7 @@ services:
     # (VFS-layer restriction, applies regardless of in-container uid).
 
   landing:
-    image: ghcr.io/${GITHUB_USER}/luciel-platform-landing:latest
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-landing:latest
     container_name: landing
     restart: unless-stopped
     labels:
@@ -54,7 +54,7 @@ services:
       - traefik-public
 
   tours-web:
-    image: ghcr.io/${GITHUB_USER}/luciel-platform-tours-web:latest
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-web:latest
     container_name: tours-web
     restart: unless-stopped
     environment:
@@ -73,7 +73,7 @@ services:
       - traefik-public
 
   tours-api:
-    image: ghcr.io/${GITHUB_USER}/luciel-platform-tours-api:latest
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-api:latest
     container_name: tours-api
     restart: unless-stopped
     environment:
