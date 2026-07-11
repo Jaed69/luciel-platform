@@ -3,9 +3,9 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { apiFetchJson } from "@/lib/api";
-import { Button } from "@/components/Button";
 import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
+import { NewLiquidacionButton } from "./NewLiquidacionButton";
 
 type LiquidacionRow = {
   id: number;
@@ -81,7 +81,7 @@ export default async function LiquidacionesPage({ searchParams }: { searchParams
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-playfair text-primary text-[38px] font-semibold">Liquidaciones</h1>
-        {canManage && <Button variant="primary">Nueva liquidación</Button>}
+        {canManage && <NewLiquidacionButton />}
       </div>
       <DataTable columns={columns} data={liquidaciones} emptyState="No hay liquidaciones registradas." />
     </div>
