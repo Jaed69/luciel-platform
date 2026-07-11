@@ -1,3 +1,4 @@
+"use client";
 import { useState } from "react";
 import { formatCurrency } from "@/lib/api";
 import { DataTable, type Column } from "@/components/DataTable";
