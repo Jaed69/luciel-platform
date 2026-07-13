@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
-import { signOut } from "next-auth/react";
 import { authOptions } from "@/lib/auth";
-import { Button } from "@/components/Button";
+import { LogoutButton } from "@/components/LogoutButton";
 
 const NAV_ITEMS = [
   { label: "Resumen contable", href: "/", roles: ["admin", "contabilidad"] },
@@ -38,15 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </ul>
         <div className="flex items-center gap-3">
           <span className="text-sm font-nunito text-text-espresso">{email} · {role}</span>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirect: false });
-              redirect("/login");
-            }}
-          >
-            <Button variant="outlined" size="sm" type="submit">Cerrar sesión</Button>
-          </form>
+          <LogoutButton />
         </div>
       </nav>
       <main className="flex-1 px-6 py-6 max-w-[1200px] w-full mx-auto">{children}</main>
