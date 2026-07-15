@@ -1,0 +1,70 @@
+/*
+  DESIGN.md token hook — Tailwind v4 @theme. Mirrors apps/landing/src/styles/tokens.css
+  so lemon.luciel.dev stays visually consistent with the rest of luciel.dev.
+*/
+@import "tailwindcss";
+
+@theme {
+  /* Colors — DESIGN.md swatches (24) */
+  --color-canvas: #ffffff;
+  --color-primary: #17171c;
+  --color-cohere-black: #000000;
+  --color-ink: #212121;
+  --color-deep-green: #003c33;
+  --color-dark-navy: #071829;
+  --color-soft-stone: #eeece7;
+  --color-pale-green: #edfce9;
+  --color-pale-blue: #f1f5ff;
+  --color-hairline: #d9d9dd;
+  --color-border-light: #e5e7eb;
+  --color-card-border: #f2f2f2;
+  --color-muted: #93939f;
+  --color-slate: #75758a;
+  --color-body-muted: #616161;
+  --color-action-blue: #1863dc;
+  --color-focus-blue: #4c6ee6;
+  --color-coral: #ff7759;
+  --color-coral-soft: #ffad9b;
+  --color-form-focus: #9b60aa;
+  --color-on-primary: #ffffff;
+  --color-on-dark: #ffffff;
+  --color-error: #b30000;
+
+  /* Font families — fallbacks only (DESIGN.md Cohere fonts not bundled) */
+  --font-display: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Inter', 'Arial', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+
+  /* Type scale — DESIGN.md typography roles (12) */
+  --text-hero-display: 96px;
+  --text-product-display: 72px;
+  --text-section-display: 60px;
+  --text-section-heading: 48px;
+  --text-card-heading: 32px;
+  --text-feature-heading: 24px;
+  --text-body-large: 18px;
+  --text-body: 16px;
+  --text-button: 14px;
+  --text-caption: 14px;
+  --text-mono-label: 14px;
+  --text-micro: 12px;
+
+  /* Spacing — DESIGN.md (8 steps; xxs/xs are NOT multiples of 4, captured per UI-SPEC) */
+  --spacing-xxs: 2px;
+  --spacing-xs: 6px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-xxl: 32px;
+  --spacing-section: 80px;
+
+  /* Radii — DESIGN.md rounded (7) */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 30px;
+  --radius-pill: 32px;
+  --radius-full: 9999px;
+}

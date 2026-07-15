@@ -1,0 +1,51 @@
+---
+interface Props {
+  title: string;
+  youtubeId: string;
+  date?: string;
+  description?: string;
+}
+
+const { title, youtubeId, date, description } = Astro.props;
+const thumbnail = `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`;
+---
+
+<figure class="video-card rounded-md border border-hairline overflow-hidden bg-canvas" data-youtube-id={youtubeId}>
+  <button
+    type="button"
+    class="video-card__trigger relative block w-full aspect-video"
+    aria-label={`Reproducir: ${title}`}
+  >
+    <img src={thumbnail} alt={title} class="w-full h-full object-cover" loading="lazy" />
+    <span class="absolute inset-0 flex items-center justify-center">
+      <span class="flex items-center justify-center w-14 h-14 rounded-full text-on-dark text-2xl" style="background: rgba(0,0,0,0.7);">▶</span>
+    </span>
+  </button>
+  <figcaption class="px-md py-sm">
+    <p class="text-body font-display" style="font-weight: 600;">{title}</p>
+    {date && <p class="text-caption text-slate mt-xxs">{date}</p>}
+    {description && <p class="text-body mt-xs">{description}</p>}
+  </figcaption>
+</figure>
+
+<script>
+  // Click-to-load facade: avoids booting the YouTube player for every card up front.
+  document.querySelectorAll<HTMLElement>('.video-card').forEach((card) => {
+    const trigger = card.querySelector('.video-card__trigger');
+    trigger?.addEventListener(
+      'click',
+      () => {
+        const youtubeId = card.dataset.youtubeId;
+        if (!youtubeId) return;
+        const iframe = document.createElement('iframe');
+        iframe.src = `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1`;
+        iframe.className = 'w-full aspect-video';
+        iframe.allow =
+          'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+        trigger.replaceWith(iframe);
+      },
+      { once: true },
+    );
+  });
+</script>

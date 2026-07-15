@@ -53,6 +53,21 @@ services:
     networks:
       - traefik-public
 
+  lemon:
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-lemon:latest
+    container_name: lemon
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.lemon.rule=Host(`lemon.luciel.dev`)"
+      - "traefik.http.routers.lemon.entrypoints=websecure"
+      - "traefik.http.routers.lemon.tls.certresolver=le"
+      - "traefik.http.routers.lemon.tls.domains[0].main=lemon.luciel.dev"
+      # nginx escucha en 8080 dentro del container (non-privileged), igual que landing.
+      - "traefik.http.services.lemon.loadbalancer.server.port=8080"
+    networks:
+      - traefik-public
+
   tours-web:
     image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-web:latest
     container_name: tours-web

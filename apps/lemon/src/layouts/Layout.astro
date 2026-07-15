@@ -1,0 +1,28 @@
+---
+import '../styles/tokens.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'lemon.luciel.dev',
+  description = 'Un libro digital de videos.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <!-- Página personal, no listada — nunca debe indexarse ni aparecer en buscadores. -->
+    <meta name="robots" content="noindex, nofollow" />
+  </head>
+  <body class="font-body bg-canvas text-ink">
+    <slot />
+  </body>
+</html>

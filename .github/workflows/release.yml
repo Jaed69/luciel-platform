@@ -11,6 +11,7 @@ on:
     paths:
       - 'apps/landing/**'
       - 'apps/tours/**'
+      - 'apps/lemon/**'
       - '.github/workflows/release.yml'
 
 env:
@@ -25,12 +26,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [landing, tours-web, tours-api]
+        app: [landing, tours-web, tours-api, lemon]
         include:
           - app: landing
             context: "."
             file: ./apps/landing/Dockerfile
             image_suffix: landing
+          - app: lemon
+            context: "."
+            file: ./apps/lemon/Dockerfile
+            image_suffix: lemon
           - app: tours-web
             context: "."
             file: ./apps/tours/web/Dockerfile
@@ -159,8 +164,8 @@ jobs:
               printf '%s' "${GHCR_PAT}" | docker login ghcr.io -u "${GHCR_OWNER}" --password-stdin
             fi
 
-            docker compose pull landing tours-web tours-api
-            docker compose up -d landing tours-web tours-api
+            docker compose pull landing tours-web tours-api lemon
+            docker compose up -d landing tours-web tours-api lemon
             docker image prune -f
 
             [ -n "${GHCR_PAT}" ] && docker logout ghcr.io 2>/dev/null || true
