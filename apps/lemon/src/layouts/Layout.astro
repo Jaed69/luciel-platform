@@ -1,5 +1,6 @@
 ---
 import '../styles/tokens.css';
+import '../styles/lemon-theme.css';
 
 interface Props {
   title?: string;
@@ -8,7 +9,7 @@ interface Props {
 
 const {
   title = 'lemon.luciel.dev',
-  description = 'Un libro digital de videos.',
+  description = 'Un libro digital de recuerdos.',
 } = Astro.props;
 ---
 
@@ -22,7 +23,11 @@ const {
     <!-- Página personal, no listada — nunca debe indexarse ni aparecer en buscadores. -->
     <meta name="robots" content="noindex, nofollow" />
   </head>
-  <body class="font-body bg-canvas text-ink">
+  <body class="lemon-body">
+    <img src="/assets/sticker-star-yellow.png" alt="" class="lemon-sticker" style="width:48px; top:70px; left:calc(50% - 20px); animation-delay:0s;" aria-hidden="true" />
+    <img src="/assets/sticker-smiley.png" alt="" class="lemon-sticker" style="width:56px; bottom:60px; right:40px; animation-delay:1.2s;" aria-hidden="true" />
+    <img src="/assets/sticker-star-black.png" alt="" class="lemon-sticker" style="width:34px; top:120px; right:90px; animation-delay:2s;" aria-hidden="true" />
     <slot />
   </body>
 </html>
+

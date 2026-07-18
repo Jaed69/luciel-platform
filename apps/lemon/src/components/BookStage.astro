@@ -1,0 +1,160 @@
+---
+import GuestbookForm from './GuestbookForm.astro';
+import type { Album, Message } from '../data/content';
+
+interface Clip {
+  title: string;
+  youtubeId: string;
+  date?: string;
+}
+
+interface Props {
+  artAlbums: Album[];
+  birthdayWishes: Message[];
+  guestbookMessages: Message[];
+  clips: Clip[];
+}
+const { artAlbums, birthdayWishes, guestbookMessages, clips } = Astro.props;
+const firstAlbum = artAlbums[0]?.key ?? '';
+---
+
+<div class="lemon-stage">
+  <div class="lemon-book">
+    <div class="lemon-page">
+
+      <!-- panel: Lemon's art -->
+      <div data-panel="art" class="lemon-panel">
+        <div class="lemon-book-title">Lemon's art</div>
+        <div class="lemon-book-sub">Obras y proceso creativo del año</div>
+        {artAlbums.map((album) => (
+          <div class="lemon-polaroid-grid" data-album={album.key} style={album.key === firstAlbum ? '' : 'display:none'}>
+            {album.photos.map((p) => (
+              <div class="lemon-polaroid">
+                <img src={p.src} alt={p.caption} loading="lazy" />
+                {p.caption}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      <!-- panel: Birthday wishes (sin menu contextual) -->
+      <div data-panel="messages" class="lemon-panel" style="display:none">
+        <div class="lemon-book-title">Birthday wishes</div>
+        <div class="lemon-book-sub">Mensajes de cariño para ti</div>
+        {birthdayWishes.map((m) => (
+          <div class="lemon-note"><b>{m.name}:</b> {m.text}</div>
+        ))}
+      </div>
+
+      <!-- panel: Video memories — la TV ocupa todo el panel -->
+      <div data-panel="videos" class="lemon-panel" style="display:none">
+        <div class="lemon-book-title">Video memories</div>
+        <div class="lemon-book-sub">Selecciona un clip en el menú para reproducirlo</div>
+        {clips.map((clip, i) => (
+          <div class="lemon-tv-wrap" data-clip={i} style={i === 0 ? '' : 'display:none'}>
+            <div class="lemon-tv-frame">
+              <div class="lemon-tv-screen lemon-tv-triggerable" data-youtube-id={clip.youtubeId}>
+                <img src={`https://i.ytimg.com/vi/${clip.youtubeId}/hqdefault.jpg`} alt={clip.title} loading="lazy" />
+                <button type="button" class="lemon-tv-play-btn" aria-label={`Reproducir: ${clip.title}`}>
+                  <span class="play"></span>
+                </button>
+              </div>
+              <div class="lemon-tv-footer">
+                <span class="lemon-tv-label">{clip.title}</span>
+                <span class="lemon-tv-dots"><span></span><span></span><span></span></span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <!-- panel: Guestbook (sin menu contextual, formulario real) -->
+      <div data-panel="guestbook" class="lemon-panel" style="display:none">
+        <div class="lemon-book-title">Guestbook</div>
+        <div class="lemon-book-sub">Deja tu mensaje, se revisa antes de publicarse</div>
+        <GuestbookForm approvedMessages={guestbookMessages} />
+      </div>
+
+    </div>
+
+    <!-- menu contextual: cambia segun la seccion, o desaparece -->
+    <div class="lemon-ctx-menu" data-ctx-group="art">
+      {artAlbums.map((album) => (
+        <div class={`lemon-ctx-item ${album.key === firstAlbum ? 'is-active' : ''}`} data-album-btn={album.key}>
+          {album.label}
+        </div>
+      ))}
+    </div>
+    <div class="lemon-ctx-menu" data-ctx-group="videos" style="display:none">
+      {clips.map((clip, i) => (
+        <div class={`lemon-ctx-item ${i === 0 ? 'is-active' : ''}`} data-clip-btn={i}>
+          {clip.title}
+        </div>
+      ))}
+    </div>
+  </div>
+</div>
+
+<script>
+  function $all(sel: string, root: ParentNode = document) {
+    return Array.from(root.querySelectorAll<HTMLElement>(sel));
+  }
+
+  // --- click-to-embed facade para la TV (evita cargar el player hasta hacer click) ---
+  $all('.lemon-tv-triggerable').forEach((screen) => {
+    const btn = screen.querySelector<HTMLElement>('.lemon-tv-play-btn');
+    btn?.addEventListener('click', () => {
+      const youtubeId = screen.dataset.youtubeId;
+      if (!youtubeId) return;
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1`;
+      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      iframe.allowFullscreen = true;
+      screen.innerHTML = '';
+      screen.appendChild(iframe);
+    }, { once: true });
+  });
+
+  // --- menu principal: cambia de panel y de menu contextual ---
+  const menuBtns = $all('[data-section-btn]');
+  const panels = $all('[data-panel]');
+  const ctxGroups = $all('[data-ctx-group]');
+
+  menuBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.sectionBtn;
+      menuBtns.forEach((b) => b.classList.toggle('is-active', b === btn));
+      panels.forEach((p) => { p.style.display = p.dataset.panel === key ? '' : 'none'; });
+      ctxGroups.forEach((g) => { g.style.display = g.dataset.ctxGroup === key ? '' : 'none'; });
+      if (key === 'videos') {
+        const tv = document.querySelector('[data-panel="videos"] .lemon-tv-frame');
+        tv?.classList.remove('lemon-tv-flicker');
+        void (tv as HTMLElement)?.offsetWidth; // reinicia la animacion
+        tv?.classList.add('lemon-tv-flicker');
+      }
+    });
+  });
+
+  // --- menu contextual: albumes de arte ---
+  $all('[data-album-btn]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.albumBtn;
+      $all('[data-album-btn]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      $all('[data-album]').forEach((el) => { el.style.display = el.dataset.album === key ? '' : 'none'; });
+    });
+  });
+
+  // --- menu contextual: clips de video ---
+  $all('[data-clip-btn]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = btn.dataset.clipBtn;
+      $all('[data-clip-btn]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      $all('[data-clip]').forEach((el) => { el.style.display = el.dataset.clip === idx ? '' : 'none'; });
+      const tv = document.querySelector(`[data-clip="${idx}"] .lemon-tv-frame`);
+      tv?.classList.remove('lemon-tv-flicker');
+      void (tv as HTMLElement)?.offsetWidth;
+      tv?.classList.add('lemon-tv-flicker');
+    });
+  });
+</script>

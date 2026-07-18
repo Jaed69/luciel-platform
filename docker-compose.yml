@@ -63,7 +63,7 @@ services:
       - "traefik.http.routers.lemon.entrypoints=websecure"
       - "traefik.http.routers.lemon.tls.certresolver=le"
       - "traefik.http.routers.lemon.tls.domains[0].main=lemon.luciel.dev"
-      # nginx escucha en 8080 dentro del container (non-privileged), igual que landing.
+      # nginx escucha en 8080 dentro del container (non-privileged, per Dockerfile).
       - "traefik.http.services.lemon.loadbalancer.server.port=8080"
     networks:
       - traefik-public

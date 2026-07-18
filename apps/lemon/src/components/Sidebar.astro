@@ -1,0 +1,19 @@
+---
+interface Props {
+  sections: { key: string; label: string }[];
+}
+const { sections } = Astro.props;
+---
+
+<div class="lemon-sidebar">
+  <a href="/" class="lemon-back-btn">&#8592; volver a la intro</a>
+  {sections.map((s, i) => (
+    <button
+      class={`lemon-menu-item ${i === 0 ? 'is-active' : ''}`}
+      data-section-btn={s.key}
+      type="button"
+    >
+      {s.label}
+    </button>
+  ))}
+</div>

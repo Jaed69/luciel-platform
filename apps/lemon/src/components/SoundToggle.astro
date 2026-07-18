@@ -1,0 +1,90 @@
+---
+// Ambiente sonoro sintetizado (Web Audio API) — no es música con licencia,
+// es un placeholder audible. Reemplázalo por <audio loop> con pistas reales
+// cuando las tengas (ver nota al final del componente).
+---
+
+<button class="lemon-sound-btn" id="lemon-sound-btn" type="button">
+  <span class="lemon-sound-dot" id="lemon-sound-dot"></span>
+  <span id="lemon-sound-label">sonido: apagado</span>
+</button>
+
+<script>
+  const moods: Record<string, { notes: number[]; noteDur: number; gap: number; type: OscillatorType }> = {
+    art: { notes: [261.6, 329.6, 392.0, 440.0], noteDur: 1.4, gap: 1.5, type: 'sine' },
+    messages: { notes: [392.0, 440.0, 523.3, 587.3], noteDur: 0.9, gap: 1.0, type: 'triangle' },
+    videos: { notes: [130.8, 164.8, 196.0, 146.8], noteDur: 2.6, gap: 2.7, type: 'sine' },
+    guestbook: { notes: [349.2, 392.0, 440.0, 523.3, 587.3], noteDur: 0.6, gap: 0.7, type: 'triangle' },
+  };
+
+  let audioCtx: AudioContext | null = null;
+  let isSoundOn = false;
+  let pendingTimeouts: number[] = [];
+  let currentSection = 'art';
+
+  function ensureCtx() {
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+  function stopAmbient() {
+    pendingTimeouts.forEach((id) => clearTimeout(id));
+    pendingTimeouts = [];
+  }
+  function playNote(freq: number, duration: number, type: OscillatorType) {
+    if (!audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(0.05, t0 + 0.15);
+    gain.gain.linearRampToValueAtTime(0, t0 + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.05);
+  }
+  function scheduleAmbient(key: string) {
+    const mood = moods[key];
+    if (!mood) return;
+    let i = 0;
+    function step() {
+      if (!isSoundOn) return;
+      playNote(mood.notes[i % mood.notes.length], mood.noteDur, mood.type);
+      i++;
+      pendingTimeouts.push(window.setTimeout(step, mood.gap * 1000));
+    }
+    step();
+  }
+
+  const btn = document.getElementById('lemon-sound-btn');
+  const dot = document.getElementById('lemon-sound-dot');
+  const label = document.getElementById('lemon-sound-label');
+
+  btn?.addEventListener('click', () => {
+    isSoundOn = !isSoundOn;
+    if (isSoundOn) {
+      ensureCtx();
+      stopAmbient();
+      scheduleAmbient(currentSection);
+      dot?.classList.add('is-on');
+      if (label) label.textContent = 'sonido: activado';
+    } else {
+      stopAmbient();
+      dot?.classList.remove('is-on');
+      if (label) label.textContent = 'sonido: apagado';
+    }
+  });
+
+  // escucha los clics del menu principal (evento delegado, sin acoplarse a BookStage)
+  document.addEventListener('click', (e) => {
+    const target = (e.target as HTMLElement)?.closest('[data-section-btn]') as HTMLElement | null;
+    if (!target) return;
+    currentSection = target.dataset.sectionBtn ?? 'art';
+    if (isSoundOn) {
+      stopAmbient();
+      scheduleAmbient(currentSection);
+    }
+  });
+</script>

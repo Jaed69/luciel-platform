@@ -1,0 +1,34 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Sidebar from '../components/Sidebar.astro';
+import BookStage from '../components/BookStage.astro';
+import SoundToggle from '../components/SoundToggle.astro';
+import { sections as videoSections } from '../data/videos';
+import { artAlbums, birthdayWishes, guestbookMessages } from '../data/content';
+
+const menuSections = [
+  { key: 'art', label: "Lemon's art" },
+  { key: 'messages', label: 'Birthday wishes' },
+  { key: 'videos', label: 'Video memories' },
+  { key: 'guestbook', label: 'Guestbook' },
+];
+
+// Aplana todas las secciones de videos.ts en una sola lista de clips para la TV.
+const clips = videoSections.flatMap((s) =>
+  s.videos.map((v) => ({ title: v.title, youtubeId: v.youtubeId, date: v.date }))
+);
+
+const approvedWishes = birthdayWishes.filter((m) => m.approved);
+const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
+---
+
+<Layout title="lemon.luciel.dev — regalo" description="Un libro digital de recuerdos, arte y buenos deseos.">
+  <SoundToggle />
+  <Sidebar sections={menuSections} />
+  <BookStage
+    artAlbums={artAlbums}
+    birthdayWishes={approvedWishes}
+    guestbookMessages={approvedGuestbook}
+    clips={clips}
+  />
+</Layout>

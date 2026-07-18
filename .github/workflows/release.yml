@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [landing, tours-web, tours-api, lemon]
+        app: [landing, lemon, tours-web, tours-api]
         include:
           - app: landing
             context: "."
@@ -164,8 +164,8 @@ jobs:
               printf '%s' "${GHCR_PAT}" | docker login ghcr.io -u "${GHCR_OWNER}" --password-stdin
             fi
 
-            docker compose pull landing tours-web tours-api lemon
-            docker compose up -d landing tours-web tours-api lemon
+            docker compose pull landing lemon tours-web tours-api
+            docker compose up -d landing lemon tours-web tours-api
             docker image prune -f
 
             [ -n "${GHCR_PAT}" ] && docker logout ghcr.io 2>/dev/null || true
