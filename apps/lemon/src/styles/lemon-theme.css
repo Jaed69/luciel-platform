@@ -32,10 +32,10 @@
   background:
     radial-gradient(circle at 15% 20%, rgba(0, 0, 0, 0.25), transparent 40%),
     radial-gradient(circle at 85% 75%, rgba(0, 0, 0, 0.2), transparent 45%),
-    linear-gradient(135deg, var(--lemon-wall-mid), var(--lemon-wall-dark) 70%),
-    url('/assets/wall-texture.jpg');
+    url('/assets/wall-texture.webp'),
+    linear-gradient(135deg, var(--lemon-wall-mid), var(--lemon-wall-dark) 70%);
   background-size: cover, cover, cover, cover;
-  background-blend-mode: normal, normal, normal, overlay;
+  background-blend-mode: normal, normal, overlay, normal;
   display: flex;
   padding: 28px;
   gap: 28px;
