@@ -21,5 +21,97 @@ const FORM_ENDPOINT = 'https://formspree.io/f/xrenqgel';
   <label for="gb-message">Tu mensaje</label>
   <textarea id="gb-message" name="message" placeholder="Escribe tu mensaje de cumpleaños" required></textarea>
   <button class="lemon-submit-btn" type="submit">Enviar mensaje</button>
+  <div id="guestbook-status" class="lemon-guestbook-status" role="status"></div>
   <div class="lemon-mod-note">Tu mensaje llega por correo al dueño del sitio y se agrega aquí manualmente tras revisarlo.</div>
 </form>
+
+<script>
+  interface EchoMessage {
+    name: string;
+    text: string;
+    submittedAt: number;
+  }
+
+  const LS_KEY = 'lemon-guestbook-echo';
+  const MAX_ECHOES = 20;
+
+  function loadEchoes(): EchoMessage[] {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      return raw ? (JSON.parse(raw) as EchoMessage[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveEchoes(echoes: EchoMessage[]) {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(echoes.slice(-MAX_ECHOES)));
+    } catch {
+      // localStorage no disponible (modo privado, cuota) — el echo sigue mostrandose en esta carga, solo no persiste
+    }
+  }
+
+  function renderEcho(notesEl: HTMLElement, m: EchoMessage) {
+    const div = document.createElement('div');
+    div.className = 'lemon-note lemon-note--pending';
+    const b = document.createElement('b');
+    b.textContent = `${m.name}:`;
+    div.appendChild(b);
+    div.append(` ${m.text} `);
+    const badge = document.createElement('span');
+    badge.className = 'lemon-note-badge';
+    badge.textContent = 'pendiente';
+    div.appendChild(badge);
+    notesEl.appendChild(div);
+  }
+
+  const notesEl = document.getElementById('guestbook-notes');
+  const form = document.getElementById('guestbook-form') as HTMLFormElement | null;
+  const statusEl = document.getElementById('guestbook-status');
+  const endpoint = form?.action;
+
+  if (notesEl) {
+    loadEchoes().forEach((m) => renderEcho(notesEl, m));
+  }
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!endpoint || !statusEl) return;
+
+    const submitBtn = form.querySelector<HTMLButtonElement>('.lemon-submit-btn');
+    const nameInput = form.querySelector<HTMLInputElement>('#gb-name');
+    const messageInput = form.querySelector<HTMLTextAreaElement>('#gb-message');
+
+    statusEl.textContent = '';
+    statusEl.classList.remove('is-error', 'is-success');
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: { Accept: 'application/json' },
+      });
+
+      if (!response.ok) throw new Error('submit failed');
+
+      const echo: EchoMessage = {
+        name: nameInput?.value.trim() || 'Anónimo',
+        text: messageInput?.value.trim() || '',
+        submittedAt: Date.now(),
+      };
+      if (notesEl) renderEcho(notesEl, echo);
+      saveEchoes([...loadEchoes(), echo]);
+
+      form.reset();
+      statusEl.textContent = '¡Gracias! Tu mensaje quedará pendiente de revisión.';
+      statusEl.classList.add('is-success');
+    } catch {
+      statusEl.textContent = 'No se pudo enviar tu mensaje. Probá de nuevo en un momento.';
+      statusEl.classList.add('is-error');
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
+</script>

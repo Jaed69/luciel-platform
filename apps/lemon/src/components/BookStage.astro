@@ -116,6 +116,44 @@ const firstAlbum = artAlbums[0]?.key ?? '';
     }, { once: true });
   });
 
+  // --- swap animado (pasar-hoja) entre elementos de un mismo grupo ---
+  // groupEls: todos los candidatos; keyAttr: el dataset key a comparar (p.ej. "panel"); key: el valor buscado.
+  function swapPanel(groupEls: HTMLElement[], keyAttr: string, key: string, onSwapped?: (next: HTMLElement) => void) {
+    const current = groupEls.find((el) => el.style.display !== 'none');
+    const next = groupEls.find((el) => el.dataset[keyAttr] === key);
+    if (!next || next === current) return;
+
+    let done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      if (current) {
+        current.style.display = 'none';
+        current.classList.remove('is-turning-out');
+      }
+      next!.style.display = '';
+      next!.classList.add('is-turning-in');
+      void next!.offsetWidth; // fuerza reflow
+      requestAnimationFrame(() => next!.classList.remove('is-turning-in'));
+      onSwapped?.(next!);
+    }
+
+    if (current) {
+      current.classList.add('is-turning-out');
+      current.addEventListener('transitionend', finish, { once: true });
+      setTimeout(finish, 300); // fallback: prefers-reduced-motion no dispara transitionend
+    } else {
+      finish();
+    }
+  }
+
+  function flickerTv(root: ParentNode) {
+    const tv = root.querySelector<HTMLElement>('.lemon-tv-frame');
+    tv?.classList.remove('lemon-tv-flicker');
+    void tv?.offsetWidth;
+    tv?.classList.add('lemon-tv-flicker');
+  }
+
   // --- menu principal: cambia de panel y de menu contextual ---
   const menuBtns = $all('[data-section-btn]');
   const panels = $all('[data-panel]');
@@ -124,37 +162,34 @@ const firstAlbum = artAlbums[0]?.key ?? '';
   menuBtns.forEach((btn) => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.sectionBtn;
+      if (!key) return;
       menuBtns.forEach((b) => b.classList.toggle('is-active', b === btn));
-      panels.forEach((p) => { p.style.display = p.dataset.panel === key ? '' : 'none'; });
       ctxGroups.forEach((g) => { g.style.display = g.dataset.ctxGroup === key ? '' : 'none'; });
-      if (key === 'videos') {
-        const tv = document.querySelector('[data-panel="videos"] .lemon-tv-frame');
-        tv?.classList.remove('lemon-tv-flicker');
-        void (tv as HTMLElement)?.offsetWidth; // reinicia la animacion
-        tv?.classList.add('lemon-tv-flicker');
-      }
+      swapPanel(panels, 'panel', key, (next) => {
+        if (key === 'videos') flickerTv(next);
+      });
     });
   });
 
   // --- menu contextual: albumes de arte ---
+  const albumEls = $all('[data-album]');
   $all('[data-album-btn]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const key = btn.dataset.albumBtn;
+      if (!key) return;
       $all('[data-album-btn]').forEach((b) => b.classList.toggle('is-active', b === btn));
-      $all('[data-album]').forEach((el) => { el.style.display = el.dataset.album === key ? '' : 'none'; });
+      swapPanel(albumEls, 'album', key);
     });
   });
 
   // --- menu contextual: clips de video ---
+  const clipEls = $all('[data-clip]');
   $all('[data-clip-btn]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const idx = btn.dataset.clipBtn;
+      if (idx === undefined) return;
       $all('[data-clip-btn]').forEach((b) => b.classList.toggle('is-active', b === btn));
-      $all('[data-clip]').forEach((el) => { el.style.display = el.dataset.clip === idx ? '' : 'none'; });
-      const tv = document.querySelector(`[data-clip="${idx}"] .lemon-tv-frame`);
-      tv?.classList.remove('lemon-tv-flicker');
-      void (tv as HTMLElement)?.offsetWidth;
-      tv?.classList.add('lemon-tv-flicker');
+      swapPanel(clipEls, 'clip', idx, (next) => flickerTv(next));
     });
   });
 </script>

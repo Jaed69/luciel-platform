@@ -16,7 +16,10 @@
 @media (prefers-reduced-motion: reduce) {
   .lemon-sticker,
   .lemon-tv-flicker,
-  .lemon-fade-in {
+  .lemon-fade-in,
+  .lemon-panel,
+  .lemon-polaroid-grid,
+  .lemon-tv-wrap {
     animation: none !important;
     transition: none !important;
   }
@@ -105,7 +108,7 @@
 .lemon-book {
   position: relative;
   width: 100%;
-  max-width: 820px;
+  max-width: 1400px;
   background: #2b1c10;
   border-radius: 14px;
   padding: 22px;
@@ -114,8 +117,31 @@
 .lemon-page {
   background: var(--lemon-paper);
   border-radius: 8px;
-  min-height: 460px;
+  min-height: min(70vh, 820px);
   padding: 28px 32px;
+  perspective: 1200px;
+}
+@supports (height: 100svh) {
+  .lemon-page { min-height: min(70svh, 820px); }
+}
+
+/* pasar-hoja: swap animado de contenido (panel/album/clip) */
+.lemon-panel,
+.lemon-polaroid-grid,
+.lemon-tv-wrap {
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.lemon-panel.is-turning-out,
+.lemon-polaroid-grid.is-turning-out,
+.lemon-tv-wrap.is-turning-out {
+  opacity: 0;
+  transform: rotateY(-8deg) translateX(-12px);
+}
+.lemon-panel.is-turning-in,
+.lemon-polaroid-grid.is-turning-in,
+.lemon-tv-wrap.is-turning-in {
+  opacity: 0;
+  transform: rotateY(8deg) translateX(12px);
 }
 .lemon-book-title {
   font-family: 'Permanent Marker', cursive;
@@ -149,7 +175,11 @@
 .lemon-ctx-item.is-active { background: var(--lemon-yellow); color: var(--lemon-ink); font-weight: 700; }
 
 /* polaroids */
-.lemon-polaroid-grid { display: flex; flex-wrap: wrap; gap: 14px; }
+.lemon-polaroid-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 14px;
+}
 .lemon-polaroid {
   background: #fff;
   padding: 8px 8px 22px;
@@ -179,6 +209,26 @@
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
 }
 .lemon-note b { font-family: 'Permanent Marker', cursive; font-weight: 400; font-size: 14px; }
+.lemon-note--pending { border-left-style: dashed; opacity: 0.85; }
+.lemon-note-badge {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--lemon-ink-soft);
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.lemon-guestbook-status {
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.lemon-guestbook-status.is-error { color: #a02a2a; }
+.lemon-guestbook-status.is-success { color: #2a7a3b; }
 
 .lemon-form-block { margin-top: 20px; border-top: 1px dashed rgba(0, 0, 0, 0.2); padding-top: 16px; }
 .lemon-form-block label { display: block; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--lemon-ink-soft); margin-bottom: 4px; }
@@ -269,3 +319,67 @@
 }
 .lemon-sound-dot { width: 8px; height: 8px; border-radius: 50%; background: #999; }
 .lemon-sound-dot.is-on { background: #3b9c4a; }
+
+/* ---------- pantalla completa ---------- */
+.lemon-fullscreen-btn {
+  position: fixed; top: 16px; left: 16px;
+  font-family: 'Space Mono', monospace;
+  font-size: 12px;
+  background: var(--lemon-paper); color: var(--lemon-ink);
+  border: none; border-radius: 6px; padding: 8px 14px;
+  cursor: pointer; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 900px) {
+  .lemon-body { padding: 20px; gap: 16px; }
+  .lemon-page { padding: 22px 20px; }
+  .lemon-ctx-menu {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-width: none;
+    margin-top: 14px;
+    top: auto;
+    right: auto;
+  }
+  .lemon-ctx-item {
+    border-radius: 8px;
+  }
+  .lemon-ctx-item:hover { transform: none; filter: brightness(0.95); }
+  .lemon-tv-frame { padding: 12px 12px 18px; }
+}
+
+@media (max-width: 600px) {
+  .lemon-body { flex-direction: column; padding: 12px; gap: 12px; }
+  .lemon-stage { min-width: 0; }
+
+  .lemon-sidebar {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 10px;
+    padding-top: 50px;
+  }
+  .lemon-menu-item {
+    flex-shrink: 0;
+    font-size: 14px;
+    padding: 10px 14px 14px;
+  }
+
+  .lemon-page { padding: 16px 14px; min-height: 320px; }
+
+  .lemon-polaroid-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
+  .lemon-polaroid img { height: 84px; }
+
+  .lemon-sticker { display: none; }
+
+  .lemon-sound-btn,
+  .lemon-fullscreen-btn {
+    top: auto;
+    bottom: 12px;
+  }
+  .lemon-sound-btn { right: 12px; }
+  .lemon-fullscreen-btn { left: 12px; }
+}

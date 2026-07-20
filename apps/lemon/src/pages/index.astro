@@ -4,27 +4,41 @@ import VideoCard from '../components/VideoCard.astro';
 ---
 
 <Layout title="lemon.luciel.dev" description="Un regalo de cumpleaños.">
-  <main class="min-h-screen flex items-center justify-center px-md py-xl">
-    <div class="w-full max-w-[32rem] text-center">
+  <main class="w-full min-h-screen flex flex-col items-center justify-center gap-md px-md py-lg">
+    <div class="max-w-[32rem] text-center">
       <h1 class="font-display text-section-heading text-on-dark" style="line-height: 1.2;">
         🎉 Feliz cumple, Lemondrea
       </h1>
-      <p class="text-body-large text-on-dark mt-md mb-lg">
+      <p class="text-body-large text-on-dark mt-md">
         Tu regalo está cargando... dale play.
       </p>
+    </div>
 
+    <div class="lemon-hero-video">
       <VideoCard
         title="Tu regalo de cumpleaños"
         youtubeId="dQw4w9WgXcQ"
       />
-
-      <a
-        href="/regalo"
-        class="inline-block mt-xl text-button rounded-pill border border-hairline px-lg py-sm"
-        style="background: var(--color-canvas);"
-      >
-        Es broma, no es un rickroll →
-      </a>
     </div>
+
+    <a
+      href="/regalo"
+      class="inline-block text-button rounded-pill border border-hairline px-lg py-sm"
+      style="background: var(--color-canvas);"
+    >
+      Es broma, no es un rickroll →
+    </a>
   </main>
 </Layout>
+
+<style>
+  .lemon-hero-video {
+    width: 100%;
+    max-width: min(92vw, calc((100vh - 260px) * 16 / 9), 1400px);
+  }
+  @supports (height: 100svh) {
+    .lemon-hero-video {
+      max-width: min(92vw, calc((100svh - 260px) * 16 / 9), 1400px);
+    }
+  }
+</style>

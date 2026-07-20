@@ -4,23 +4,34 @@ interface Props {
   youtubeId: string;
   date?: string;
   description?: string;
+  autoplay?: boolean;
 }
 
-const { title, youtubeId, date, description } = Astro.props;
+const { title, youtubeId, date, description, autoplay = false } = Astro.props;
 const thumbnail = `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`;
 ---
 
 <figure class="video-card rounded-md border border-hairline overflow-hidden bg-canvas" data-youtube-id={youtubeId}>
-  <button
-    type="button"
-    class="video-card__trigger relative block w-full aspect-video"
-    aria-label={`Reproducir: ${title}`}
-  >
-    <img src={thumbnail} alt={title} class="w-full h-full object-cover" loading="lazy" />
-    <span class="absolute inset-0 flex items-center justify-center">
-      <span class="flex items-center justify-center w-14 h-14 rounded-full text-on-dark text-2xl" style="background: rgba(0,0,0,0.7);">▶</span>
-    </span>
-  </button>
+  {autoplay ? (
+    <iframe
+      class="w-full aspect-video"
+      src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&mute=1`}
+      title={`Reproduciendo: ${title}`}
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  ) : (
+    <button
+      type="button"
+      class="video-card__trigger relative block w-full aspect-video"
+      aria-label={`Reproducir: ${title}`}
+    >
+      <img src={thumbnail} alt={title} class="w-full h-full object-cover" loading="lazy" />
+      <span class="absolute inset-0 flex items-center justify-center">
+        <span class="flex items-center justify-center w-14 h-14 rounded-full text-on-dark text-2xl" style="background: rgba(0,0,0,0.7);">▶</span>
+      </span>
+    </button>
+  )}
   <figcaption class="px-md py-sm">
     <p class="text-body font-display" style="font-weight: 600;">{title}</p>
     {date && <p class="text-caption text-slate mt-xxs">{date}</p>}

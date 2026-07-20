@@ -1,0 +1,36 @@
+---
+// Botón de pantalla completa vía Fullscreen API nativa — mismo patrón que SoundToggle.astro.
+---
+
+<button class="lemon-fullscreen-btn" id="lemon-fullscreen-btn" type="button">
+  <span id="lemon-fullscreen-label">pantalla completa</span>
+</button>
+
+<script>
+  const btn = document.getElementById('lemon-fullscreen-btn');
+  const label = document.getElementById('lemon-fullscreen-label');
+  const supported = !!(document.documentElement.requestFullscreen && document.exitFullscreen);
+
+  function updateLabel() {
+    if (label) {
+      label.textContent = document.fullscreenElement ? 'salir de pantalla completa' : 'pantalla completa';
+    }
+  }
+
+  if (!supported) {
+    if (btn) btn.style.display = 'none';
+  } else {
+    btn?.addEventListener('click', async () => {
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        } else {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch {
+        // permiso denegado o gesto de usuario inválido — el estado del boton ya refleja la realidad via fullscreenchange
+      }
+    });
+    document.addEventListener('fullscreenchange', updateLabel);
+  }
+</script>

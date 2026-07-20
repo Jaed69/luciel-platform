@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import Sidebar from '../components/Sidebar.astro';
 import BookStage from '../components/BookStage.astro';
 import SoundToggle from '../components/SoundToggle.astro';
+import FullscreenToggle from '../components/FullscreenToggle.astro';
 import { sections as videoSections } from '../data/videos';
 import { artAlbums, birthdayWishes, guestbookMessages } from '../data/content';
 
@@ -24,6 +25,7 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
 
 <Layout title="lemon.luciel.dev — regalo" description="Un libro digital de recuerdos, arte y buenos deseos.">
   <SoundToggle />
+  <FullscreenToggle />
   <Sidebar sections={menuSections} />
   <BookStage
     artAlbums={artAlbums}
