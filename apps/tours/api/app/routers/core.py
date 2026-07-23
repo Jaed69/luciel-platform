@@ -154,6 +154,8 @@ async def create_catalog(
     model = _CATALOG_MODELS.get(entidad)
     if model is None:
         raise HTTPException(status_code=404, detail=f"Catálogo '{entidad}' no existe")
+    if entidad == "vendedores":
+        raise HTTPException(status_code=409, detail="Los vendedores se gestionan desde Usuarios (rol vendedor)")
     row = model(codigo=body.codigo, nombre=body.nombre)
     session.add(row)
     await session.commit()
@@ -173,6 +175,8 @@ async def update_catalog(
     model = _CATALOG_MODELS.get(entidad)
     if model is None:
         raise HTTPException(status_code=404, detail=f"Catálogo '{entidad}' no existe")
+    if entidad == "vendedores":
+        raise HTTPException(status_code=409, detail="Los vendedores se gestionan desde Usuarios (rol vendedor)")
     row = (await session.execute(select(model).where(model.id == row_id))).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
@@ -195,6 +199,8 @@ async def delete_catalog(
     model = _CATALOG_MODELS.get(entidad)
     if model is None:
         raise HTTPException(status_code=404, detail=f"Catálogo '{entidad}' no existe")
+    if entidad == "vendedores":
+        raise HTTPException(status_code=409, detail="Los vendedores se gestionan desde Usuarios (rol vendedor)")
     row = (await session.execute(select(model).where(model.id == row_id))).scalar_one_or_none()
     if row is None:
         raise HTTPException(status_code=404, detail="Registro no encontrado")
@@ -240,6 +246,8 @@ async def restore_catalog(
     model = _CATALOG_MODELS.get(entidad)
     if model is None:
         raise HTTPException(status_code=404, detail=f"Catálogo '{entidad}' no existe")
+    if entidad == "vendedores":
+        raise HTTPException(status_code=409, detail="Los vendedores se gestionan desde Usuarios (rol vendedor)")
     if not hasattr(model, "activo"):
         raise HTTPException(status_code=422, detail=f"'{entidad}' no se puede restaurar (no tiene campo activo)")
     row = (await session.execute(select(model).where(model.id == row_id))).scalar_one_or_none()

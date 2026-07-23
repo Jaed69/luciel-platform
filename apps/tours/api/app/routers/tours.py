@@ -51,8 +51,9 @@ async def create_venta(
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> VentaOut:
-    # Role guard — vendedor solo crea ventas para sí mismo (T-02.1-08).
-    if user["role"] == "vendedor" and body.vendedor_id != user["id"]:
+    # Role guard — vendedor solo crea ventas para sí mismo (T-02.1-08, D-32 —
+    # compares against the JWT's vendedor_id claim, not usuarios.id).
+    if user["role"] == "vendedor" and body.vendedor_id != user["vendedor_id"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No puedes registrar ventas para otro vendedor")
 
     # Validate foreign keys exist + active.
@@ -104,9 +105,9 @@ async def list_ventas(
     user: dict = Depends(get_current_user),
 ) -> list[ToursServicios]:
     stmt = select(ToursServicios).order_by(ToursServicios.fecha.desc())
-    # Vendedor solo ve propias (T-02.1-08).
+    # Vendedor solo ve propias (T-02.1-08, D-32).
     if user["role"] == "vendedor":
-        stmt = stmt.where(ToursServicios.vendedor_id == user["id"])
+        stmt = stmt.where(ToursServicios.vendedor_id == user["vendedor_id"])
     if fecha_desde is not None:
         stmt = stmt.where(ToursServicios.fecha >= fecha_desde)
     if fecha_hasta is not None:
@@ -252,9 +253,9 @@ async def list_liquidaciones(
     user: dict = Depends(get_current_user),
 ) -> list[Liquidaciones]:
     stmt = select(Liquidaciones).order_by(Liquidaciones.id.desc())
-    # Vendedor solo ve propias.
+    # Vendedor solo ve propias (D-32).
     if user["role"] == "vendedor":
-        stmt = stmt.where(Liquidaciones.vendedor_id == user["id"])
+        stmt = stmt.where(Liquidaciones.vendedor_id == user["vendedor_id"])
     if estado is not None:
         stmt = stmt.where(Liquidaciones.estado == estado)
     if vendedor_id is not None and user["role"] != "vendedor":
@@ -275,7 +276,7 @@ async def get_liquidacion(
     liq = (await session.execute(select(Liquidaciones).where(Liquidaciones.id == liquidacion_id))).scalar_one_or_none()
     if liq is None:
         raise HTTPException(status_code=404, detail="Liquidación no encontrada")
-    if user["role"] == "vendedor" and liq.vendedor_id != user["id"]:
+    if user["role"] == "vendedor" and liq.vendedor_id != user["vendedor_id"]:
         raise HTTPException(status_code=403, detail="No tienes permiso para ver esta liquidación")
     return liq
 
@@ -350,7 +351,7 @@ async def update_tour_servicio(
     ts = (await session.execute(select(ToursServicios).where(ToursServicios.id == tour_servicio_id))).scalar_one_or_none()
     if ts is None:
         raise HTTPException(status_code=404, detail="Tour servicio no encontrado")
-    if user["role"] == "vendedor" and ts.vendedor_id != user["id"]:
+    if user["role"] == "vendedor" and ts.vendedor_id != user["vendedor_id"]:
         raise HTTPException(status_code=403, detail="No tienes permiso para editar este tour")
     # D-14 — if liquidación cerrada, refuse.
     if ts.liquidacion_id is not None:
@@ -379,7 +380,7 @@ async def delete_tour_servicio(
     ts = (await session.execute(select(ToursServicios).where(ToursServicios.id == tour_servicio_id))).scalar_one_or_none()
     if ts is None:
         raise HTTPException(status_code=404, detail="Tour servicio no encontrado")
-    if user["role"] == "vendedor" and ts.vendedor_id != user["id"]:
+    if user["role"] == "vendedor" and ts.vendedor_id != user["vendedor_id"]:
         raise HTTPException(status_code=403, detail="No tienes permiso para eliminar este tour")
     # Must not already be inside a cerrada liquidación.
     if ts.liquidacion_id is not None:

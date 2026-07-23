@@ -36,6 +36,16 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_usuarios_username ON usuarios (username)"
         ))
 
+        # 3. vendedores.usuario_id (D-32) — links a vendedor row to the Usuarios
+        #    row that manages it. create_all can't add columns to an existing table.
+        vend_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(vendedores)"))).all()]
+        if "usuario_id" not in vend_cols:
+            logger.info("schema_sync: adding vendedores.usuario_id")
+            await conn.execute(text("ALTER TABLE vendedores ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id)"))
+            await conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_vendedores_usuario_id ON vendedores (usuario_id)"
+            ))
+
 
 async def ensure_reference_data(engine: AsyncEngine) -> None:
     """Data drift (migs 004/005): insert-if-missing by codigo. MUST run after

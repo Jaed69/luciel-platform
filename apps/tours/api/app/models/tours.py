@@ -75,6 +75,10 @@ class Vendedores(Base, Auditable):
     codigo: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     nombre: Mapped[str] = mapped_column(String(128), nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # D-32 — link to the Usuarios row that owns this vendedor identity. Nullable:
+    # legacy rows predating this link (e.g. seeded V-001) stay unlinked on purpose,
+    # never auto-matched by name heuristics.
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), unique=True, nullable=True)
 
 
 class ToursCatalogo(Base, Auditable):

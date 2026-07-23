@@ -19,6 +19,9 @@ const ENTIDAD_LABEL: Record<string, string> = {
 export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; entidad: string; label: string }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Row | null>(null);
+  // D-32 — vendedores are now derived from Usuarios (rol vendedor); this tab
+  // is read-only for them, alta/edición happens in /admin/usuarios.
+  const readOnly = entidad === "vendedores";
 
   function openCreate() {
     setEditTarget(null);
@@ -57,14 +60,17 @@ export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; enti
     {
       key: "acciones",
       header: "Acciones",
-      render: (r) => (
-        <span className="flex gap-3">
-          <button type="button" className="text-primary hover:underline" onClick={() => openEdit(r)}>Editar</button>
-          {!r.activo ? (
-            <button type="button" className="text-primary hover:underline" onClick={() => handleRestore(r)}>Restaurar</button>
-          ) : null}
-        </span>
-      ),
+      render: (r) =>
+        readOnly ? (
+          <span className="opacity-60">—</span>
+        ) : (
+          <span className="flex gap-3">
+            <button type="button" className="text-primary hover:underline" onClick={() => openEdit(r)}>Editar</button>
+            {!r.activo ? (
+              <button type="button" className="text-primary hover:underline" onClick={() => handleRestore(r)}>Restaurar</button>
+            ) : null}
+          </span>
+        ),
     },
   ];
 
@@ -72,7 +78,13 @@ export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; enti
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-playfair text-primary text-[38px] font-semibold capitalize">{entidad.replace("-", " ")}</h1>
-        <Button variant="primary" onClick={openCreate}>Agregar {label}</Button>
+        {readOnly ? (
+          <a href="/admin/usuarios" className="text-sm font-nunito text-primary hover:underline">
+            Gestionar desde Usuarios →
+          </a>
+        ) : (
+          <Button variant="primary" onClick={openCreate}>Agregar {label}</Button>
+        )}
       </div>
       <nav className="flex gap-2 mb-4 flex-wrap" aria-label="Catálogos sub-nav">
         {ENTIDADES.map((e) => (

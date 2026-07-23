@@ -36,7 +36,13 @@ export const authOptions: NextAuthOptions = {
           });
           if (!res.ok) return null;
           const user = await res.json();
-          return { id: String(user.id), email: user.email, name: user.username, role: user.role } as any;
+          return {
+            id: String(user.id),
+            email: user.email,
+            name: user.username,
+            role: user.role,
+            vendedorId: user.vendedor_id != null ? String(user.vendedor_id) : undefined,
+          } as any;
         } catch {
           return null;
         }
@@ -52,11 +58,13 @@ export const authOptions: NextAuthOptions = {
         const role = (user as any).role as string;
         const email = (user as any).email as string;
         const name = (user as any).name as string | undefined;
+        const vendedorId = (user as any).vendedorId as string | undefined;
         token.role = role;
         token.id = id;
+        token.vendedorId = vendedorId;
         // Sign the HS256 JWT the FastAPI backend will verify via pyjwt.
         token.token = signHs256Jwt(
-          { sub: id, role, email, ...(name ? { name } : {}) },
+          { sub: id, role, email, ...(name ? { name } : {}), ...(vendedorId ? { vendedor_id: vendedorId } : {}) },
           process.env.NEXTAUTH_SECRET as string,
         );
       }

@@ -21,6 +21,7 @@ from app.config import settings
 from app.database import get_session
 from app.dependencies import get_current_user, require_role
 from app.models.core import Rol, Usuarios
+from app.models.tours import Vendedores
 from app.schemas.core import (
     AdminPasswordResetIn,
     PasswordChangeIn,
@@ -30,6 +31,33 @@ from app.schemas.core import (
 )
 
 router = APIRouter(tags=["usuarios"])
+
+
+async def _sync_vendedor_link(session: AsyncSession, user: Usuarios) -> None:
+    """D-32 — keep the linked Vendedores row in step with its Usuarios row.
+
+    rol == vendedor: create the link on first sync, then mirror
+    nombre/activo on every call. rol != vendedor: deactivate the linked
+    Vendedores row (never delete — ventas/comisiones/liquidaciones history
+    holds a FK to it) so a demoted account stops appearing as sellable.
+    """
+    existing = (await session.execute(
+        select(Vendedores).where(Vendedores.usuario_id == user.id)
+    )).scalar_one_or_none()
+
+    if user.rol == Rol.vendedor:
+        if existing is None:
+            session.add(Vendedores(
+                codigo=f"USR-{user.id}",
+                nombre=user.username,
+                activo=user.activo,
+                usuario_id=user.id,
+            ))
+        else:
+            existing.nombre = user.username
+            existing.activo = user.activo
+    elif existing is not None:
+        existing.activo = False
 
 
 async def _assert_admin_remaining(session: AsyncSession, exclude_user_id: int) -> None:
@@ -65,6 +93,8 @@ async def create_usuario(
     )
     session.add(user)
     try:
+        await session.flush()  # assign user.id before creating the linked Vendedores row
+        await _sync_vendedor_link(session, user)
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
@@ -100,6 +130,7 @@ async def update_usuario(
     if body.activo is not None:
         user.activo = body.activo
     try:
+        await _sync_vendedor_link(session, user)
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
@@ -126,6 +157,7 @@ async def delete_usuario(
     if target.rol == Rol.admin and target.activo:
         await _assert_admin_remaining(session, exclude_user_id=usuario_id)
     target.activo = False  # soft delete
+    await _sync_vendedor_link(session, target)
     await session.commit()
     return {"ok": True}
 

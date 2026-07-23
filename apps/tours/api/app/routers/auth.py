@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import current_user_id
 from app.database import get_session
-from app.models.core import Usuarios
+from app.models.core import Rol, Usuarios
+from app.models.tours import Vendedores
 from app.schemas.core import LoginRequest, LoginResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -31,4 +32,14 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)
 
     # Set audit ContextVar so any further work in this request is attributed.
     current_user_id.set(user.id)
-    return LoginResponse(id=user.id, email=user.email, username=user.username, role=user.rol.value)
+
+    vendedor_id: int | None = None
+    if user.rol == Rol.vendedor:
+        vendedor = (
+            await session.execute(select(Vendedores).where(Vendedores.usuario_id == user.id))
+        ).scalar_one_or_none()
+        vendedor_id = vendedor.id if vendedor is not None else None
+
+    return LoginResponse(
+        id=user.id, email=user.email, username=user.username, role=user.rol.value, vendedor_id=vendedor_id
+    )

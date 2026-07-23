@@ -17,6 +17,7 @@ class LoginResponse(BaseModel):
     email: str
     username: str
     role: str
+    vendedor_id: int | None = None
 
 
 class CuentaOut(BaseModel):

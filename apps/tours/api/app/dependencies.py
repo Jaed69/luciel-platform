@@ -34,11 +34,13 @@ async def get_current_user(
     user_id_raw = payload.get("sub")
     user_id = int(user_id_raw) if user_id_raw is not None else None
     current_user_id.set(user_id)
+    vendedor_id_raw = payload.get("vendedor_id")
     return {
         "id": user_id,
         "email": payload.get("email"),
         "role": payload.get("role"),
         "name": payload.get("name"),
+        "vendedor_id": int(vendedor_id_raw) if vendedor_id_raw is not None else None,
     }
 
 
