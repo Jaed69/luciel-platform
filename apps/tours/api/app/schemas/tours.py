@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.tours import EstadoSolicitud, PrioridadSolicitud, TipoSolicitud
+from app.models.tours import EstadoSolicitud, MetodoPagoAgencia, PrioridadSolicitud, TipoSolicitud
 
 
 class TipoTourCreateIn(BaseModel):
@@ -38,6 +38,54 @@ class TipoTourOut(BaseModel):
     precio_default_usd: float | None
     moneda_default: str
     activo: bool
+
+
+class AgenciaTourPrecioIn(BaseModel):
+    agencia_id: int
+    tour_id: int
+    precio: float
+    precio_usd: float | None = None
+
+
+class AgenciaTourPrecioOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    agencia_id: int
+    tour_id: int
+    precio: float
+    precio_usd: float | None
+    activo: bool
+
+
+class AgenciaPagoIn(BaseModel):
+    agencia_id: int
+    fecha: date
+    monto: float
+    moneda: str
+    metodo: MetodoPagoAgencia
+    referencia: str | None = None
+    nota: str | None = None
+
+
+class AgenciaPagoOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    agencia_id: int
+    fecha: date
+    monto: float
+    moneda: str
+    metodo: MetodoPagoAgencia
+    referencia: str | None
+    nota: str | None
+    creado_por: int
+    creado_en: datetime
+    asiento_id: int
+
+
+class AgenciaSaldoOut(BaseModel):
+    agencia_id: int
+    PEN: float
+    USD: float
 
 
 class VentaIn(BaseModel):

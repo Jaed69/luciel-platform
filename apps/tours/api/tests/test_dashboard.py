@@ -61,9 +61,14 @@ async def test_saldos_filter_by_fecha(client):
     assert "101-CAJA-PEN" in saldos_by_code, "caja soles should be present"
     assert "401-INGRESOS-TOURS-PEN" in saldos_by_code
     assert "501-COSTOS-TOURS-PEN" in saldos_by_code
-    # Caja PEN: debe=100+200+300=600, haber=costos=50+80+120=250. saldo=350.
+    assert "202-AGENCIAS-POR-PAGAR-PEN" in saldos_by_code
+    # costo ahora es deuda con la agencia (D-30), no sale de caja al vender.
+    # Caja PEN: debe=100+200+300=600, sin descuento de costo. saldo=600.
     caja = saldos_by_code["101-CAJA-PEN"]
-    assert abs(float(caja["saldo"]) - 350.0) < 1e-3, f"caja PEN saldo: {caja}"
+    assert abs(float(caja["saldo"]) - 600.0) < 1e-3, f"caja PEN saldo: {caja}"
+    # Agencias por pagar PEN: haber=costos=50+80+120=250, debe=0. saldo (debe-haber) = -250.
+    agencias_por_pagar = saldos_by_code["202-AGENCIAS-POR-PAGAR-PEN"]
+    assert abs(float(agencias_por_pagar["saldo"]) - (-250.0)) < 1e-3, f"agencias por pagar PEN saldo: {agencias_por_pagar}"
 
 
 async def test_saldos_filter_by_vendedor(client):
@@ -89,8 +94,8 @@ async def test_saldos_filter_by_vendedor(client):
     assert r.status_code == 200, r.text
     rows = r.json()
     caja = next(r_ for r_ in rows if r_["codigo"] == "101-CAJA-PEN")
-    # Filter vendedor_id=1 → only monto 100 reaches caja.
-    assert abs(float(caja["saldo"]) - 60.0) < 1e-3, f"vendedor 1 saldo: {caja}"
+    # Filter vendedor_id=1 → only monto 100 reaches caja. Costo ya no descuenta caja (D-30).
+    assert abs(float(caja["saldo"]) - 100.0) < 1e-3, f"vendedor 1 saldo: {caja}"
 
 
 async def test_tours_pendientes(client):
@@ -148,10 +153,10 @@ async def test_dashboard_vendedor_forced_to_self(client):
     )
     assert r.status_code == 200, r.text
     rows = r.json()
-    # Vendedor 1 forced override means caja saldo only reflects vendedor 1's ventas (200 - 80 = 120).
+    # Vendedor 1 forced override means caja saldo only reflects vendedor 1's ventas (100+100=200, costo ya no descuenta caja, D-30).
     caja = next((r_ for r_ in rows if r_["codigo"] == "101-CAJA-PEN"), None)
     assert caja is not None
-    assert abs(float(caja["saldo"]) - 120.0) < 1e-3, f"vendedor forced_to_self caja: {caja}"
+    assert abs(float(caja["saldo"]) - 200.0) < 1e-3, f"vendedor forced_to_self caja: {caja}"
 
     # Same test on /dashboard/tours_pendientes.
     r = await client.get(
@@ -173,5 +178,5 @@ async def test_dashboard_vendedor_forced_to_self(client):
     rows = r.json()
     caja = next((r_ for r_ in rows if r_["codigo"] == "101-CAJA-PEN"), None)
     assert caja is not None
-    # Without forcing, admin sees vendedor other's caja: 1000 - 400 = 600.
-    assert abs(float(caja["saldo"]) - 600.0) < 1e-3, f"admin can see other vendedor: {caja}"
+    # Without forcing, admin sees vendedor other's caja: 500+500=1000 (costo ya no descuenta caja, D-30).
+    assert abs(float(caja["saldo"]) - 1000.0) < 1e-3, f"admin can see other vendedor: {caja}"

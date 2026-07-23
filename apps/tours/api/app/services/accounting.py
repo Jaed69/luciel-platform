@@ -101,6 +101,7 @@ async def post_venta_tour(
     codigo_caja = f"101-CAJA-{moneda}"
     codigo_ingreso = f"401-INGRESOS-TOURS-{moneda}"
     codigo_costo = f"501-COSTOS-TOURS-{moneda}"
+    codigo_agencias_por_pagar = f"202-AGENCIAS-POR-PAGAR-{moneda}"
 
     caja = (await session.execute(select(Cuentas).where(Cuentas.codigo == codigo_caja))).scalar_one_or_none()
     if caja is None:
@@ -118,8 +119,15 @@ async def post_venta_tour(
     ]
     costo_val = costo or 0
     if _to_cents(costo_val) > 0:
+        # D-30 — costo es deuda acumulada con la agencia (pasivo), no salida de caja
+        # inmediata. Se paga después vía /agencia-pagos (débito de esta misma cuenta).
+        agencias_por_pagar = (await session.execute(
+            select(Cuentas).where(Cuentas.codigo == codigo_agencias_por_pagar)
+        )).scalar_one_or_none()
+        if agencias_por_pagar is None:
+            raise ValueError(f"Cuenta {codigo_agencias_por_pagar} no encontrada")
         lineas.append({"cuenta_id": costo_cta.id, "debe": costo_val, "haber": 0})
-        lineas.append({"cuenta_id": caja.id, "debe": 0, "haber": costo_val})
+        lineas.append({"cuenta_id": agencias_por_pagar.id, "debe": 0, "haber": costo_val})
 
     asiento = await post_asiento(
         session,

@@ -46,6 +46,8 @@ async def health() -> dict:
 
 
 # Register routers (import after app is defined to avoid circular imports).
+from app.routers import agencia_pagos as agencia_pagos_router  # noqa: E402
+from app.routers import agencia_precios as agencia_precios_router  # noqa: E402
 from app.routers import auth as auth_router  # noqa: E402
 from app.routers import core as core_router  # noqa: E402
 from app.routers import solicitudes as solicitudes_router  # noqa: E402
@@ -53,6 +55,8 @@ from app.routers import tipos_tour as tipos_tour_router  # noqa: E402
 from app.routers import tours as tours_router  # noqa: E402
 from app.routers import usuarios as usuarios_router  # noqa: E402
 
+app.include_router(agencia_pagos_router.router)
+app.include_router(agencia_precios_router.router)
 app.include_router(auth_router.router)
 app.include_router(core_router.router)
 app.include_router(solicitudes_router.router)

@@ -39,7 +39,7 @@ async def test_admin_can_post_balanced_asiento(client):
             "concepto": "Asiento manual",
             "lineas": [
                 {"cuenta_id": 1, "debe": 100, "haber": 0},  # 101-CAJA-PEN
-                {"cuenta_id": 4, "debe": 0, "haber": 100},  # 401-INGRESOS-TOURS-PEN
+                {"cuenta_id": 6, "debe": 0, "haber": 100},  # 401-INGRESOS-TOURS-PEN
             ],
         },
         headers={"Authorization": f"Bearer {_token('admin')}"},
@@ -60,7 +60,7 @@ async def test_post_asientos_vendedor_returns_403(client):
             "concepto": "x",
             "lineas": [
                 {"cuenta_id": 1, "debe": 100, "haber": 0},
-                {"cuenta_id": 4, "debe": 0, "haber": 100},
+                {"cuenta_id": 6, "debe": 0, "haber": 100},
             ],
         },
         headers={"Authorization": f"Bearer {_token('vendedor', user_id=2)}"},
@@ -77,7 +77,7 @@ async def test_post_asientos_unbalanced_returns_422(client):
             "concepto": "bad",
             "lineas": [
                 {"cuenta_id": 1, "debe": 100, "haber": 0},
-                {"cuenta_id": 4, "debe": 0, "haber": 99},
+                {"cuenta_id": 6, "debe": 0, "haber": 99},
             ],
         },
         headers={"Authorization": f"Bearer {_token('admin')}"},
@@ -94,7 +94,7 @@ async def test_post_asientos_tc_interno_metadata(client, async_engine):
     (672-GAN-PERD-TC is PEN), with metadata.tipo='tc_interno' to flag it for audit.
     Here: débito 101-CAJA-PEN 100, crédito 672-GAN-PERD-TC 100 — both PEN, balanced.
     """
-    # Chart seed order: 101-CAJA-PEN=1, ..., 672-GAN-PERD-TC=9
+    # Chart seed order: 101-CAJA-PEN=1, ..., 672-GAN-PERD-TC=11 (D-30 inserted 2 agencias-por-pagar accounts before 401)
     r = await client.post(
         "/asientos",
         json={
@@ -102,7 +102,7 @@ async def test_post_asientos_tc_interno_metadata(client, async_engine):
             "concepto": "TC interno manual (PEN adjustment)",
             "lineas": [
                 {"cuenta_id": 1, "debe": 100, "haber": 0},  # 101-CAJA-PEN
-                {"cuenta_id": 9, "debe": 0, "haber": 100},  # 672-GAN-PERD-TC (PEN)
+                {"cuenta_id": 11, "debe": 0, "haber": 100},  # 672-GAN-PERD-TC (PEN)
             ],
             "metadata": {"tipo": "tc_interno", "tc_elegido": 3.7, "justificacion": "Sunat 2026-07-04"},
         },

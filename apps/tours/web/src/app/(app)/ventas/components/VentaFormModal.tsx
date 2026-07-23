@@ -6,6 +6,7 @@ import { showToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 
 type Catalogo = { id: number; codigo?: string; nombre: string };
+type AgenciaPrecio = { agencia_id: number; tour_id: number; precio: number; precio_usd: number | null };
 
 export function VentaFormModal() {
   const [open, setOpen] = useState(false);
@@ -13,6 +14,7 @@ export function VentaFormModal() {
   const [vendedores, setVendedores] = useState<Catalogo[]>([]);
   const [agencias, setAgencias] = useState<Catalogo[]>([]);
   const [formasPago, setFormasPago] = useState<Catalogo[]>([]);
+  const [agenciaPrecios, setAgenciaPrecios] = useState<AgenciaPrecio[]>([]);
 
   const [tourId, setTourId] = useState("");
   const [vendedorId, setVendedorId] = useState("");
@@ -35,13 +37,25 @@ export function VentaFormModal() {
       fetch("/api/catalogos/vendedores").then((r) => r.json()).catch(() => []),
       fetch("/api/catalogos/agencias").then((r) => r.json()).catch(() => []),
       fetch("/api/catalogos/formas-pago").then((r) => r.json()).catch(() => []),
-    ]).then(([t, v, a, fp]) => {
+      fetch("/api/agencia-precios").then((r) => r.json()).catch(() => []),
+    ]).then(([t, v, a, fp, precios]) => {
       setTours(t);
       setVendedores(v);
       setAgencias(a);
       setFormasPago(fp);
+      setAgenciaPrecios(precios);
     });
   }, [open]);
+
+  // D-30 — autocompleta costo (deuda a la agencia) desde el precio de lista
+  // agencia×tour; queda editable si el usuario quiere ajustarlo.
+  useEffect(() => {
+    if (!agenciaId || !tourId) return;
+    const match = agenciaPrecios.find((p) => p.agencia_id === Number(agenciaId) && p.tour_id === Number(tourId));
+    if (!match) return;
+    const precio = moneda === "USD" ? match.precio_usd : match.precio;
+    if (precio != null) setCosto(String(precio));
+  }, [agenciaId, tourId, moneda, agenciaPrecios]);
 
   // Live comisión preview — debounced 300ms
   useEffect(() => {

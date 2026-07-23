@@ -56,6 +56,11 @@ class EstadoSolicitud(_Enum):
     descartado = "descartado"
 
 
+class MetodoPagoAgencia(_Enum):
+    deposito = "deposito"
+    comprobante = "comprobante"
+
+
 class Agencias(Base, Auditable):
     __tablename__ = "agencias"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -83,6 +88,37 @@ class ToursCatalogo(Base, Auditable):
     precio_default_usd: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     moneda_default: Mapped[MonedaCodigo] = mapped_column(Enum(MonedaCodigo), nullable=False, default=MonedaCodigo.PEN)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class AgenciaTourPrecio(Base, Auditable):
+    """Precio de lista que cada agencia pone para cada tipo de tour (D-30) —
+    es lo que le debemos cuando vendemos ese tour para esa agencia."""
+    __tablename__ = "agencia_tour_precios"
+    __table_args__ = (
+        UniqueConstraint("agencia_id", "tour_id", name="uq_agencia_tour_precios_agencia_tour"),
+    )
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    agencia_id: Mapped[int] = mapped_column(ForeignKey("agencias.id"), nullable=False)
+    tour_id: Mapped[int] = mapped_column(ForeignKey("tours_catalogo.id"), nullable=False)
+    precio: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)  # PEN
+    precio_usd: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class AgenciaPagos(Base, Auditable):
+    """Pago registrado a una agencia, reduce la deuda acumulada vía `ToursServicios.costo` (D-30)."""
+    __tablename__ = "agencia_pagos"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    agencia_id: Mapped[int] = mapped_column(ForeignKey("agencias.id"), nullable=False)
+    fecha: Mapped[date] = mapped_column(Date, nullable=False)
+    monto: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    moneda: Mapped[MonedaCodigo] = mapped_column(Enum(MonedaCodigo), nullable=False)
+    metodo: Mapped[MetodoPagoAgencia] = mapped_column(Enum(MetodoPagoAgencia), nullable=False)
+    referencia: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    nota: Mapped[str | None] = mapped_column(Text, nullable=True)
+    creado_por: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    asiento_id: Mapped[int] = mapped_column(ForeignKey("asientos.id", ondelete="RESTRICT"), nullable=False)
 
 
 class FormasPago(Base, Auditable):

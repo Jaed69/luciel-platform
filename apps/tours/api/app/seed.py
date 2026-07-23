@@ -20,6 +20,12 @@ from app.models.tours import (
 )
 
 
+AGENCIAS = [
+    ("AG-CUSCOTOP", "Cusco Top"),
+    ("AG-ANDEAN", "Andean"),
+    ("AG-GUTY", "Guty"),
+]
+
 TIPOS_TOUR = [
     ("T-7LAGUNAS", "7 Lagunas"),
     ("T-CTMANANA", "City Tour / T. Mañana"),
@@ -36,6 +42,8 @@ CHART = [
     ("101-CAJA-PEN", "Caja (PEN)", "activo", "PEN"),
     ("101-CAJA-USD", "Caja (USD)", "activo", "USD"),
     ("201-COMISIONES-POR-PAGAR", "Comisiones por pagar", "pasivo", "PEN"),
+    ("202-AGENCIAS-POR-PAGAR-PEN", "Agencias por pagar (PEN)", "pasivo", "PEN"),
+    ("202-AGENCIAS-POR-PAGAR-USD", "Agencias por pagar (USD)", "pasivo", "USD"),
     ("401-INGRESOS-TOURS-PEN", "Ingresos por tours (PEN)", "ingreso", "PEN"),
     ("401-INGRESOS-TOURS-USD", "Ingresos por tours (USD)", "ingreso", "USD"),
     ("501-COSTOS-TOURS-PEN", "Costos de tours (PEN)", "costo", "PEN"),
@@ -67,7 +75,8 @@ async def run_if_empty(session: AsyncSession) -> None:
     session.add(ComisionReglas(vendedor_id=None, tour_id=None, porcentaje=50, descripcion="Default global 50/50"))
 
     # Catalog seeds so /ventas can run e2e.
-    session.add(Agencias(codigo="AG-001", nombre="Agencia demo"))
+    for codigo, nombre in AGENCIAS:
+        session.add(Agencias(codigo=codigo, nombre=nombre))
     session.add(Vendedores(codigo="V-001", nombre="Vendedor demo"))
     for codigo, nombre in TIPOS_TOUR:
         session.add(ToursCatalogo(codigo=codigo, nombre=nombre))

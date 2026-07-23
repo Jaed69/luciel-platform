@@ -20,11 +20,15 @@ export default withAuth({
         // D-13 — admin + contabilidad.
         return role === "admin" || role === "contabilidad";
       }
+      if (path.startsWith("/agencias")) {
+        // D-30 — admin + contabilidad (mismo nivel que catálogos/liquidaciones).
+        return role === "admin" || role === "contabilidad";
+      }
       return true; // /perfil and other routes: any authed user.
     },
   },
 });
 
 export const config = {
-  matcher: ["/", "/ventas", "/liquidaciones", "/catalogos/:path*", "/admin/:path*", "/perfil", "/solicitudes"],
+  matcher: ["/", "/ventas", "/liquidaciones", "/catalogos/:path*", "/admin/:path*", "/perfil", "/solicitudes", "/agencias/:path*"],
 };

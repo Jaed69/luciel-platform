@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { label: "Ventas", href: "/ventas", roles: ["admin", "contabilidad", "vendedor"] },
   { label: "Liquidaciones", href: "/liquidaciones", roles: ["admin", "contabilidad", "vendedor"] },
   { label: "Catálogos", href: "/catalogos/agencias", roles: ["admin", "contabilidad"] },
+  { label: "Agencias", href: "/agencias", roles: ["admin", "contabilidad"] },
   { label: "Auditoría", href: "/admin/auditoria", roles: ["admin"] },
   { label: "Usuarios", href: "/admin/usuarios", roles: ["admin"] },
   { label: "Solicitudes", href: "/solicitudes", roles: ["admin", "contabilidad", "vendedor"] },
