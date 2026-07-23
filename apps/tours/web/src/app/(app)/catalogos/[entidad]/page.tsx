@@ -27,14 +27,14 @@ type ComisionReglaRow = {
   activo: boolean;
 };
 
-export default async function CatalogoPage({ params }: { params: { entidad: string } }) {
+export default async function CatalogoPage({ params }: { params: Promise<{ entidad: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
   // D-13 — admin + contabilidad can access catalogos (was admin-only).
   const role = (session.user as any)?.role;
   if (!["admin", "contabilidad"].includes(role)) redirect("/ventas");
 
-  const { entidad } = params;
+  const { entidad } = await params;
   if (!ENTIDADES.includes(entidad as any)) redirect("/catalogos/agencias");
 
   // Special path for Comisiones tab — render with the ComisionesTab component (S5).

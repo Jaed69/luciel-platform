@@ -35,11 +35,12 @@ type TourRow = {
   liquidacion_id: number | null;
 };
 
-export default async function LiquidacionDetailPage({ params }: { params: { id: string } }) {
+export default async function LiquidacionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role as string;
 
-  const liqId = Number(params.id);
+  const { id } = await params;
+  const liqId = Number(id);
   const [liq, precheck, tours] = await Promise.all([
     apiFetchJson<Liquidacion>(`/liquidaciones/${liqId}`).catch(() => null),
     apiFetchJson<Precheck>(`/liquidaciones/${liqId}/precheck`).catch(() => null as Precheck | null),
