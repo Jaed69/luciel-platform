@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/Skeleton";
 type Catalogo = { id: number; codigo?: string; nombre: string };
 type AgenciaPrecio = { agencia_id: number; tour_id: number; precio: number | null; precio_usd: number | null };
 
-export function VentaFormModal() {
+export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: string; vendedorId?: string }) {
   const [open, setOpen] = useState(false);
   const [tours, setTours] = useState<Catalogo[]>([]);
   const [vendedores, setVendedores] = useState<Catalogo[]>([]);
@@ -45,7 +45,10 @@ export function VentaFormModal() {
       setFormasPago(fp);
       setAgenciaPrecios(precios);
     });
-  }, [open]);
+    // D-32 — un vendedor siempre registra a su propio nombre; se autocompleta
+    // sin esperar selección manual.
+    if (role === "vendedor" && ownVendedorId) setVendedorId(ownVendedorId);
+  }, [open, role, ownVendedorId]);
 
   // D-30 — autocompleta costo (deuda a la agencia) desde el precio de lista
   // agencia×tour; queda editable si el usuario quiere ajustarlo.
@@ -124,10 +127,16 @@ export function VentaFormModal() {
           </label>
           <label className="block">
             <span className="text-sm font-nunito text-text-espresso-soft">Vendedor</span>
-            <select required value={vendedorId} onChange={(e) => setVendedorId(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas">
-              <option value="">Selecciona…</option>
-              {vendedores.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-            </select>
+            {role === "vendedor" && ownVendedorId ? (
+              <p className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas tabular-nums">
+                {vendedores.find((v) => String(v.id) === ownVendedorId)?.nombre ?? "Tú"}
+              </p>
+            ) : (
+              <select required value={vendedorId} onChange={(e) => setVendedorId(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas">
+                <option value="">Selecciona…</option>
+                {vendedores.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+              </select>
+            )}
           </label>
           <label className="block">
             <span className="text-sm font-nunito text-text-espresso-soft">Agencia</span>
