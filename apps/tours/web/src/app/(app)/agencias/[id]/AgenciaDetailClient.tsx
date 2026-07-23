@@ -10,7 +10,7 @@ import { showToast } from "@/components/Toast";
 
 type Agencia = { id: number; codigo?: string; nombre: string; activo: boolean };
 type Tour = { id: number; nombre: string };
-type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; precio: number; precio_usd: number | null; activo: boolean };
+type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; precio: number | null; precio_usd: number | null; activo: boolean };
 type AgenciaPago = { id: number; agencia_id: number; fecha: string; monto: number; moneda: string; metodo: string; referencia: string | null; nota: string | null };
 type Saldo = { agencia_id: number; PEN: number; USD: number };
 
@@ -112,15 +112,22 @@ function PrecioFormModal({
   const [precio, setPrecio] = useState(initial?.precio != null ? String(initial.precio) : "");
   const [precioUsd, setPrecioUsd] = useState(initial?.precio_usd != null ? String(initial.precio_usd) : "");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    // D-32 — precio en una sola moneda es válido; no se obliga a cargar ambas.
+    if (!precio && !precioUsd) {
+      setError("Indica precio en PEN o en USD (al menos uno)");
+      return;
+    }
+    setError(null);
     setSubmitting(true);
     const body = {
       agencia_id: agenciaId,
       tour_id: Number(tourId),
-      precio: Number(precio),
+      precio: precio ? Number(precio) : null,
       precio_usd: precioUsd ? Number(precioUsd) : null,
     };
     const url = initial ? `/api/agencia-precios/${initial.id}` : "/api/agencia-precios";
@@ -149,12 +156,14 @@ function PrecioFormModal({
         </label>
         <label className="block">
           <span className="text-sm font-nunito text-text-espresso-soft">Precio (PEN)</span>
-          <input required type="number" step="0.01" value={precio} onChange={(e) => setPrecio(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" />
+          <input type="number" step="0.01" value={precio} onChange={(e) => setPrecio(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" />
         </label>
         <label className="block">
           <span className="text-sm font-nunito text-text-espresso-soft">Precio (USD)</span>
           <input type="number" step="0.01" value={precioUsd} onChange={(e) => setPrecioUsd(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" />
         </label>
+        <p className="text-xs font-nunito text-text-espresso-soft opacity-70 -mt-2">Basta con cargar una de las dos monedas.</p>
+        {error && <p className="text-chili-red text-sm font-nunito">{error}</p>}
         <div className="flex gap-3 justify-end mt-2">
           <Button variant="outlined" type="button" onClick={onClose}>Cancelar</Button>
           <Button variant="primary" type="submit" disabled={submitting}>
@@ -198,7 +207,7 @@ export function AgenciaDetailClient({
 
   const precioColumns: Column<AgenciaPrecio>[] = [
     { key: "tour", header: "Tour", render: (r) => tourNombre(r.tour_id) },
-    { key: "precio", header: "Precio (PEN)", render: (r) => `${r.precio}` },
+    { key: "precio", header: "Precio (PEN)", render: (r) => (r.precio != null ? `${r.precio}` : "—") },
     { key: "precio_usd", header: "Precio (USD)", render: (r) => (r.precio_usd != null ? `${r.precio_usd}` : "—") },
     {
       key: "acciones",

@@ -46,6 +46,35 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
                 "CREATE UNIQUE INDEX IF NOT EXISTS uq_vendedores_usuario_id ON vendedores (usuario_id)"
             ))
 
+        # 4. agencia_tour_precios.precio nullable (D-32) — a price in a single
+        # currency (USD-only or PEN-only) is now valid; AgenciaTourPrecioIn
+        # enforces "at least one" at the API layer. SQLite has no ALTER COLUMN,
+        # so relaxing NOT NULL means rebuilding the table (copy → drop → rename).
+        # Safe: the router's own docstring confirms nothing else FKs into this
+        # table, and this only runs when the old NOT NULL is still in place.
+        precio_info = next(
+            (row for row in (await conn.execute(text("PRAGMA table_info(agencia_tour_precios)"))).all() if row[1] == "precio"),
+            None,
+        )
+        if precio_info is not None and precio_info[3] == 1:  # notnull flag set
+            logger.info("schema_sync: relaxing agencia_tour_precios.precio to nullable")
+            await conn.execute(text(
+                "CREATE TABLE agencia_tour_precios_new ("
+                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                "agencia_id INTEGER NOT NULL REFERENCES agencias(id), "
+                "tour_id INTEGER NOT NULL REFERENCES tours_catalogo(id), "
+                "precio NUMERIC(12, 2), "
+                "precio_usd NUMERIC(12, 2), "
+                "activo BOOLEAN NOT NULL DEFAULT 1, "
+                "UNIQUE (agencia_id, tour_id))"
+            ))
+            await conn.execute(text(
+                "INSERT INTO agencia_tour_precios_new (id, agencia_id, tour_id, precio, precio_usd, activo) "
+                "SELECT id, agencia_id, tour_id, precio, precio_usd, activo FROM agencia_tour_precios"
+            ))
+            await conn.execute(text("DROP TABLE agencia_tour_precios"))
+            await conn.execute(text("ALTER TABLE agencia_tour_precios_new RENAME TO agencia_tour_precios"))
+
 
 async def ensure_reference_data(engine: AsyncEngine) -> None:
     """Data drift (migs 004/005): insert-if-missing by codigo. MUST run after

@@ -104,7 +104,9 @@ class AgenciaTourPrecio(Base, Auditable):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     agencia_id: Mapped[int] = mapped_column(ForeignKey("agencias.id"), nullable=False)
     tour_id: Mapped[int] = mapped_column(ForeignKey("tours_catalogo.id"), nullable=False)
-    precio: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)  # PEN
+    # D-32 — precio en una sola moneda es válido (no obliga a cargar ambas);
+    # AgenciaTourPrecioIn exige que al menos una de las dos esté presente.
+    precio: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)  # PEN
     precio_usd: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

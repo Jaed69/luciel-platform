@@ -45,6 +45,18 @@ async def _build_stale_prod_db(engine) -> None:
                 activo BOOLEAN NOT NULL DEFAULT 1
             )
         """))
+        # Old-shape agencia_tour_precios BEFORE create_all — precio NOT NULL (pre-D-32).
+        await conn.execute(text("""
+            CREATE TABLE agencia_tour_precios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agencia_id INTEGER NOT NULL REFERENCES agencias(id),
+                tour_id INTEGER NOT NULL REFERENCES tours_catalogo(id),
+                precio NUMERIC(12, 2) NOT NULL,
+                precio_usd NUMERIC(12, 2),
+                activo BOOLEAN NOT NULL DEFAULT 1,
+                UNIQUE (agencia_id, tour_id)
+            )
+        """))
         await conn.run_sync(Base.metadata.create_all)
         for codigo, nombre, tipo, moneda in _OLD_CHART:
             await conn.execute(
@@ -53,6 +65,7 @@ async def _build_stale_prod_db(engine) -> None:
             )
         await conn.execute(text("INSERT INTO agencias (codigo, nombre, activo) VALUES ('AG-001', 'Agencia demo', 1)"))
         await conn.execute(text("INSERT INTO tours_catalogo (codigo, nombre) VALUES ('T-001', 'City Tour Cusco')"))
+        await conn.execute(text("INSERT INTO agencia_tour_precios (agencia_id, tour_id, precio) VALUES (1, 1, 120)"))
 
 
 async def test_ensure_schema_heals_stale_prod_db(async_engine):
@@ -79,6 +92,15 @@ async def test_ensure_schema_heals_stale_prod_db(async_engine):
         indexes = [row[1] for row in (await conn.execute(text("PRAGMA index_list(usuarios)"))).all()]
         assert "uq_usuarios_username" in indexes
 
+        precio_info = next(
+            row for row in (await conn.execute(text("PRAGMA table_info(agencia_tour_precios)"))).all() if row[1] == "precio"
+        )
+        assert precio_info[3] == 0, "precio should be nullable after heal"  # notnull flag
+        old_row = (await conn.execute(
+            text("SELECT precio FROM agencia_tour_precios WHERE agencia_id = 1 AND tour_id = 1")
+        )).first()
+        assert old_row is not None and float(old_row[0]) == 120.0  # data preserved through table rebuild
+
 
 async def test_ensure_schema_is_idempotent(async_engine):
     from app.schema_sync import ensure_schema
@@ -92,6 +114,8 @@ async def test_ensure_schema_is_idempotent(async_engine):
         assert n_tours == 10
         n_202 = (await conn.execute(text("SELECT COUNT(*) FROM cuentas WHERE codigo LIKE '202%'"))).scalar_one()
         assert n_202 == 2
+        n_precios = (await conn.execute(text("SELECT COUNT(*) FROM agencia_tour_precios"))).scalar_one()
+        assert n_precios == 1  # table-rebuild heal ran twice, no duplication/data loss
 
 
 async def test_ensure_schema_on_fresh_db_noop(async_engine):

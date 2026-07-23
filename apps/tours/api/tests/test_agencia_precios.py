@@ -76,6 +76,29 @@ async def test_put_agencia_precio_updates(client):
     assert r.json()["precio"] == 150
 
 
+async def test_post_agencia_precio_usd_only_ok(client):
+    """D-32 — precio en una sola moneda es válido, no obliga a cargar PEN."""
+    r = await client.post(
+        "/agencia-precios",
+        json={"agencia_id": 1, "tour_id": 2, "precio_usd": 30},
+        headers={"Authorization": f"Bearer {_token('admin')}"},
+    )
+    assert r.status_code == 201, r.text
+    data = r.json()
+    assert data["precio"] is None
+    assert data["precio_usd"] == 30
+
+
+async def test_post_agencia_precio_sin_moneda_422(client):
+    """D-32 — ni precio ni precio_usd presentes → 422, no puede quedar sin moneda."""
+    r = await client.post(
+        "/agencia-precios",
+        json={"agencia_id": 1, "tour_id": 2},
+        headers={"Authorization": f"Bearer {_token('admin')}"},
+    )
+    assert r.status_code == 422, r.text
+
+
 async def test_delete_agencia_precio(client):
     created = await client.post(
         "/agencia-precios",

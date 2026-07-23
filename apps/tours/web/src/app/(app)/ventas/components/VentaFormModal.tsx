@@ -6,7 +6,7 @@ import { showToast } from "@/components/Toast";
 import { Skeleton } from "@/components/Skeleton";
 
 type Catalogo = { id: number; codigo?: string; nombre: string };
-type AgenciaPrecio = { agencia_id: number; tour_id: number; precio: number; precio_usd: number | null };
+type AgenciaPrecio = { agencia_id: number; tour_id: number; precio: number | null; precio_usd: number | null };
 
 export function VentaFormModal() {
   const [open, setOpen] = useState(false);

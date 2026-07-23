@@ -5,7 +5,7 @@ import { apiFetchJson } from "@/lib/api";
 
 type Agencia = { id: number; nombre: string; activo: boolean };
 type Tour = { id: number; nombre: string; activo: boolean };
-type AgenciaPrecio = { agencia_id: number; tour_id: number; precio: number; precio_usd: number | null };
+type AgenciaPrecio = { agencia_id: number; tour_id: number; precio: number | null; precio_usd: number | null };
 
 export default async function AgenciasComparativoPage() {
   const session = await getServerSession(authOptions);
@@ -55,7 +55,7 @@ export default async function AgenciasComparativoPage() {
                     <td key={a.id} className="px-3 py-2 text-[13px] tabular-nums">
                       {p ? (
                         <a href={`/agencias/${a.id}`} className="text-primary hover:underline">
-                          S/ {p.precio}
+                          {p.precio != null ? `S/ ${p.precio}` : null}
                           {p.precio_usd != null ? <span className="block text-[11px] opacity-70">$ {p.precio_usd}</span> : null}
                         </a>
                       ) : (

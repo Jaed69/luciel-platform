@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.models.tours import EstadoSolicitud, MetodoPagoAgencia, PrioridadSolicitud, TipoSolicitud
 
@@ -43,8 +43,14 @@ class TipoTourOut(BaseModel):
 class AgenciaTourPrecioIn(BaseModel):
     agencia_id: int
     tour_id: int
-    precio: float
+    precio: float | None = None  # PEN
     precio_usd: float | None = None
+
+    @model_validator(mode="after")
+    def _al_menos_una_moneda(self) -> "AgenciaTourPrecioIn":
+        if self.precio is None and self.precio_usd is None:
+            raise ValueError("Debe indicar precio en PEN o en USD (al menos uno)")
+        return self
 
 
 class AgenciaTourPrecioOut(BaseModel):
@@ -52,7 +58,7 @@ class AgenciaTourPrecioOut(BaseModel):
     id: int
     agencia_id: int
     tour_id: int
-    precio: float
+    precio: float | None
     precio_usd: float | None
     activo: bool
 
