@@ -79,6 +79,27 @@ async def ensure_reference_data(engine: AsyncEngine) -> None:
                     {"c": codigo, "n": nombre},
                 )
 
+        # D-32 backfill — Usuarios(rol=vendedor) that predate the usuario_id
+        # link (real accounts created before this feature shipped) need their
+        # Vendedores row created now, or their RBAC (vendedor_id JWT claim)
+        # resolves to nothing on next login. Insert-if-missing by usuario_id,
+        # same codigo/nombre convention as the live auto-create in usuarios.py.
+        linked_usuario_ids = {
+            row[0] for row in (await conn.execute(
+                text("SELECT usuario_id FROM vendedores WHERE usuario_id IS NOT NULL")
+            )).all()
+        }
+        unlinked_vendedor_usuarios = (await conn.execute(
+            text("SELECT id, username, activo FROM usuarios WHERE rol = 'vendedor'")
+        )).all()
+        for usuario_id, username, activo in unlinked_vendedor_usuarios:
+            if usuario_id not in linked_usuario_ids:
+                logger.info("schema_sync: backfilling vendedor link for usuario_id %s", usuario_id)
+                await conn.execute(
+                    text("INSERT INTO vendedores (codigo, nombre, activo, usuario_id) VALUES (:c, :n, :a, :u)"),
+                    {"c": f"USR-{usuario_id}", "n": username, "a": activo, "u": usuario_id},
+                )
+
 
 async def ensure_schema(engine: AsyncEngine) -> None:
     """Full reconciliation: structure first, then reference data."""
