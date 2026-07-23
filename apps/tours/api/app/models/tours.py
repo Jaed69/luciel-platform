@@ -37,6 +37,25 @@ class EstadoLiquidacion(_Enum):
     revertida = "revertida"
 
 
+class TipoSolicitud(_Enum):
+    bug = "bug"
+    mejora = "mejora"
+    solicitud = "solicitud"
+
+
+class PrioridadSolicitud(_Enum):
+    baja = "baja"
+    media = "media"
+    alta = "alta"
+
+
+class EstadoSolicitud(_Enum):
+    abierto = "abierto"
+    en_revision = "en_revision"
+    resuelto = "resuelto"
+    descartado = "descartado"
+
+
 class Agencias(Base, Auditable):
     __tablename__ = "agencias"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -122,6 +141,23 @@ class ToursServicios(Base, Auditable):
     asiento_id: Mapped[int] = mapped_column(ForeignKey("asientos.id", ondelete="RESTRICT"), nullable=False)  # D-15
     liquidacion_id: Mapped[int | None] = mapped_column(ForeignKey("liquidaciones.id"), nullable=True)
     metadata_: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)  # JSON serialized
+
+
+class Solicitudes(Base, Auditable):
+    """Tickets de feedback/mejora/bug reportados desde el panel (D-28)."""
+    __tablename__ = "solicitudes"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    titulo: Mapped[str] = mapped_column(String(160), nullable=False)
+    descripcion: Mapped[str] = mapped_column(Text, nullable=False)
+    tipo: Mapped[TipoSolicitud] = mapped_column(Enum(TipoSolicitud), nullable=False)
+    prioridad: Mapped[PrioridadSolicitud] = mapped_column(Enum(PrioridadSolicitud), nullable=False, default=PrioridadSolicitud.media)
+    estado: Mapped[EstadoSolicitud] = mapped_column(Enum(EstadoSolicitud), nullable=False, default=EstadoSolicitud.abierto)
+    pagina_origen: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    creado_por: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    respuesta: Mapped[str | None] = mapped_column(Text, nullable=True)
+    resuelto_por: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
+    resuelto_en: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class LiquidacionAsientos(Base):

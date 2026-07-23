@@ -1,8 +1,10 @@
 """apps/tours/api/app/schemas/tours.py — request/response shapes for tours endpoints."""
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
+
+from app.models.tours import EstadoSolicitud, PrioridadSolicitud, TipoSolicitud
 
 
 class VentaIn(BaseModel):
@@ -79,3 +81,33 @@ class LiquidacionOut(BaseModel):
     vendedor_id: int | None
     agencia_id: int | None
     cerrada_en: Any | None = None
+
+
+class SolicitudCreateIn(BaseModel):
+    titulo: str
+    descripcion: str
+    tipo: TipoSolicitud
+    prioridad: PrioridadSolicitud = PrioridadSolicitud.media
+    pagina_origen: str | None = None
+
+
+class SolicitudUpdateIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    estado: EstadoSolicitud
+    respuesta: str | None = None
+
+
+class SolicitudOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    titulo: str
+    descripcion: str
+    tipo: TipoSolicitud
+    prioridad: PrioridadSolicitud
+    estado: EstadoSolicitud
+    pagina_origen: str | None
+    creado_por: int
+    creado_en: datetime
+    respuesta: str | None
+    resuelto_por: int | None
+    resuelto_en: datetime | None

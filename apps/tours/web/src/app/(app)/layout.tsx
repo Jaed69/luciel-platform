@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { LogoutButton } from "@/components/LogoutButton";
+import { FeedbackButton } from "@/components/FeedbackButton";
 
 const NAV_ITEMS = [
   { label: "Resumen contable", href: "/", roles: ["admin", "contabilidad"] },
@@ -10,6 +11,7 @@ const NAV_ITEMS = [
   { label: "Catálogos", href: "/catalogos/agencias", roles: ["admin", "contabilidad"] },
   { label: "Auditoría", href: "/admin/auditoria", roles: ["admin"] },
   { label: "Usuarios", href: "/admin/usuarios", roles: ["admin"] },
+  { label: "Solicitudes", href: "/solicitudes", roles: ["admin", "contabilidad", "vendedor"] },
   { label: "Perfil", href: "/perfil", roles: ["admin", "contabilidad", "vendedor"] },
 ];
 
@@ -44,6 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <footer className="bg-espresso-wine text-on-dark-soft py-3 text-center text-[13px] font-nunito">
         © {new Date().getFullYear()} Tours Panel · Cusco, Perú
       </footer>
+      <FeedbackButton />
     </div>
   );
 }
