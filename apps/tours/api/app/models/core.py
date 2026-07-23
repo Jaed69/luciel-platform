@@ -72,7 +72,7 @@ class Usuarios(Base, Auditable):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(128), unique=True, nullable=False)
-    username: Mapped[str] = mapped_column(String(64), nullable=False)
+    username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     rol: Mapped[Rol] = mapped_column(Enum(Rol), nullable=False, default=Rol.vendedor)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

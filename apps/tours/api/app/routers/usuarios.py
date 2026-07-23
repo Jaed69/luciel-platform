@@ -69,8 +69,10 @@ async def create_usuario(
     except IntegrityError as exc:
         await session.rollback()
         # SQLite UNIQUE violation message includes the column name.
-        if "usuarios.email" in str(exc.orig) or "email" in str(exc.orig):
+        if "usuarios.email" in str(exc.orig):
             raise HTTPException(status_code=409, detail="Email ya registrado")
+        if "usuarios.username" in str(exc.orig):
+            raise HTTPException(status_code=409, detail="Usuario ya registrado")
         raise
     await session.refresh(user)
     return user

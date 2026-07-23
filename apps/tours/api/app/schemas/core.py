@@ -8,7 +8,7 @@ from app.models.core import Rol
 
 
 class LoginRequest(BaseModel):
-    email: str
+    identifier: str  # email or username
     password: str
 
 

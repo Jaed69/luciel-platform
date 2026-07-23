@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Correo", type: "text" },
+        identifier: { label: "Correo o usuario", type: "text" },
         password: { label: "Contraseña", type: "password" },
       },
       async authorize(credentials) {
@@ -32,7 +32,7 @@ export const authOptions: NextAuthOptions = {
           const res = await fetch(`${process.env.TOURS_API_URL || "http://tours-api:8000"}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: credentials.email, password: credentials.password }),
+            body: JSON.stringify({ identifier: credentials.identifier, password: credentials.password }),
           });
           if (!res.ok) return null;
           const user = await res.json();

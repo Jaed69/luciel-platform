@@ -6,7 +6,7 @@ NEXTAUTH_SECRET on the tours-web side (D-02).
 """
 import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.audit import current_user_id
@@ -19,7 +19,11 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/login", response_model=LoginResponse)
 async def login(body: LoginRequest, session: AsyncSession = Depends(get_session)) -> LoginResponse:
-    user = (await session.execute(select(Usuarios).where(Usuarios.email == body.email))).scalar_one_or_none()
+    user = (
+        await session.execute(
+            select(Usuarios).where(or_(Usuarios.email == body.identifier, Usuarios.username == body.identifier))
+        )
+    ).scalar_one_or_none()
     if user is None or not user.activo:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciales inválidas")
     if not bcrypt.checkpw(body.password.encode(), user.password_hash.encode()):

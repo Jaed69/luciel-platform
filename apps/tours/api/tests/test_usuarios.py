@@ -57,13 +57,31 @@ async def test_post_usuario_creates_with_bcrypt_hash(client, async_engine):
 
 
 async def test_post_usuario_duplicate_email_409(client):
-    """POST /usuarios twice with same email → 409."""
-    body = {"email": "dup@tours.luciel.dev", "username": "dup1", "password": "longenough", "rol": "vendedor"}
-    r = await client.post("/usuarios", json=body, headers={"Authorization": f"Bearer {_token('admin')}"})
+    """POST /usuarios twice with same email (different username) → 409."""
+    body1 = {"email": "dup@tours.luciel.dev", "username": "dup1", "password": "longenough", "rol": "vendedor"}
+    body2 = {"email": "dup@tours.luciel.dev", "username": "dup2", "password": "longenough", "rol": "vendedor"}
+    r = await client.post("/usuarios", json=body1, headers={"Authorization": f"Bearer {_token('admin')}"})
     assert r.status_code == 201
-    r2 = await client.post("/usuarios", json=body, headers={"Authorization": f"Bearer {_token('admin')}"})
+    r2 = await client.post("/usuarios", json=body2, headers={"Authorization": f"Bearer {_token('admin')}"})
     assert r2.status_code == 409, r2.text
     assert "mail" in r2.json()["detail"].lower()
+
+
+async def test_post_usuario_duplicate_username_409(client):
+    """POST /usuarios twice with same username (different email) → 409."""
+    r = await client.post(
+        "/usuarios",
+        json={"email": "dupuser1@tours.luciel.dev", "username": "dupuser", "password": "longenough", "rol": "vendedor"},
+        headers={"Authorization": f"Bearer {_token('admin')}"},
+    )
+    assert r.status_code == 201
+    r2 = await client.post(
+        "/usuarios",
+        json={"email": "dupuser2@tours.luciel.dev", "username": "dupuser", "password": "longenough", "rol": "vendedor"},
+        headers={"Authorization": f"Bearer {_token('admin')}"},
+    )
+    assert r2.status_code == 409, r2.text
+    assert "usuario" in r2.json()["detail"].lower()
 
 
 async def test_post_usuario_vendedor_403(client):

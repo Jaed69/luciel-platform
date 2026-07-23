@@ -8,17 +8,17 @@ import { showToast } from "@/components/Toast";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const res = await signIn("credentials", { email, password, redirect: false });
+    const res = await signIn("credentials", { identifier, password, redirect: false });
     setLoading(false);
     if (res?.error) {
-      showToast("error", "Correo o contraseña incorrectos. Verifica tus datos e inténtalo de nuevo.");
+      showToast("error", "Correo/usuario o contraseña incorrectos. Verifica tus datos e inténtalo de nuevo.");
       return;
     }
     router.push("/");
@@ -32,10 +32,10 @@ export default function LoginPage() {
         <h1 className="font-playfair text-primary text-[38px] font-semibold mb-6">Iniciar sesión</h1>
         <form onSubmit={handleSubmit} className="space-y-6 text-left">
           <FloatingLabelInput
-            label="Correo"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            label="Correo o usuario"
+            type="text"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
             required
           />
           <FloatingLabelInput
