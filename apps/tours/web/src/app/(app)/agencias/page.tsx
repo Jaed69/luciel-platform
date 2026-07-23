@@ -19,7 +19,12 @@ export default async function AgenciasPage() {
 
   return (
     <div>
-      <h1 className="font-playfair text-primary text-[38px] font-semibold mb-6">Saldos agencias</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="font-playfair text-primary text-[38px] font-semibold">Saldos agencias</h1>
+        <a href="/agencias/comparativo" className="text-sm font-nunito text-primary hover:underline">
+          Ver comparativo de precios →
+        </a>
+      </div>
       <div className="overflow-x-auto rounded-lg border border-gold/30">
         <table className="w-full border-collapse">
           <thead className="sticky top-0 bg-primary text-on-primary">
