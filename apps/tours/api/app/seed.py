@@ -20,6 +20,18 @@ from app.models.tours import (
 )
 
 
+TIPOS_TOUR = [
+    ("T-7LAGUNAS", "7 Lagunas"),
+    ("T-CTMANANA", "City Tour / T. Mañana"),
+    ("T-CTTARDE", "City Tour / T. Tarde"),
+    ("T-HUMANTAY", "Laguna Humantay"),
+    ("T-VSVIP", "Valle Sagrado VIP"),
+    ("T-VSTRAD", "Valle Sagrado Tradicional"),
+    ("T-MOTOCROSS", "Motocross"),
+    ("T-VSUR", "Valle Sur"),
+    ("T-MACHUPICCHU", "Machu Picchu"),
+]
+
 CHART = [
     ("101-CAJA-PEN", "Caja (PEN)", "activo", "PEN"),
     ("101-CAJA-USD", "Caja (USD)", "activo", "USD"),
@@ -57,7 +69,8 @@ async def run_if_empty(session: AsyncSession) -> None:
     # Catalog seeds so /ventas can run e2e.
     session.add(Agencias(codigo="AG-001", nombre="Agencia demo"))
     session.add(Vendedores(codigo="V-001", nombre="Vendedor demo"))
-    session.add(ToursCatalogo(codigo="T-001", nombre="City Tour Cusco", precio_default=120, precio_default_usd=35, moneda_default="PEN"))
+    for codigo, nombre in TIPOS_TOUR:
+        session.add(ToursCatalogo(codigo=codigo, nombre=nombre))
     session.add(FormasPago(nombre="Efectivo"))
     session.add(Monedas(codigo="PEN", nombre="Sol peruano", simbolo="S/"))
     session.add(Monedas(codigo="USD", nombre="Dólar estadounidense", simbolo="$"))

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { apiFetchJson } from "@/lib/api";
 import { redirect } from "next/navigation";
 import { ComisionesTab } from "../_components/ComisionesTab";
+import { TiposTourTab, type TipoTourRow } from "../_components/TiposTourTab";
 import { CatalogoPageClient } from "./_components/CatalogoPageClient";
 
 type Row = { id: number; codigo?: string; nombre: string; activo: boolean };
@@ -44,6 +45,16 @@ export default async function CatalogoPage({ params }: { params: { entidad: stri
       reglas = await apiFetchJson<ComisionReglaRow[]>(`/comision-reglas`);
     } catch {}
     return <ComisionesTab reglas={reglas} tabs={[...ENTIDADES]} />;
+  }
+
+  // Special path for Tours tab — dedicated CRUD with descripcion/tiempo/precio (D-29),
+  // the generic CatalogoPageClient only ever handles codigo/nombre.
+  if (entidad === "tours") {
+    let tours: TipoTourRow[] = [];
+    try {
+      tours = await apiFetchJson<TipoTourRow[]>("/tours");
+    } catch {}
+    return <TiposTourTab tours={tours} tabs={[...ENTIDADES]} />;
   }
 
   let data: Row[] = [];

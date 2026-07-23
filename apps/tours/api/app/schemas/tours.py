@@ -7,6 +7,39 @@ from pydantic import BaseModel, ConfigDict
 from app.models.tours import EstadoSolicitud, PrioridadSolicitud, TipoSolicitud
 
 
+class TipoTourCreateIn(BaseModel):
+    codigo: str
+    nombre: str
+    descripcion: str | None = None
+    tiempo: str | None = None
+    precio_default: float | None = None
+    precio_default_usd: float | None = None
+    moneda_default: str = "PEN"
+
+
+class TipoTourUpdateIn(BaseModel):
+    codigo: str
+    nombre: str
+    descripcion: str | None = None
+    tiempo: str | None = None
+    precio_default: float | None = None
+    precio_default_usd: float | None = None
+    moneda_default: str = "PEN"
+
+
+class TipoTourOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    codigo: str
+    nombre: str
+    descripcion: str | None
+    tiempo: str | None
+    precio_default: float | None
+    precio_default_usd: float | None
+    moneda_default: str
+    activo: bool
+
+
 class VentaIn(BaseModel):
     tour_id: int
     vendedor_id: int

@@ -78,6 +78,7 @@ class ToursCatalogo(Base, Auditable):
     codigo: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     nombre: Mapped[str] = mapped_column(String(128), nullable=False)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tiempo: Mapped[str | None] = mapped_column(String(64), nullable=True)  # texto libre, ej. "3 horas", "Full day"
     precio_default: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)  # PEN
     precio_default_usd: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     moneda_default: Mapped[MonedaCodigo] = mapped_column(Enum(MonedaCodigo), nullable=False, default=MonedaCodigo.PEN)

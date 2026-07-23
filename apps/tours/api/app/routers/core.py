@@ -20,7 +20,7 @@ from app.models.core import (
     AuditLog,
     Cuentas,
 )
-from app.models.tours import Agencias, FormasPago, Monedas, ToursCatalogo, Vendedores
+from app.models.tours import Agencias, FormasPago, Monedas, Vendedores
 from app.schemas.core import (
     AsientoIn,
     AsientoLineaOut,
@@ -100,7 +100,6 @@ async def delete_cuenta(
 _CATALOG_MODELS = {
     "agencias": Agencias,
     "vendedores": Vendedores,
-    "tours": ToursCatalogo,
     "formas-pago": FormasPago,
     "monedas": Monedas,
 }
@@ -121,10 +120,6 @@ _REFERENCED_BY: dict[str, list[tuple[str, str, str, bool]]] = {
         ("tours_servicios", "vendedor_id", "id", False),
         ("comision_reglas", "vendedor_id", "id", True),
         ("liquidaciones", "vendedor_id", "id", False),
-    ],
-    "tours": [
-        ("tours_servicios", "tour_id", "id", False),
-        ("comision_reglas", "tour_id", "id", True),
     ],
     "formas-pago": [
         ("tours_servicios", "forma_pago_id", "id", False),
@@ -264,11 +259,6 @@ async def list_agencias(session: AsyncSession = Depends(get_session), _user: dic
 @router.get("/vendedores", response_model=list[CatalogoOut])
 async def list_vendedores(session: AsyncSession = Depends(get_session), _user: dict = Depends(get_current_user)) -> list[Vendedores]:
     return list((await session.execute(select(Vendedores).order_by(Vendedores.id))).scalars().all())
-
-
-@router.get("/tours", response_model=list[CatalogoOut])
-async def list_tours(session: AsyncSession = Depends(get_session), _user: dict = Depends(get_current_user)) -> list[ToursCatalogo]:
-    return list((await session.execute(select(ToursCatalogo).order_by(ToursCatalogo.id))).scalars().all())
 
 
 @router.get("/formas-pago", response_model=list[CatalogoOut])
