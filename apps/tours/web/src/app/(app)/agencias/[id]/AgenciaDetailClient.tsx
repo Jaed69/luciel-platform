@@ -185,6 +185,17 @@ export function AgenciaDetailClient({
 
   const tourNombre = (id: number) => tours.find((t) => t.id === id)?.nombre ?? `T-${id}`;
 
+  async function handleDeletePrecio(r: AgenciaPrecio) {
+    if (!window.confirm(`¿Eliminar el precio de ${tourNombre(r.tour_id)}?`)) return;
+    const res = await fetch(`/api/agencia-precios/${r.id}`, { method: "DELETE" });
+    if (res.ok) {
+      showToast("success", "Precio eliminado");
+      window.location.reload();
+    } else {
+      showToast("error", "Error al eliminar");
+    }
+  }
+
   const precioColumns: Column<AgenciaPrecio>[] = [
     { key: "tour", header: "Tour", render: (r) => tourNombre(r.tour_id) },
     { key: "precio", header: "Precio (PEN)", render: (r) => `${r.precio}` },
@@ -193,9 +204,14 @@ export function AgenciaDetailClient({
       key: "acciones",
       header: "Acciones",
       render: (r) => (
-        <button type="button" className="text-primary hover:underline" onClick={() => { setEditPrecio(r); setPrecioModalOpen(true); }}>
-          Editar
-        </button>
+        <span className="flex gap-3">
+          <button type="button" className="text-primary hover:underline" onClick={() => { setEditPrecio(r); setPrecioModalOpen(true); }}>
+            Editar
+          </button>
+          <button type="button" className="text-chili-red hover:underline" onClick={() => handleDeletePrecio(r)}>
+            Eliminar
+          </button>
+        </span>
       ),
     },
   ];
