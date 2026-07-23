@@ -1,8 +1,10 @@
 """apps/tours/api/app/main.py
 
-FastAPI entrypoint for tours-api. Task 2 adds:
-- routers: auth, core, tours
-- lifespan: alembic upgrade head + seed.run_if_empty + WAL PRAGMA (already on connect)
+FastAPI entrypoint for tours-api.
+- routers: auth, core, solicitudes, tipos_tour, tours, usuarios, agencia_*
+- lifespan: create_all + ensure_schema (D-31 idempotent drift healing) +
+  seed.run_if_empty. Alembic is NOT run at boot — the deployed DB has no
+  alembic_version table; migrations exist as dev/history only.
 """
 import logging
 from contextlib import asynccontextmanager
@@ -16,19 +18,25 @@ logger = logging.getLogger("tours-api")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """On startup: run alembic upgrade head + seed if empty. WAL is already enabled per-connection."""
+    """On startup: create_all (new tables) + ensure_schema (column/index/data
+    drift, D-31) + seed if empty. WAL is already enabled per-connection."""
     # Defer imports so the module imports cleanly even before models exist.
     from app.database import engine
     from app.models import Base
+    from app.schema_sync import ensure_reference_data, ensure_schema_structure
     from app.seed import run_if_empty
     from app.database import async_session_factory
 
-    # Ensure schema exists (works in dev without alembic CLI; in prod alembic upgrade head runs first).
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # Order matters (D-31): structure fixes BEFORE seed (seed's ORM inserts need
+    # the tiempo column), reference-data upserts AFTER seed (inserting chart
+    # accounts first would trip run_if_empty's empty-cuentas gate on fresh DBs).
+    await ensure_schema_structure(engine)
     async with async_session_factory() as session:
         await run_if_empty(session)
         await session.commit()
+    await ensure_reference_data(engine)
     yield
 
 
