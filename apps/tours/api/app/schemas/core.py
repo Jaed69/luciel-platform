@@ -82,6 +82,10 @@ class CatalogoOut(BaseModel):
     codigo: str | None = None
     nombre: str
     activo: bool = True
+    # D-33 — computed at query time (never persisted), only populated for
+    # entidad=agencias: "operativa" if >=1 active AgenciaTourPrecio links this
+    # agencia, else "sin_tours_vinculados". None for every other catalog.
+    estado: str | None = None
 
 
 class CatalogoIn(BaseModel):

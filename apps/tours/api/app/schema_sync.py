@@ -75,6 +75,28 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
             await conn.execute(text("DROP TABLE agencia_tour_precios"))
             await conn.execute(text("ALTER TABLE agencia_tour_precios_new RENAME TO agencia_tour_precios"))
 
+        # 5. agencia_tour_precios.creado_en (D-33) — needed to tie-break which
+        # agencia the venta modal defaults to when a tour has 2+ active prices.
+        atp_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(agencia_tour_precios)"))).all()]
+        if "creado_en" not in atp_cols:
+            logger.info("schema_sync: adding agencia_tour_precios.creado_en")
+            # SQLite rejects ALTER TABLE ... ADD COLUMN with a non-constant
+            # default (CURRENT_TIMESTAMP) — add nullable, then backfill.
+            await conn.execute(text("ALTER TABLE agencia_tour_precios ADD COLUMN creado_en DATETIME"))
+            await conn.execute(text(
+                "UPDATE agencia_tour_precios SET creado_en = CURRENT_TIMESTAMP WHERE creado_en IS NULL"
+            ))
+
+        # 6. tours_servicios.creado_en (D-33) — needed for the DELETE
+        # /ventas/{id} undo window (only allowed within 10s of creation).
+        ts_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(tours_servicios)"))).all()]
+        if "creado_en" not in ts_cols:
+            logger.info("schema_sync: adding tours_servicios.creado_en")
+            await conn.execute(text("ALTER TABLE tours_servicios ADD COLUMN creado_en DATETIME"))
+            await conn.execute(text(
+                "UPDATE tours_servicios SET creado_en = CURRENT_TIMESTAMP WHERE creado_en IS NULL"
+            ))
+
 
 async def ensure_reference_data(engine: AsyncEngine) -> None:
     """Data drift (migs 004/005): insert-if-missing by codigo. MUST run after

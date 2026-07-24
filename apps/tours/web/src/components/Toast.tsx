@@ -2,12 +2,15 @@
 import { useEffect, useState } from "react";
 
 type ToastType = "success" | "error" | "warning";
-type ToastState = { type: ToastType; message: string } | null;
+type ToastOptions = { actionLabel?: string; durationMs?: number; onAction?: () => void };
+type ToastState = { type: ToastType; message: string; options?: ToastOptions } | null;
 
 let externalSetter: ((t: ToastState) => void) | null = null;
 
-export function showToast(type: ToastType, message: string) {
-  externalSetter?.({ type, message });
+// D-33 — third `options` arg is optional so existing 2-arg call sites
+// (`showToast("success", "…")`) keep working unchanged.
+export function showToast(type: ToastType, message: string, options?: ToastOptions) {
+  externalSetter?.({ type, message, options });
 }
 
 const variants: Record<ToastType, string> = {
@@ -33,7 +36,8 @@ export function Toast() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), durations[toast.type]);
+    const duration = toast.options?.durationMs ?? durations[toast.type];
+    const t = setTimeout(() => setToast(null), duration);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -41,9 +45,21 @@ export function Toast() {
   return (
     <div
       role={roles[toast.type]}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-canvas rounded-lg shadow-lg p-4 max-w-[640px] border-l-4 ${variants[toast.type]} font-nunito text-text-espresso`}
+      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-canvas rounded-lg shadow-lg p-4 max-w-[640px] border-l-4 ${variants[toast.type]} font-nunito text-text-espresso flex items-center gap-4`}
     >
-      {toast.message}
+      <span>{toast.message}</span>
+      {toast.options?.actionLabel && (
+        <button
+          type="button"
+          className="text-primary font-semibold underline underline-offset-4 shrink-0"
+          onClick={() => {
+            toast.options?.onAction?.();
+            setToast(null);
+          }}
+        >
+          {toast.options.actionLabel}
+        </button>
+      )}
     </div>
   );
 }

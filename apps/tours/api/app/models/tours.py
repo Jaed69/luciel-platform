@@ -109,6 +109,9 @@ class AgenciaTourPrecio(Base, Auditable):
     precio: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)  # PEN
     precio_usd: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # D-33 — used to tie-break "which agencia should the venta modal default
+    # to" when a tour has 2+ active price agreements (most recent wins).
+    creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
 
 class AgenciaPagos(Base, Auditable):
@@ -184,6 +187,9 @@ class ToursServicios(Base, Auditable):
     asiento_id: Mapped[int] = mapped_column(ForeignKey("asientos.id", ondelete="RESTRICT"), nullable=False)  # D-15
     liquidacion_id: Mapped[int | None] = mapped_column(ForeignKey("liquidaciones.id"), nullable=True)
     metadata_: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)  # JSON serialized
+    # D-33 — needed for the DELETE /ventas/{id} undo window (only allowed
+    # within 10s of creation).
+    creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
 
 class Solicitudes(Base, Auditable):

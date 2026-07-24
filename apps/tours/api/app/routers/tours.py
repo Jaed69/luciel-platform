@@ -6,7 +6,8 @@ GET /simular (commission preview),
 /comision-reglas CRUD (DELETE default global blocked — D-10),
 /liquidaciones skeleton (no close/reopen — Plan 02).
 """
-from datetime import date
+import json
+from datetime import date, datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -16,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.audit import current_user_id
 from app.database import get_session
 from app.dependencies import get_current_user, require_role
+from app.models.core import AsientoLineas, Asientos
 from app.models.tours import (
     Agencias,
     ComisionReglas,
@@ -28,9 +30,11 @@ from app.models.tours import (
 from app.schemas.tours import (
     ComisionReglaIn,
     ComisionReglaOut,
+    DuplicadoCheckOut,
     LiquidacionIn,
     LiquidacionOut,
     SimularOut,
+    TourSearchOut,
     VentaIn,
     VentaOut,
     VentaRow,
@@ -38,8 +42,14 @@ from app.schemas.tours import (
 from app.services.accounting import post_venta_tour
 from app.services.commission import resolve_comision, simular_comision
 from app.services.liquidaciones import LiquidacionPrecheckError as _LiquidacionPrecheckError, close_liquidacion, reopen_liquidacion
+from app.services.venta_resolver import tour_search as _resolve_tour_search
 
 router = APIRouter(tags=["tours"])
+
+# D-33 — DELETE /ventas/{id} undo window: only allowed within this many
+# seconds of creation, and only when the venta never made it into a
+# liquidación (see delete_venta below).
+_UNDO_WINDOW_SECONDS = 10
 
 
 # --------------------------------------------------------------------------- #
@@ -85,6 +95,15 @@ async def create_venta(
             metadata=body.metadata,
             creacion_usuario_id=user["id"],
         )
+        # D-33 — motivo_costo/motivo_monto (edit-exception reasons) merge into
+        # the same metadata dict as notas, on tours_servicios.metadata_ (Text,
+        # JSON-serialized) rather than overwriting it.
+        ts_metadata: dict[str, Any] = dict(body.metadata or {})
+        if body.motivo_costo is not None:
+            ts_metadata["motivo_costo"] = body.motivo_costo
+        if body.motivo_monto is not None:
+            ts_metadata["motivo_monto"] = body.motivo_monto
+        tour_servicio.metadata_ = json.dumps(ts_metadata) if ts_metadata else None
         await session.commit()
     except ValueError as exc:
         await session.rollback()
@@ -121,6 +140,96 @@ async def list_ventas(
     if moneda is not None:
         stmt = stmt.where(ToursServicios.moneda == moneda)
     return list((await session.execute(stmt)).scalars().all())
+
+
+# --------------------------------------------------------------------------- #
+# GET /ventas/tour-search — D-33 venta modal quick-pick (tour → default agencia/precio)
+# --------------------------------------------------------------------------- #
+@router.get("/ventas/tour-search", response_model=list[TourSearchOut])
+async def ventas_tour_search(
+    q: str = Query(""),
+    vendedor_id: int | None = Query(None),
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> list[dict]:
+    # A vendedor can only see their own "recientes" ranking — never another
+    # vendedor's sales-volume-derived personalization (matches list_ventas'
+    # and check-duplicado's ownership scoping).
+    if user["role"] == "vendedor":
+        vendedor_id = user["vendedor_id"]
+    return await _resolve_tour_search(session, q or None, vendedor_id)
+
+
+# --------------------------------------------------------------------------- #
+# GET /ventas/check-duplicado — D-33 warn before double-registering a venta
+# --------------------------------------------------------------------------- #
+@router.get("/ventas/check-duplicado", response_model=DuplicadoCheckOut)
+async def ventas_check_duplicado(
+    tour_id: int = Query(...),
+    agencia_id: int = Query(...),
+    monto: float = Query(...),
+    fecha: date = Query(...),
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> dict:
+    """True if an existing tours_servicios row matches all 4 values exactly.
+    Vendedor role scopes the check to their own ventas (matches list_ventas);
+    any other role checks across all vendedores."""
+    stmt = select(ToursServicios).where(
+        ToursServicios.tour_id == tour_id,
+        ToursServicios.agencia_id == agencia_id,
+        ToursServicios.monto == monto,
+        ToursServicios.fecha == fecha,
+    )
+    if user["role"] == "vendedor":
+        stmt = stmt.where(ToursServicios.vendedor_id == user["vendedor_id"])
+    row = (await session.execute(stmt)).scalars().first()
+    return {"duplicado": row is not None, "venta_id": row.id if row is not None else None}
+
+
+# --------------------------------------------------------------------------- #
+# DELETE /ventas/{id} — D-33 undo within a short window (hard delete, not a reversal)
+# --------------------------------------------------------------------------- #
+@router.delete("/ventas/{tour_servicio_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_venta(
+    tour_servicio_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> None:
+    """Hard-deletes a venta registered <=10s ago, before it ever consolidated
+    into the books (not a reversal/reversion asiento — see D-33 spec)."""
+    ts = (await session.execute(
+        select(ToursServicios).where(ToursServicios.id == tour_servicio_id)
+    )).scalar_one_or_none()
+    if ts is None:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+    if user["role"] == "vendedor" and ts.vendedor_id != user["vendedor_id"]:
+        raise HTTPException(status_code=403, detail="No puedes deshacer una venta de otro vendedor")
+    if ts.liquidacion_id is not None:
+        raise HTTPException(status_code=409, detail="Venta ya liquidada, no se puede deshacer")
+
+    creado_en = ts.creado_en if ts.creado_en.tzinfo is not None else ts.creado_en.replace(tzinfo=timezone.utc)
+    elapsed = (datetime.now(timezone.utc) - creado_en).total_seconds()
+    if elapsed > _UNDO_WINDOW_SECONDS:
+        raise HTTPException(status_code=409, detail="Han pasado más de 10 segundos, ya no se puede deshacer")
+
+    # ORM session.delete() (not raw Core .delete()) for every row here — the
+    # audit_before_flush hook only inspects session.deleted, so a Core-level
+    # DELETE would silently skip the audit_log entry for these rows.
+    asiento_id = ts.asiento_id
+    lineas = (await session.execute(
+        select(AsientoLineas).where(AsientoLineas.asiento_id == asiento_id)
+    )).scalars().all()
+    for linea in lineas:
+        await session.delete(linea)
+    await session.delete(ts)
+    await session.flush()  # tours_servicios + lineas gone before we drop their asiento (FK ondelete=RESTRICT)
+    asiento = (await session.execute(
+        select(Asientos).where(Asientos.id == asiento_id)
+    )).scalar_one_or_none()
+    if asiento is not None:
+        await session.delete(asiento)
+    await session.commit()
 
 
 # --------------------------------------------------------------------------- #

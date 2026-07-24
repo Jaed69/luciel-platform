@@ -1,10 +1,14 @@
 """apps/tours/api/app/schemas/tours.py — request/response shapes for tours endpoints."""
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.models.tours import EstadoSolicitud, MetodoPagoAgencia, PrioridadSolicitud, TipoSolicitud
+
+# D-33 — closed set of reasons a vendedor may give when overriding costo/monto
+# away from the agencia's list price. Anything else is a 422.
+MotivoEdicion = Literal["convenio_desactualizado", "descuento_especial", "error_de_carga", "otro"]
 
 
 class TipoTourCreateIn(BaseModel):
@@ -38,6 +42,9 @@ class TipoTourOut(BaseModel):
     precio_default_usd: float | None
     moneda_default: str
     activo: bool
+    # D-33 — computed at query time (never persisted): "disponible_para_venta"
+    # if >=1 active AgenciaTourPrecio links this tour, else "sin_agencia_vinculada".
+    estado: str = "sin_agencia_vinculada"
 
 
 class AgenciaTourPrecioIn(BaseModel):
@@ -104,6 +111,10 @@ class VentaIn(BaseModel):
     costo: float | None = 0
     fecha: date
     metadata: dict[str, Any] | None = None
+    # D-33 — required only when the vendedor overrides costo/monto away from
+    # the agencia's list price; Pydantic 422s on any value outside MotivoEdicion.
+    motivo_costo: MotivoEdicion | None = None
+    motivo_monto: MotivoEdicion | None = None
 
 
 class VentaOut(BaseModel):
@@ -124,6 +135,23 @@ class VentaRow(BaseModel):
     fecha: date
     asiento_id: int
     liquidacion_id: int | None
+
+
+class TourSearchOut(BaseModel):
+    """GET /ventas/tour-search row — D-33."""
+    tour_id: int
+    nombre: str
+    agencia_id: int | None
+    agencia_nombre: str | None
+    precio: float | None
+    precio_usd: float | None
+    es_reciente: bool
+
+
+class DuplicadoCheckOut(BaseModel):
+    """GET /ventas/check-duplicado — D-33."""
+    duplicado: bool
+    venta_id: int | None
 
 
 class SimularOut(BaseModel):

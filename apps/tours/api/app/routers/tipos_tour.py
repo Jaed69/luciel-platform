@@ -14,6 +14,7 @@ from app.database import get_session
 from app.dependencies import get_current_user, require_role
 from app.models.tours import ToursCatalogo
 from app.schemas.tours import TipoTourCreateIn, TipoTourOut, TipoTourUpdateIn
+from app.services.venta_resolver import active_agencia_tour_ids
 
 router = APIRouter(tags=["tipos-tour"])
 
@@ -28,8 +29,17 @@ _REFERENCED_BY: list[tuple[str, str, str, bool]] = [
 async def list_tours(
     session: AsyncSession = Depends(get_session),
     _user: dict = Depends(get_current_user),
-) -> list[ToursCatalogo]:
-    return list((await session.execute(select(ToursCatalogo).order_by(ToursCatalogo.id))).scalars().all())
+) -> list[TipoTourOut]:
+    rows = list((await session.execute(select(ToursCatalogo).order_by(ToursCatalogo.id))).scalars().all())
+    # D-33 — estado calculado (disponible_para_venta | sin_agencia_vinculada),
+    # computed at query time, never persisted.
+    _, active_tour_ids = await active_agencia_tour_ids(session)
+    out: list[TipoTourOut] = []
+    for row in rows:
+        item = TipoTourOut.model_validate(row)
+        item.estado = "disponible_para_venta" if row.id in active_tour_ids else "sin_agencia_vinculada"
+        out.append(item)
+    return out
 
 
 @router.post("/tours", response_model=TipoTourOut, status_code=201)

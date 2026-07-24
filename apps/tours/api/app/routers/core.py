@@ -32,8 +32,21 @@ from app.schemas.core import (
     CuentaOut,
 )
 from app.services.accounting import post_asiento
+from app.services.venta_resolver import active_agencia_tour_ids
 
 router = APIRouter(tags=["core"])
+
+
+async def _agencias_out(session: AsyncSession, rows: list[Agencias]) -> list[CatalogoOut]:
+    """Attach D-33 estado calculado (operativa | sin_tours_vinculados) to each
+    agencia row — computed at query time, never persisted."""
+    active_agencia_ids, _ = await active_agencia_tour_ids(session)
+    out: list[CatalogoOut] = []
+    for row in rows:
+        item = CatalogoOut.model_validate(row)
+        item.estado = "operativa" if row.id in active_agencia_ids else "sin_tours_vinculados"
+        out.append(item)
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -140,8 +153,10 @@ async def list_catalog(
     model = _CATALOG_MODELS.get(entidad)
     if model is None:
         raise HTTPException(status_code=404, detail=f"Catálogo '{entidad}' no existe")
-    rows = (await session.execute(select(model).order_by(model.id))).scalars().all()
-    return list(rows)
+    rows = list((await session.execute(select(model).order_by(model.id))).scalars().all())
+    if entidad == "agencias":
+        return await _agencias_out(session, rows)
+    return rows
 
 
 @router.post("/catalogos/{entidad}", response_model=CatalogoOut, status_code=201)
@@ -260,8 +275,9 @@ async def restore_catalog(
 
 # Short aliases used by the UI (UI-SPEC S5): /agencias, /vendedores, /tours, /formas-pago, /monedas
 @router.get("/agencias", response_model=list[CatalogoOut])
-async def list_agencias(session: AsyncSession = Depends(get_session), _user: dict = Depends(get_current_user)) -> list[Agencias]:
-    return list((await session.execute(select(Agencias).order_by(Agencias.id))).scalars().all())
+async def list_agencias(session: AsyncSession = Depends(get_session), _user: dict = Depends(get_current_user)) -> list[CatalogoOut]:
+    rows = list((await session.execute(select(Agencias).order_by(Agencias.id))).scalars().all())
+    return await _agencias_out(session, rows)
 
 
 @router.get("/vendedores", response_model=list[CatalogoOut])

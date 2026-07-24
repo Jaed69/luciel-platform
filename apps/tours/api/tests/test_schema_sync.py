@@ -101,6 +101,16 @@ async def test_ensure_schema_heals_stale_prod_db(async_engine):
         )).first()
         assert old_row is not None and float(old_row[0]) == 120.0  # data preserved through table rebuild
 
+        atp_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(agencia_tour_precios)"))).all()]
+        assert "creado_en" in atp_cols
+        backfilled = (await conn.execute(
+            text("SELECT creado_en FROM agencia_tour_precios WHERE agencia_id = 1 AND tour_id = 1")
+        )).first()
+        assert backfilled is not None and backfilled[0] is not None
+
+        ts_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(tours_servicios)"))).all()]
+        assert "creado_en" in ts_cols
+
 
 async def test_ensure_schema_is_idempotent(async_engine):
     from app.schema_sync import ensure_schema
