@@ -24,28 +24,38 @@ function origenOf(r: ComisionReglaRow): string {
   return "global";
 }
 
-function SubNavTabs({ tabs, active = "Comisiones" }: { tabs: string[]; active?: string }) {
+function SubNavTabs({ tabs, entidad }: { tabs: string[]; entidad: string }) {
   return (
     <nav className="flex flex-wrap gap-2 mb-4" aria-label="Catálogos sub-nav">
-      {tabs.map((label) => {
-        const isComisiones = label === "Comisiones";
-        const cls = isComisiones ? "bg-primary text-on-primary" : "text-primary border border-gold/30";
-        return (
-          <span
-            key={label}
-            className={`px-3 py-1.5 rounded-full text-sm font-nunito font-semibold ${cls}`}
-          >
-            {label}
-          </span>
-        );
-      })}
+      {tabs.map((label) => (
+        <a
+          key={label}
+          href={`/catalogos/${label}`}
+          className={`px-3 py-1.5 rounded-full text-sm font-nunito font-semibold ${label === entidad ? "bg-primary text-on-primary" : "text-primary border border-gold/30"}`}
+        >
+          {label.replace("-", " ")}
+        </a>
+      ))}
     </nav>
   );
 }
 
-export function ComisionesTab({ reglas, tabs }: { reglas: ComisionReglaRow[]; tabs: string[] }) {
+export function ComisionesTab({
+  reglas,
+  tabs,
+  vendedores = [],
+  tours = [],
+}: {
+  reglas: ComisionReglaRow[];
+  tabs: string[];
+  vendedores?: { id: number; nombre: string }[];
+  tours?: { id: number; nombre: string }[];
+}) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ComisionReglaRow | null>(null);
+
+  const vendedorNombre = (id: number) => vendedores.find((v) => v.id === id)?.nombre ?? `V-${id}`;
+  const tourNombre = (id: number) => tours.find((t) => t.id === id)?.nombre ?? `T-${id}`;
 
   function openCreate() {
     setEditTarget(null);
@@ -57,7 +67,7 @@ export function ComisionesTab({ reglas, tabs }: { reglas: ComisionReglaRow[]; ta
   }
 
   async function handleDelete(r: ComisionReglaRow) {
-    if (!window.confirm(`¿Eliminar regla (${origenOf(r)}, ${r.porcentaje}%)?`)) return;
+    if (!window.confirm(`¿Eliminar regla (${origenOf(r)}, ${r.porcentaje}%)? Esta acción es permanente y no se puede deshacer.`)) return;
     const res = await fetch(`/api/comision-reglas/${r.id}`, { method: "DELETE" });
     if (res.ok) {
       showToast("success", "Regla eliminada");
@@ -74,8 +84,8 @@ export function ComisionesTab({ reglas, tabs }: { reglas: ComisionReglaRow[]; ta
   }
 
   const columns: Column<ComisionReglaRow>[] = [
-    { key: "vendedor_id", header: "Vendedor", render: (r) => (r.vendedor_id != null ? `V-${r.vendedor_id}` : "—") },
-    { key: "tour_id", header: "Tour", render: (r) => (r.tour_id != null ? `T-${r.tour_id}` : "—") },
+    { key: "vendedor_id", header: "Vendedor", render: (r) => (r.vendedor_id != null ? vendedorNombre(r.vendedor_id) : "Todos") },
+    { key: "tour_id", header: "Tour", render: (r) => (r.tour_id != null ? tourNombre(r.tour_id) : "Todos") },
     { key: "porcentaje", header: "Porcentaje", render: (r) => `${r.porcentaje}%` },
     { key: "origen", header: "Origen", render: (r) => <span>{origenOf(r)}</span> },
     {
@@ -102,7 +112,7 @@ export function ComisionesTab({ reglas, tabs }: { reglas: ComisionReglaRow[]; ta
   ];
   return (
     <div>
-      <SubNavTabs tabs={tabs} />
+      <SubNavTabs tabs={tabs} entidad="comisiones" />
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-playfair text-primary text-[28px] font-semibold">Comisiones</h2>
         <Button variant="primary" onClick={openCreate}>Agregar regla</Button>
