@@ -5,7 +5,14 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { CatalogoFormModal } from "@/components/CatalogoFormModal";
 import { showToast } from "@/components/Toast";
 
-type Row = { id: number; codigo?: string; nombre: string; activo: boolean };
+type Row = {
+  id: number;
+  codigo?: string;
+  nombre: string;
+  activo: boolean;
+  estado?: string | null;
+  usuario_activo?: boolean | null;
+};
 
 const ENTIDADES = ["agencias", "tours", "vendedores", "formas-pago", "monedas", "comisiones"] as const;
 const ENTIDAD_LABEL: Record<string, string> = {
@@ -49,29 +56,93 @@ export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; enti
     }
   }
 
+  async function handleDelete(row: Row) {
+    const isHardDelete = entidad === "monedas";
+    const confirmMsg = isHardDelete
+      ? "Esta acción es permanente y no se puede deshacer."
+      : `¿Desactivar ${row.nombre}? Podrás restaurarlo luego.`;
+    if (!window.confirm(confirmMsg)) return;
+    const res = await fetch(`/api/catalogos/${entidad}/${row.id}`, { method: "DELETE" });
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      try {
+        const err = await res.json();
+        const detail = err.detail;
+        let msg = typeof detail === "string" ? detail : (detail?.mensaje ?? "Error al eliminar");
+        if (detail?.referencias && Array.isArray(detail.referencias)) {
+          const refsTxt = detail.referencias.map((r: any) => `${r.tabla}: ${r.count}`).join(", ");
+          msg = `${msg} (${refsTxt})`;
+        }
+        showToast("error", msg);
+      } catch {
+        showToast("error", "Error al eliminar");
+      }
+    }
+  }
+
   const columns: Column<Row>[] = [
     { key: "codigo", header: "Código", render: (r) => r.codigo ?? "—" },
     { key: "nombre", header: "Nombre", render: (r) => r.nombre },
-    {
-      key: "estado",
-      header: "Estado",
-      render: (r) => (r.activo ? "Activo" : <span className="opacity-60">Inactivo</span>),
-    },
+    ...(entidad === "agencias"
+      ? [
+          {
+            key: "estado_operativo",
+            header: "Estado operativo",
+            render: (r: Row) =>
+              r.estado === "operativa" ? (
+                <span className="inline-block rounded-md px-3 py-1 text-[13px] font-semibold border bg-green-100 text-green-700 border-green-300">
+                  Operativa
+                </span>
+              ) : r.estado === "sin_tours_vinculados" ? (
+                <span className="inline-block rounded-md px-3 py-1 text-[13px] font-semibold border bg-amber-warning/20 text-amber-warning border-amber-warning">
+                  Sin tours vinculados
+                </span>
+              ) : null,
+          } as Column<Row>,
+        ]
+      : []),
+    ...(entidad !== "monedas" && entidad !== "vendedores"
+      ? [
+          {
+            key: "estado",
+            header: "Estado",
+            render: (r: Row) => (r.activo ? "Activo" : <span className="opacity-60">Inactivo</span>),
+          } as Column<Row>,
+        ]
+      : []),
+    ...(entidad === "vendedores"
+      ? [
+          {
+            key: "estado_usuario",
+            header: "Estado",
+            render: (r: Row) =>
+              r.usuario_activo === null || r.usuario_activo === undefined ? (
+                <span className="opacity-60" title="Sin usuario vinculado">—</span>
+              ) : r.usuario_activo ? (
+                "Activo"
+              ) : (
+                <span className="opacity-60">Inactivo</span>
+              ),
+          } as Column<Row>,
+        ]
+      : []),
     {
       key: "acciones",
       header: "Acciones",
       render: (r) =>
         readOnly ? (
-          <span className="opacity-60">—</span>
+          <span title="Gestionado desde Usuarios">🔒</span>
         ) : (
           <span className="flex gap-3">
             <button type="button" className="text-primary hover:underline" onClick={() => openEdit(r)}>Editar</button>
             {entidad === "agencias" ? (
               <a href={`/agencias/${r.id}`} className="text-primary hover:underline">Precios</a>
             ) : null}
-            {!r.activo ? (
+            {entidad !== "monedas" && !r.activo ? (
               <button type="button" className="text-primary hover:underline" onClick={() => handleRestore(r)}>Restaurar</button>
             ) : null}
+            <button type="button" className="text-primary hover:underline" onClick={() => handleDelete(r)}>Eliminar</button>
           </span>
         ),
     },
@@ -80,7 +151,14 @@ export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; enti
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-playfair text-primary text-[38px] font-semibold capitalize">{entidad.replace("-", " ")}</h1>
+        <div>
+          <h1 className="font-playfair text-primary text-[38px] font-semibold capitalize">{entidad.replace("-", " ")}</h1>
+          {entidad === "vendedores" ? (
+            <p className="text-sm font-nunito text-text-espresso-soft">
+              Los vendedores se gestionan desde Usuarios (rol vendedor).
+            </p>
+          ) : null}
+        </div>
         {readOnly ? (
           <a href="/admin/usuarios" className="text-sm font-nunito text-primary hover:underline">
             Gestionar desde Usuarios →

@@ -6,7 +6,14 @@ import { ComisionesTab } from "../_components/ComisionesTab";
 import { TiposTourTab, type TipoTourRow } from "../_components/TiposTourTab";
 import { CatalogoPageClient } from "./_components/CatalogoPageClient";
 
-type Row = { id: number; codigo?: string; nombre: string; activo: boolean };
+type Row = {
+  id: number;
+  codigo?: string;
+  nombre: string;
+  activo: boolean;
+  estado?: string | null;
+  usuario_activo?: boolean | null;
+};
 
 const ENTIDADES = ["agencias", "tours", "vendedores", "formas-pago", "monedas", "comisiones"] as const;
 const ENTIDAD_LABEL: Record<string, string> = {
@@ -27,6 +34,9 @@ type ComisionReglaRow = {
   activo: boolean;
 };
 
+type VendedorRow = { id: number; nombre: string };
+type ComisionTourRow = { id: number; nombre: string };
+
 export default async function CatalogoPage({ params }: { params: Promise<{ entidad: string }> }) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/login");
@@ -41,10 +51,16 @@ export default async function CatalogoPage({ params }: { params: Promise<{ entid
   // The early-return preserves the existing behavior (no PUT wrap for comisiones).
   if (entidad === "comisiones") {
     let reglas: ComisionReglaRow[] = [];
+    let vendedores: VendedorRow[] = [];
+    let tours: ComisionTourRow[] = [];
     try {
-      reglas = await apiFetchJson<ComisionReglaRow[]>(`/comision-reglas`);
+      [reglas, vendedores, tours] = await Promise.all([
+        apiFetchJson<ComisionReglaRow[]>(`/comision-reglas`),
+        apiFetchJson<VendedorRow[]>(`/vendedores`),
+        apiFetchJson<ComisionTourRow[]>(`/tours`),
+      ]);
     } catch {}
-    return <ComisionesTab reglas={reglas} tabs={[...ENTIDADES]} />;
+    return <ComisionesTab reglas={reglas} tabs={[...ENTIDADES]} vendedores={vendedores} tours={tours} />;
   }
 
   // Special path for Tours tab — dedicated CRUD with descripcion/tiempo/precio (D-29),
