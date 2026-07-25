@@ -44,8 +44,8 @@ async def resolve_agencia_para_tour(
       price wins, ties broken by the most recently created price row
       (creado_en desc). Auto-select with 1 candidate, preselect with 2+.
     - Candidates span 2+ currencies → (None, grouped): no auto/preselect,
-      caller must let the vendedor pick manually. A row carrying both precio
-      and precio_usd is grouped by the tour's own moneda_default only (not
+      caller must let the vendedor pick manually. A row carrying both costo
+      and costo_usd is grouped by the tour's own moneda_default only (not
       both groups).
     """
     rows = list((await session.execute(
@@ -61,11 +61,11 @@ async def resolve_agencia_para_tour(
 
     grouped: dict[str, list[AgenciaTourPrecio]] = {}
     for r in rows:
-        if r.precio is not None and r.precio_usd is not None:
+        if r.costo is not None and r.costo_usd is not None:
             # Dual-currency row — resolved by the tour's own moneda_default,
             # counts only in that one group.
             moneda = moneda_default
-        elif r.precio is not None:
+        elif r.costo is not None:
             moneda = "PEN"
         else:
             moneda = "USD"
@@ -75,7 +75,7 @@ async def resolve_agencia_para_tour(
         return None, grouped
 
     candidatos = rows
-    campo = "precio" if next(iter(grouped)) == "PEN" else "precio_usd"
+    campo = "costo" if next(iter(grouped)) == "PEN" else "costo_usd"
 
     def _key(r: AgenciaTourPrecio):
         return (float(getattr(r, campo)), -r.creado_en.timestamp())
@@ -140,8 +140,8 @@ async def tour_search(session: AsyncSession, q: str | None, vendedor_id: int | N
                 "nombre": tour.nombre,
                 "agencia_id": precio_row.agencia_id,
                 "agencia_nombre": agencia.nombre if agencia is not None else None,
-                "costo": float(precio_row.precio) if precio_row.precio is not None else None,
-                "costo_usd": float(precio_row.precio_usd) if precio_row.precio_usd is not None else None,
+                "costo": float(precio_row.costo) if precio_row.costo is not None else None,
+                "costo_usd": float(precio_row.costo_usd) if precio_row.costo_usd is not None else None,
                 "precio_venta": float(tour.precio_default) if tour.precio_default is not None else None,
                 "precio_venta_usd": float(tour.precio_default_usd) if tour.precio_default_usd is not None else None,
                 "es_reciente": tour.id in recientes,
@@ -163,8 +163,8 @@ async def tour_search(session: AsyncSession, q: str | None, vendedor_id: int | N
             {
                 "agencia_id": r.agencia_id,
                 "agencia_nombre": agencias_by_id.get(r.agencia_id),
-                "costo": float(r.precio) if r.precio is not None else None,
-                "costo_usd": float(r.precio_usd) if r.precio_usd is not None else None,
+                "costo": float(r.costo) if r.costo is not None else None,
+                "costo_usd": float(r.costo_usd) if r.costo_usd is not None else None,
                 "moneda": moneda,
             }
             for moneda, rows in grouped.items()

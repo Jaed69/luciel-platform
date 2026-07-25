@@ -102,6 +102,19 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
             "UPDATE tours_servicios SET creado_en = CURRENT_TIMESTAMP WHERE creado_en IS NULL"
         ))
 
+        # 7. agencia_tour_precios.precio/precio_usd -> costo/costo_usd — this
+        # table is what we owe the agencia, not what we charge; ToursServicios
+        # already uses "costo" for the same concept (D-30/D-33), this closes
+        # the terminology gap. SQLite RENAME COLUMN is native (3.25+), no
+        # table rebuild needed like the nullable change above.
+        atp_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(agencia_tour_precios)"))).all()]
+        if "precio" in atp_cols:
+            logger.info("schema_sync: renaming agencia_tour_precios.precio -> costo")
+            await conn.execute(text("ALTER TABLE agencia_tour_precios RENAME COLUMN precio TO costo"))
+        if "precio_usd" in atp_cols:
+            logger.info("schema_sync: renaming agencia_tour_precios.precio_usd -> costo_usd")
+            await conn.execute(text("ALTER TABLE agencia_tour_precios RENAME COLUMN precio_usd TO costo_usd"))
+
 
 async def ensure_reference_data(engine: AsyncEngine) -> None:
     """Data drift (migs 004/005): insert-if-missing by codigo. MUST run after

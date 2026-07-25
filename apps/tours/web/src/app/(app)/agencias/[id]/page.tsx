@@ -6,7 +6,7 @@ import { AgenciaDetailClient } from "./AgenciaDetailClient";
 
 type Agencia = { id: number; codigo?: string; nombre: string; activo: boolean };
 type Tour = { id: number; nombre: string };
-type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; precio: number; precio_usd: number | null; activo: boolean; creado_en: string };
+type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; costo: number; costo_usd: number | null; activo: boolean; creado_en: string };
 type AgenciaPago = { id: number; agencia_id: number; fecha: string; monto: number; moneda: string; metodo: string; referencia: string | null; nota: string | null };
 type Saldo = { agencia_id: number; PEN: number; USD: number };
 
@@ -22,9 +22,9 @@ export default async function AgenciaDetailPage({ params }: { params: Promise<{ 
   const [agencias, tours, precios, pagos, saldo] = await Promise.all([
     apiFetchJson<Agencia[]>("/agencias").catch(() => []),
     apiFetchJson<Tour[]>("/tours").catch(() => []),
-    // null (not []) on failure: an errored price list must not be rendered as
-    // "this agencia has no prices" — that reads as a data state and hides the
-    // reason "Agregar precio" then answers 409 for a tour that is already priced.
+    // null (not []) on failure: an errored cost list must not be rendered as
+    // "this agencia has no costs" — that reads as a data state and hides the
+    // reason "Agregar costo" then answers 409 for a tour that already has one.
     apiFetchJson<AgenciaPrecio[]>("/agencia-precios").catch(() => null),
     apiFetchJson<AgenciaPago[]>(`/agencia-pagos?agencia_id=${agenciaId}`).catch(() => []),
     apiFetchJson<Saldo>(`/agencias/${agenciaId}/saldo`).catch(() => ({ agencia_id: agenciaId, PEN: 0, USD: 0 })),

@@ -28,26 +28,26 @@ def _token(role: str, user_id: int = 1) -> str:
 async def test_post_agencia_precio_admin_ok(client):
     r = await client.post(
         "/agencia-precios",
-        json={"agencia_id": 1, "tour_id": 1, "precio": 100, "precio_usd": 28},
+        json={"agencia_id": 1, "tour_id": 1, "costo": 100, "costo_usd": 28},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     assert r.status_code == 201, r.text
     data = r.json()
-    assert data["precio"] == 100
+    assert data["costo"] == 100
     assert data["activo"] is True
 
 
 async def test_post_agencia_precio_vendedor_403(client):
     r = await client.post(
         "/agencia-precios",
-        json={"agencia_id": 1, "tour_id": 1, "precio": 100},
+        json={"agencia_id": 1, "tour_id": 1, "costo": 100},
         headers={"Authorization": f"Bearer {_token('vendedor')}"},
     )
     assert r.status_code == 403
 
 
 async def test_post_agencia_precio_duplicate_409(client):
-    body = {"agencia_id": 1, "tour_id": 1, "precio": 100}
+    body = {"agencia_id": 1, "tour_id": 1, "costo": 100}
     r = await client.post("/agencia-precios", json=body, headers={"Authorization": f"Bearer {_token('admin')}"})
     assert r.status_code == 201
     r2 = await client.post("/agencia-precios", json=body, headers={"Authorization": f"Bearer {_token('admin')}"})
@@ -63,30 +63,30 @@ async def test_get_agencia_precios_any_authed(client):
 async def test_put_agencia_precio_updates(client):
     created = await client.post(
         "/agencia-precios",
-        json={"agencia_id": 2, "tour_id": 1, "precio": 100},
+        json={"agencia_id": 2, "tour_id": 1, "costo": 100},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     precio_id = created.json()["id"]
     r = await client.put(
         f"/agencia-precios/{precio_id}",
-        json={"agencia_id": 2, "tour_id": 1, "precio": 150, "precio_usd": 45},
+        json={"agencia_id": 2, "tour_id": 1, "costo": 150, "costo_usd": 45},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     assert r.status_code == 200, r.text
-    assert r.json()["precio"] == 150
+    assert r.json()["costo"] == 150
 
 
 async def test_post_agencia_precio_usd_only_ok(client):
     """D-32 — precio en una sola moneda es válido, no obliga a cargar PEN."""
     r = await client.post(
         "/agencia-precios",
-        json={"agencia_id": 1, "tour_id": 2, "precio_usd": 30},
+        json={"agencia_id": 1, "tour_id": 2, "costo_usd": 30},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     assert r.status_code == 201, r.text
     data = r.json()
-    assert data["precio"] is None
-    assert data["precio_usd"] == 30
+    assert data["costo"] is None
+    assert data["costo_usd"] == 30
 
 
 async def test_post_agencia_precio_sin_moneda_422(client):
@@ -102,7 +102,7 @@ async def test_post_agencia_precio_sin_moneda_422(client):
 async def test_delete_agencia_precio(client):
     created = await client.post(
         "/agencia-precios",
-        json={"agencia_id": 3, "tour_id": 1, "precio": 100},
+        json={"agencia_id": 3, "tour_id": 1, "costo": 100},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     precio_id = created.json()["id"]
@@ -125,8 +125,8 @@ async def test_post_agencia_precio_sin_default_en_columna_creado_en(client, asyn
             "id INTEGER PRIMARY KEY AUTOINCREMENT, "
             "agencia_id INTEGER NOT NULL REFERENCES agencias(id), "
             "tour_id INTEGER NOT NULL REFERENCES tours_catalogo(id), "
-            "precio NUMERIC(12, 2), "
-            "precio_usd NUMERIC(12, 2), "
+            "costo NUMERIC(12, 2), "
+            "costo_usd NUMERIC(12, 2), "
             "activo BOOLEAN NOT NULL DEFAULT 1, "
             "creado_en DATETIME, "
             "UNIQUE (agencia_id, tour_id))"
@@ -136,7 +136,7 @@ async def test_post_agencia_precio_sin_default_en_columna_creado_en(client, asyn
 
     created = await client.post(
         "/agencia-precios",
-        json={"agencia_id": 1, "tour_id": 1, "precio": 100},
+        json={"agencia_id": 1, "tour_id": 1, "costo": 100},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     assert created.status_code == 201, created.text

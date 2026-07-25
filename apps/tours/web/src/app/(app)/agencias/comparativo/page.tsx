@@ -5,7 +5,7 @@ import { apiFetchJson } from "@/lib/api";
 
 type Agencia = { id: number; nombre: string; activo: boolean };
 type Tour = { id: number; nombre: string; activo: boolean };
-type AgenciaPrecio = { agencia_id: number; tour_id: number; precio: number | null; precio_usd: number | null };
+type AgenciaPrecio = { agencia_id: number; tour_id: number; costo: number | null; costo_usd: number | null };
 
 export default async function AgenciasComparativoPage() {
   const session = await getServerSession(authOptions);
@@ -28,9 +28,9 @@ export default async function AgenciasComparativoPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="font-playfair text-primary text-[38px] font-semibold">Comparativo de precios</h1>
+        <h1 className="font-playfair text-primary text-[38px] font-semibold">Comparativo de costos</h1>
         <p className="font-nunito text-text-espresso-soft mt-1">
-          Qué agencia ofrece cada tour y a qué precio. Click en un precio para editarlo desde el detalle de la agencia.
+          Qué agencia ofrece cada tour y a qué costo. Click en un costo para editarlo desde el detalle de la agencia.
         </p>
       </div>
       <div className="overflow-x-auto rounded-lg border border-gold/30">
@@ -55,8 +55,8 @@ export default async function AgenciasComparativoPage() {
                     <td key={a.id} className="px-3 py-2 text-[13px] tabular-nums">
                       {p ? (
                         <a href={`/agencias/${a.id}`} className="text-primary hover:underline">
-                          {p.precio != null ? `S/ ${p.precio}` : null}
-                          {p.precio_usd != null ? <span className="block text-[11px] opacity-70">$ {p.precio_usd}</span> : null}
+                          {p.costo != null ? `S/ ${p.costo}` : null}
+                          {p.costo_usd != null ? <span className="block text-[11px] opacity-70">$ {p.costo_usd}</span> : null}
                         </a>
                       ) : (
                         <span className="opacity-40">—</span>

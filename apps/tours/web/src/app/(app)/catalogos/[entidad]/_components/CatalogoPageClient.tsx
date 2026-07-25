@@ -137,7 +137,7 @@ export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; enti
           <span className="flex gap-3">
             <button type="button" className="text-primary hover:underline" onClick={() => openEdit(r)}>Editar</button>
             {entidad === "agencias" ? (
-              <a href={`/agencias/${r.id}`} className="text-primary hover:underline">Precios</a>
+              <a href={`/agencias/${r.id}`} className="text-primary hover:underline">Costos</a>
             ) : null}
             {entidad !== "monedas" && !r.activo ? (
               <button type="button" className="text-primary hover:underline" onClick={() => handleRestore(r)}>Restaurar</button>

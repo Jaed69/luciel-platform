@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { TourAgenciaSearch, type TourSearchRow } from "./TourAgenciaSearch";
 
 type Catalogo = { id: number; codigo?: string; nombre: string };
-type AgenciaPrecio = { agencia_id: number; tour_id: number; precio: number | null; precio_usd: number | null };
+type AgenciaPrecio = { agencia_id: number; tour_id: number; costo: number | null; costo_usd: number | null };
 type Motivo = "convenio_desactualizado" | "descuento_especial" | "error_de_carga" | "otro";
 
 const MOTIVO_LABELS: Record<Motivo, string> = {

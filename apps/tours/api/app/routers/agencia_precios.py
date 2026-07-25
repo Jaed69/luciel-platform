@@ -37,7 +37,7 @@ async def create_agencia_precio(
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=409, detail="Ya existe un precio para esta agencia y tour")
+        raise HTTPException(status_code=409, detail="Ya existe un costo para esta agencia y tour")
     await session.refresh(row)
     return row
 
@@ -51,14 +51,14 @@ async def update_agencia_precio(
 ) -> AgenciaTourPrecio:
     row = (await session.execute(select(AgenciaTourPrecio).where(AgenciaTourPrecio.id == precio_id))).scalar_one_or_none()
     if row is None:
-        raise HTTPException(status_code=404, detail="Precio no encontrado")
+        raise HTTPException(status_code=404, detail="Costo no encontrado")
     for field, value in body.model_dump().items():
         setattr(row, field, value)
     try:
         await session.commit()
     except IntegrityError:
         await session.rollback()
-        raise HTTPException(status_code=409, detail="Ya existe un precio para esta agencia y tour")
+        raise HTTPException(status_code=409, detail="Ya existe un costo para esta agencia y tour")
     await session.refresh(row)
     return row
 
@@ -71,7 +71,7 @@ async def delete_agencia_precio(
 ) -> dict:
     row = (await session.execute(select(AgenciaTourPrecio).where(AgenciaTourPrecio.id == precio_id))).scalar_one_or_none()
     if row is None:
-        raise HTTPException(status_code=404, detail="Precio no encontrado")
+        raise HTTPException(status_code=404, detail="Costo no encontrado")
     await session.delete(row)
     await session.commit()
     return {"ok": True}

@@ -1,5 +1,5 @@
 // apps/tours/web/src/app/(app)/agencias/[id]/AgenciaDetailClient.tsx
-// D-30 — saldo pendiente + precios por tour + historial de pagos + registrar pago.
+// D-30 — saldo pendiente + costos por tour + historial de pagos + registrar pago.
 "use client";
 
 import { useState } from "react";
@@ -10,7 +10,7 @@ import { showToast } from "@/components/Toast";
 
 type Agencia = { id: number; codigo?: string; nombre: string; activo: boolean };
 type Tour = { id: number; nombre: string };
-type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; precio: number | null; precio_usd: number | null; activo: boolean; creado_en: string };
+type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; costo: number | null; costo_usd: number | null; activo: boolean; creado_en: string };
 type AgenciaPago = { id: number; agencia_id: number; fecha: string; monto: number; moneda: string; metodo: string; referencia: string | null; nota: string | null };
 type Saldo = { agencia_id: number; PEN: number; USD: number };
 
@@ -116,17 +116,17 @@ function PrecioFormModal({
   const tourIdsConPrecio = new Set(preciosExistentes.map((p) => p.tour_id));
   const toursDisponibles = tours.filter((t) => t.id === initial?.tour_id || !tourIdsConPrecio.has(t.id));
   const [tourId, setTourId] = useState(initial?.tour_id ? String(initial.tour_id) : "");
-  const [precio, setPrecio] = useState(initial?.precio != null ? String(initial.precio) : "");
-  const [precioUsd, setPrecioUsd] = useState(initial?.precio_usd != null ? String(initial.precio_usd) : "");
+  const [precio, setPrecio] = useState(initial?.costo != null ? String(initial.costo) : "");
+  const [precioUsd, setPrecioUsd] = useState(initial?.costo_usd != null ? String(initial.costo_usd) : "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
-    // D-32 — precio en una sola moneda es válido; no se obliga a cargar ambas.
+    // D-32 — costo en una sola moneda es válido; no se obliga a cargar ambas.
     if (!precio && !precioUsd) {
-      setError("Indica precio en PEN o en USD (al menos uno)");
+      setError("Indica costo en PEN o en USD (al menos uno)");
       return;
     }
     setError(null);
@@ -134,15 +134,15 @@ function PrecioFormModal({
     const body = {
       agencia_id: agenciaId,
       tour_id: Number(tourId),
-      precio: precio ? Number(precio) : null,
-      precio_usd: precioUsd ? Number(precioUsd) : null,
+      costo: precio ? Number(precio) : null,
+      costo_usd: precioUsd ? Number(precioUsd) : null,
     };
     const url = initial ? `/api/agencia-precios/${initial.id}` : "/api/agencia-precios";
     const method = initial ? "PUT" : "POST";
     const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setSubmitting(false);
     if (res.ok) {
-      showToast("success", initial ? "Precio actualizado" : "Precio agregado");
+      showToast("success", initial ? "Costo actualizado" : "Costo agregado");
       onSaved();
       onClose();
     } else {
@@ -159,7 +159,7 @@ function PrecioFormModal({
 
   return (
     <Modal open onClose={onClose} maxW="sm">
-      <h2 className="font-playfair text-primary text-2xl font-semibold mb-4">{initial ? "Editar precio" : "Nuevo precio"}</h2>
+      <h2 className="font-playfair text-primary text-2xl font-semibold mb-4">{initial ? "Editar costo" : "Nuevo costo"}</h2>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
         <label className="block">
           <span className="text-sm font-nunito text-text-espresso-soft">Tour</span>
@@ -169,11 +169,11 @@ function PrecioFormModal({
           </select>
         </label>
         <label className="block">
-          <span className="text-sm font-nunito text-text-espresso-soft">Precio (PEN)</span>
+          <span className="text-sm font-nunito text-text-espresso-soft">Costo (PEN)</span>
           <input type="number" step="0.01" value={precio} onChange={(e) => setPrecio(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" />
         </label>
         <label className="block">
-          <span className="text-sm font-nunito text-text-espresso-soft">Precio (USD)</span>
+          <span className="text-sm font-nunito text-text-espresso-soft">Costo (USD)</span>
           <input type="number" step="0.01" value={precioUsd} onChange={(e) => setPrecioUsd(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" />
         </label>
         <p className="text-xs font-nunito text-text-espresso-soft opacity-70 -mt-2">Basta con cargar una de las dos monedas.</p>
@@ -217,12 +217,12 @@ export function AgenciaDetailClient({
     const esUltimoDelTour = allPrecios.filter((p) => p.tour_id === r.tour_id).length === 1;
     const mensaje =
       esUltimoDeLaAgencia || esUltimoDelTour
-        ? `Este es el único precio activo para ${tourNombre(r.tour_id)}; al eliminarlo, el tour dejará de estar disponible para venta.`
-        : `¿Eliminar el precio de ${tourNombre(r.tour_id)}?`;
+        ? `Este es el único costo activo para ${tourNombre(r.tour_id)}; al eliminarlo, el tour dejará de estar disponible para venta.`
+        : `¿Eliminar el costo de ${tourNombre(r.tour_id)}?`;
     if (!window.confirm(mensaje)) return;
     const res = await fetch(`/api/agencia-precios/${r.id}`, { method: "DELETE" });
     if (res.ok) {
-      showToast("success", "Precio eliminado");
+      showToast("success", "Costo eliminado");
       window.location.reload();
     } else {
       showToast("error", "Error al eliminar");
@@ -231,8 +231,8 @@ export function AgenciaDetailClient({
 
   const precioColumns: Column<AgenciaPrecio>[] = [
     { key: "tour", header: "Tour", render: (r) => tourNombre(r.tour_id) },
-    { key: "precio", header: "Precio (PEN)", render: (r) => (r.precio != null ? `${r.precio}` : "— PEN no cargado") },
-    { key: "precio_usd", header: "Precio (USD)", render: (r) => (r.precio_usd != null ? `${r.precio_usd}` : "— USD no cargado") },
+    { key: "costo", header: "Costo (PEN)", render: (r) => (r.costo != null ? `${r.costo}` : "— PEN no cargado") },
+    { key: "costo_usd", header: "Costo (USD)", render: (r) => (r.costo_usd != null ? `${r.costo_usd}` : "— USD no cargado") },
     { key: "creado_en", header: "Fecha de vínculo", render: (r) => new Date(r.creado_en).toLocaleDateString("es-PE") },
     {
       key: "acciones",
@@ -268,15 +268,15 @@ export function AgenciaDetailClient({
 
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-playfair text-primary text-[20px] font-semibold">Precios por tour</h2>
-          <Button variant="outlined" size="sm" disabled={preciosError} onClick={() => { setEditPrecio(null); setPrecioModalOpen(true); }}>Agregar precio</Button>
+          <h2 className="font-playfair text-primary text-[20px] font-semibold">Costos por tour</h2>
+          <Button variant="outlined" size="sm" disabled={preciosError} onClick={() => { setEditPrecio(null); setPrecioModalOpen(true); }}>Agregar costo</Button>
         </div>
         {preciosError ? (
           <p className="font-nunito text-chili-red border border-chili-red/40 rounded-lg px-4 py-3">
-            No se pudo cargar la lista de precios de esta agencia. Puede haber precios ya cargados que no se están mostrando; recargá la página antes de agregar uno nuevo.
+            No se pudo cargar la lista de costos de esta agencia. Puede haber costos ya cargados que no se están mostrando; recargá la página antes de agregar uno nuevo.
           </p>
         ) : (
-          <DataTable columns={precioColumns} data={precios} emptyState="Sin precios cargados para esta agencia." />
+          <DataTable columns={precioColumns} data={precios} emptyState="Sin costos cargados para esta agencia." />
         )}
       </section>
 

@@ -30,10 +30,10 @@ def _token(role: str = "admin", user_id: int = 1) -> str:
     return jwt.encode(payload, settings.NEXTAUTH_SECRET, algorithm=settings.JWT_ALGORITHM)
 
 
-async def _link(client, agencia_id: int, tour_id: int, precio: float = 100) -> None:
+async def _link(client, agencia_id: int, tour_id: int, costo: float = 100) -> None:
     r = await client.post(
         "/agencia-precios",
-        json={"agencia_id": agencia_id, "tour_id": tour_id, "precio": precio},
+        json={"agencia_id": agencia_id, "tour_id": tour_id, "costo": costo},
         headers={"Authorization": f"Bearer {_token('admin')}"},
     )
     assert r.status_code == 201, r.text

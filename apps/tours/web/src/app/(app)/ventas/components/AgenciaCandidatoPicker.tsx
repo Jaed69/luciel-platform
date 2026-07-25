@@ -41,12 +41,12 @@ export function AgenciaCandidatoPicker({
     <Modal open={open} onClose={onClose} maxW="sm">
       <h2 className="font-playfair text-primary text-xl font-semibold mb-2">Selecciona una agencia</h2>
       <p className="font-nunito text-sm text-text-espresso-soft mb-4">
-        {tourNombre} tiene varias agencias con precios en distinta moneda. Elige con cuál registrar la venta.
+        {tourNombre} tiene varias agencias con costos en distinta moneda. Elige con cuál registrar la venta.
       </p>
 
       {pen.length > 0 && (
         <div className="mb-4">
-          <p className="font-nunito text-xs font-semibold text-text-espresso-soft uppercase mb-1">Precios en soles</p>
+          <p className="font-nunito text-xs font-semibold text-text-espresso-soft uppercase mb-1">Costos en soles</p>
           <ul className="divide-y divide-gold/20">
             {pen.map((c) => (
               <li key={`${c.agencia_id}-PEN`}>
@@ -66,7 +66,7 @@ export function AgenciaCandidatoPicker({
 
       {usd.length > 0 && (
         <div className="mb-4">
-          <p className="font-nunito text-xs font-semibold text-text-espresso-soft uppercase mb-1">Precios en dólares</p>
+          <p className="font-nunito text-xs font-semibold text-text-espresso-soft uppercase mb-1">Costos en dólares</p>
           <ul className="divide-y divide-gold/20">
             {usd.map((c) => (
               <li key={`${c.agencia_id}-USD`}>

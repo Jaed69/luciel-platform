@@ -8,7 +8,7 @@ vi.mock("../src/components/Toast", () => ({ showToast: vi.fn() }));
 
 const AGENCIA = { id: 1, codigo: "AG-CUSCOTOP", nombre: "Cusco Top", activo: true };
 const TOURS = [{ id: 1, nombre: "7 Lagunas" }, { id: 2, nombre: "Motocross" }];
-const PRECIOS = [{ id: 10, agencia_id: 1, tour_id: 1, precio: 150, precio_usd: 42, activo: true, creado_en: "2026-07-01T10:00:00" }];
+const PRECIOS = [{ id: 10, agencia_id: 1, tour_id: 1, costo: 150, costo_usd: 42, activo: true, creado_en: "2026-07-01T10:00:00" }];
 const PAGOS = [{ id: 5, agencia_id: 1, fecha: "2026-07-10", monto: 60, moneda: "PEN", metodo: "deposito", referencia: "DEP-1", nota: null }];
 const SALDO = { agencia_id: 1, PEN: 90, USD: 0 };
 
@@ -23,7 +23,7 @@ describe("AgenciaDetailClient", () => {
     expect(screen.getByText(/90/)).toBeTruthy();
   });
 
-  it("renders price list with tour nombre + precio", () => {
+  it("renders cost list with tour nombre + costo", () => {
     render(<AgenciaDetailClient agencia={AGENCIA} tours={TOURS} precios={PRECIOS} allPrecios={PRECIOS} pagos={PAGOS} saldo={SALDO} />);
     expect(screen.getByText("7 Lagunas")).toBeTruthy();
     expect(screen.getByText("150")).toBeTruthy();
@@ -34,11 +34,11 @@ describe("AgenciaDetailClient", () => {
     expect(screen.getByText("DEP-1")).toBeTruthy();
   });
 
-  it("shows a load error instead of the empty state when the price list failed", () => {
+  it("shows a load error instead of the empty state when the cost list failed", () => {
     render(<AgenciaDetailClient agencia={AGENCIA} tours={TOURS} precios={[]} allPrecios={[]} preciosError pagos={PAGOS} saldo={SALDO} />);
-    expect(screen.queryByText(/sin precios cargados/i)).toBeNull();
-    expect(screen.getByText(/no se pudo cargar la lista de precios/i)).toBeTruthy();
-    expect((screen.getByRole("button", { name: /agregar precio/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByText(/sin costos cargados/i)).toBeNull();
+    expect(screen.getByText(/no se pudo cargar la lista de costos/i)).toBeTruthy();
+    expect((screen.getByRole("button", { name: /agregar costo/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("opens 'Registrar pago' modal and submits with correct payload", async () => {

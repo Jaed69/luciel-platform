@@ -92,14 +92,14 @@ async def test_ensure_schema_heals_stale_prod_db(async_engine):
         indexes = [row[1] for row in (await conn.execute(text("PRAGMA index_list(usuarios)"))).all()]
         assert "uq_usuarios_username" in indexes
 
-        precio_info = next(
-            row for row in (await conn.execute(text("PRAGMA table_info(agencia_tour_precios)"))).all() if row[1] == "precio"
-        )
-        assert precio_info[3] == 0, "precio should be nullable after heal"  # notnull flag
+        atp_cols_full = (await conn.execute(text("PRAGMA table_info(agencia_tour_precios)"))).all()
+        assert not any(row[1] == "precio" for row in atp_cols_full), "precio should be renamed to costo after heal"
+        costo_info = next(row for row in atp_cols_full if row[1] == "costo")
+        assert costo_info[3] == 0, "costo should be nullable after heal"  # notnull flag
         old_row = (await conn.execute(
-            text("SELECT precio FROM agencia_tour_precios WHERE agencia_id = 1 AND tour_id = 1")
+            text("SELECT costo FROM agencia_tour_precios WHERE agencia_id = 1 AND tour_id = 1")
         )).first()
-        assert old_row is not None and float(old_row[0]) == 120.0  # data preserved through table rebuild
+        assert old_row is not None and float(old_row[0]) == 120.0  # data preserved through table rebuild + rename
 
         atp_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(agencia_tour_precios)"))).all()]
         assert "creado_en" in atp_cols

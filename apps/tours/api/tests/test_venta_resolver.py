@@ -39,7 +39,7 @@ async def _seed_base(session):
 
 async def test_resolve_agencia_para_tour_single_active_price(async_session):
     ag1, ag2, tour_a, *_ = await _seed_base(async_session)
-    precio = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100)
+    precio = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100)
     async_session.add(precio)
     await async_session.flush()
 
@@ -58,7 +58,7 @@ async def test_resolve_agencia_para_tour_no_active_price_returns_none(async_sess
 
 async def test_resolve_agencia_para_tour_ignores_inactive_price(async_session):
     ag1, _, tour_a, *_ = await _seed_base(async_session)
-    precio = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100, activo=False)
+    precio = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100, activo=False)
     async_session.add(precio)
     await async_session.flush()
     resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
@@ -68,25 +68,25 @@ async def test_resolve_agencia_para_tour_ignores_inactive_price(async_session):
 
 async def test_resolve_agencia_para_tour_two_prices_picks_lowest_in_default_currency(async_session):
     ag1, ag2, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
-    cara = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=150)
-    barata = AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, precio=90)
+    cara = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=150)
+    barata = AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, costo=90)
     async_session.add_all([cara, barata])
     await async_session.flush()
 
     resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
     assert resolved.agencia_id == ag2.id
-    assert float(resolved.precio) == 90
+    assert float(resolved.costo) == 90
     assert grouped is None
 
 
 async def test_resolve_agencia_para_tour_tie_breaks_by_most_recent_creado_en(async_session):
     ag1, ag2, tour_a, *_ = await _seed_base(async_session)
     older = AgenciaTourPrecio(
-        agencia_id=ag1.id, tour_id=tour_a.id, precio=100,
+        agencia_id=ag1.id, tour_id=tour_a.id, costo=100,
         creado_en=datetime(2026, 1, 1),
     )
     newer = AgenciaTourPrecio(
-        agencia_id=ag2.id, tour_id=tour_a.id, precio=100,
+        agencia_id=ag2.id, tour_id=tour_a.id, costo=100,
         creado_en=datetime(2026, 6, 1),
     )
     async_session.add_all([older, newer])
@@ -99,8 +99,8 @@ async def test_resolve_agencia_para_tour_tie_breaks_by_most_recent_creado_en(asy
 
 async def test_resolve_agencia_para_tour_mixed_currency_requires_manual_selection(async_session):
     ag1, ag2, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
-    pen_row = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100)
-    usd_row = AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, precio_usd=30)
+    pen_row = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100)
+    usd_row = AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, costo_usd=30)
     async_session.add_all([pen_row, usd_row])
     await async_session.flush()
 
@@ -114,8 +114,8 @@ async def test_resolve_agencia_para_tour_mixed_currency_requires_manual_selectio
 
 async def test_resolve_agencia_para_tour_dual_currency_row_grouped_by_tour_moneda_default(async_session):
     ag1, ag2, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
-    dual = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100, precio_usd=30)
-    usd_only = AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, precio_usd=25)
+    dual = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100, costo_usd=30)
+    usd_only = AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, costo_usd=25)
     async_session.add_all([dual, usd_only])
     await async_session.flush()
 
@@ -130,7 +130,7 @@ async def test_resolve_agencia_para_tour_dual_currency_row_grouped_by_tour_moned
 
 async def test_resolve_agencia_para_tour_dual_currency_row_alone_auto_selects(async_session):
     ag1, _, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
-    dual = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100, precio_usd=30)
+    dual = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100, costo_usd=30)
     async_session.add(dual)
     await async_session.flush()
 
@@ -141,7 +141,7 @@ async def test_resolve_agencia_para_tour_dual_currency_row_alone_auto_selects(as
 
 async def test_active_agencia_tour_ids(async_session):
     ag1, ag2, tour_a, tour_b, *_ = await _seed_base(async_session)
-    async_session.add(AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100))
+    async_session.add(AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100))
     await async_session.flush()
 
     agencia_ids, tour_ids = await active_agencia_tour_ids(async_session)
@@ -194,8 +194,8 @@ async def test_recent_tour_ids_for_vendedor_top5_last_30_days(async_session):
 async def test_tour_search_q_filters_case_insensitive(async_session):
     ag1, _, tour_a, tour_b, *_ = await _seed_base(async_session)
     async_session.add_all([
-        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100),
-        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_b.id, precio=100),
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100),
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_b.id, costo=100),
     ])
     await async_session.flush()
 
@@ -208,7 +208,7 @@ async def test_tour_search_q_filters_case_insensitive(async_session):
 
 async def test_tour_search_excludes_tours_without_active_price(async_session):
     ag1, _, tour_a, tour_b, tour_c, *_ = await _seed_base(async_session)
-    async_session.add(AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100))
+    async_session.add(AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100))
     await async_session.flush()
 
     resultados = await tour_search(async_session, q=None, vendedor_id=None)
@@ -224,8 +224,8 @@ async def test_tour_search_precio_venta_independent_of_agencia_costo(async_sessi
     ag1, _, tour_a, tour_b, *_ = await _seed_base(async_session)
     tour_a.precio_default = 250
     async_session.add_all([
-        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100),
-        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_b.id, precio=100),
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100),
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_b.id, costo=100),
     ])
     await async_session.flush()
 
@@ -246,8 +246,8 @@ async def test_tour_search_precio_venta_independent_of_agencia_costo(async_sessi
 async def test_tour_search_mixed_currency_requires_manual_selection(async_session):
     ag1, ag2, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
     async_session.add_all([
-        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100),
-        AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, precio_usd=30),
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100),
+        AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, costo_usd=30),
     ])
     await async_session.flush()
 
@@ -270,8 +270,8 @@ async def test_tour_search_orders_recientes_first_then_alfabetico(async_session)
     vend = (await async_session.execute(select(Vendedores))).scalars().first()
     forma = (await async_session.execute(select(FormasPago))).scalars().first()
     async_session.add_all([
-        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100),
-        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_b.id, precio=100),
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, costo=100),
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_b.id, costo=100),
     ])
     asiento = await _make_asiento(async_session)
     # tour_b is "reciente" for vendedor 1, tour_a is not -> tour_b sorts first

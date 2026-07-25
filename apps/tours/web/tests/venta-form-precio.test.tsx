@@ -18,7 +18,7 @@ const CATALOGOS: Record<string, any> = {
 };
 
 const DEFAULT_AGENCIA_PRECIOS = [
-  { id: 1, agencia_id: 1, tour_id: 1, precio: 150, precio_usd: 42, activo: true },
+  { id: 1, agencia_id: 1, tour_id: 1, costo: 150, costo_usd: 42, activo: true },
 ];
 
 // costo (150) and precio_venta (220) are deliberately different values so
@@ -52,8 +52,8 @@ const MIXED_CURRENCY_RESULT = [
 ];
 
 const MULTI_AGENCIA_PRECIOS = [
-  { id: 1, agencia_id: 1, tour_id: 2, precio: 100, precio_usd: 28, activo: true },
-  { id: 2, agencia_id: 2, tour_id: 2, precio: 90, precio_usd: 25, activo: true },
+  { id: 1, agencia_id: 1, tour_id: 2, costo: 100, costo_usd: 28, activo: true },
+  { id: 2, agencia_id: 2, tour_id: 2, costo: 90, costo_usd: 25, activo: true },
 ];
 
 function mockFetch(overrides: Record<string, any> = {}, tourSearchResult: any[] = SINGLE_AGENCIA_RESULT) {
@@ -173,8 +173,8 @@ describe("VentaFormModal — TourAgenciaSearch manual agencia selection (mixed c
 
     // Picker opens, grouped by moneda, instead of committing the unresolved row.
     expect(await screen.findByText(/selecciona una agencia/i)).toBeTruthy();
-    expect(screen.getByText("Precios en soles")).toBeTruthy();
-    expect(screen.getByText("Precios en dólares")).toBeTruthy();
+    expect(screen.getByText("Costos en soles")).toBeTruthy();
+    expect(screen.getByText("Costos en dólares")).toBeTruthy();
     expect(screen.getByText("Cusco Top")).toBeTruthy();
     expect(screen.getByText("Andes Travel")).toBeTruthy();
 
