@@ -111,7 +111,12 @@ class AgenciaTourPrecio(Base, Auditable):
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     # D-33 — used to tie-break "which agencia should the venta modal default
     # to" when a tour has 2+ active price agreements (most recent wins).
-    creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    # `default` (not only `server_default`): on deployed DBs this column was
+    # added by schema_sync's ALTER TABLE, which SQLite cannot give a
+    # CURRENT_TIMESTAMP default, so the INSERT itself must carry the value.
+    creado_en: Mapped[datetime] = mapped_column(
+        DateTime, default=func.now(), server_default=func.now(), nullable=False
+    )
 
 
 class AgenciaPagos(Base, Auditable):
@@ -188,8 +193,11 @@ class ToursServicios(Base, Auditable):
     liquidacion_id: Mapped[int | None] = mapped_column(ForeignKey("liquidaciones.id"), nullable=True)
     metadata_: Mapped[str | None] = mapped_column("metadata", Text, nullable=True)  # JSON serialized
     # D-33 — needed for the DELETE /ventas/{id} undo window (only allowed
-    # within 10s of creation).
-    creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    # within 10s of creation). Same ALTER-added-column caveat as
+    # AgenciaTourPrecio.creado_en: the INSERT must carry the value itself.
+    creado_en: Mapped[datetime] = mapped_column(
+        DateTime, default=func.now(), server_default=func.now(), nullable=False
+    )
 
 
 class Solicitudes(Base, Auditable):

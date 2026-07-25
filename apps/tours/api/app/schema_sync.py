@@ -83,9 +83,13 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
             # SQLite rejects ALTER TABLE ... ADD COLUMN with a non-constant
             # default (CURRENT_TIMESTAMP) — add nullable, then backfill.
             await conn.execute(text("ALTER TABLE agencia_tour_precios ADD COLUMN creado_en DATETIME"))
-            await conn.execute(text(
-                "UPDATE agencia_tour_precios SET creado_en = CURRENT_TIMESTAMP WHERE creado_en IS NULL"
-            ))
+        # Backfill runs on every boot, not only right after the ALTER: because
+        # the added column has no DB-level default, rows inserted before the
+        # model carried a Python-side default landed with creado_en NULL, and
+        # every read of those rows fails response validation.
+        await conn.execute(text(
+            "UPDATE agencia_tour_precios SET creado_en = CURRENT_TIMESTAMP WHERE creado_en IS NULL"
+        ))
 
         # 6. tours_servicios.creado_en (D-33) — needed for the DELETE
         # /ventas/{id} undo window (only allowed within 10s of creation).
@@ -93,9 +97,10 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
         if "creado_en" not in ts_cols:
             logger.info("schema_sync: adding tours_servicios.creado_en")
             await conn.execute(text("ALTER TABLE tours_servicios ADD COLUMN creado_en DATETIME"))
-            await conn.execute(text(
-                "UPDATE tours_servicios SET creado_en = CURRENT_TIMESTAMP WHERE creado_en IS NULL"
-            ))
+        # Same every-boot backfill rationale as agencia_tour_precios above.
+        await conn.execute(text(
+            "UPDATE tours_servicios SET creado_en = CURRENT_TIMESTAMP WHERE creado_en IS NULL"
+        ))
 
 
 async def ensure_reference_data(engine: AsyncEngine) -> None:

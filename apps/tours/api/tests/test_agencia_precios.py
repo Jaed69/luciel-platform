@@ -108,3 +108,40 @@ async def test_delete_agencia_precio(client):
     precio_id = created.json()["id"]
     r = await client.delete(f"/agencia-precios/{precio_id}", headers={"Authorization": f"Bearer {_token('admin')}"})
     assert r.status_code == 200
+
+
+async def test_post_agencia_precio_sin_default_en_columna_creado_en(client, async_engine):
+    """Prod-shaped schema regression: `creado_en` was added to an existing table
+    via `ALTER TABLE ... ADD COLUMN creado_en DATETIME` (schema_sync step 5), so
+    unlike a create_all table it carries no DEFAULT CURRENT_TIMESTAMP. The INSERT
+    must still write a timestamp, otherwise the row lands with creado_en NULL and
+    every later read of it fails response validation.
+    """
+    from sqlalchemy import text
+
+    async with async_engine.begin() as conn:
+        await conn.execute(text(
+            "CREATE TABLE atp_new ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "agencia_id INTEGER NOT NULL REFERENCES agencias(id), "
+            "tour_id INTEGER NOT NULL REFERENCES tours_catalogo(id), "
+            "precio NUMERIC(12, 2), "
+            "precio_usd NUMERIC(12, 2), "
+            "activo BOOLEAN NOT NULL DEFAULT 1, "
+            "creado_en DATETIME, "
+            "UNIQUE (agencia_id, tour_id))"
+        ))
+        await conn.execute(text("DROP TABLE agencia_tour_precios"))
+        await conn.execute(text("ALTER TABLE atp_new RENAME TO agencia_tour_precios"))
+
+    created = await client.post(
+        "/agencia-precios",
+        json={"agencia_id": 1, "tour_id": 1, "precio": 100},
+        headers={"Authorization": f"Bearer {_token('admin')}"},
+    )
+    assert created.status_code == 201, created.text
+    assert created.json()["creado_en"] is not None
+
+    listed = await client.get("/agencia-precios", headers={"Authorization": f"Bearer {_token('admin')}"})
+    assert listed.status_code == 200, listed.text
+    assert len(listed.json()) == 1

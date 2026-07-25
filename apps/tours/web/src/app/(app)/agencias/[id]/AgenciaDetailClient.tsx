@@ -194,6 +194,7 @@ export function AgenciaDetailClient({
   tours,
   precios,
   allPrecios,
+  preciosError = false,
   pagos,
   saldo,
 }: {
@@ -201,6 +202,7 @@ export function AgenciaDetailClient({
   tours: Tour[];
   precios: AgenciaPrecio[];
   allPrecios: AgenciaPrecio[];
+  preciosError?: boolean;
   pagos: AgenciaPago[];
   saldo: Saldo;
 }) {
@@ -267,9 +269,15 @@ export function AgenciaDetailClient({
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-playfair text-primary text-[20px] font-semibold">Precios por tour</h2>
-          <Button variant="outlined" size="sm" onClick={() => { setEditPrecio(null); setPrecioModalOpen(true); }}>Agregar precio</Button>
+          <Button variant="outlined" size="sm" disabled={preciosError} onClick={() => { setEditPrecio(null); setPrecioModalOpen(true); }}>Agregar precio</Button>
         </div>
-        <DataTable columns={precioColumns} data={precios} emptyState="Sin precios cargados para esta agencia." />
+        {preciosError ? (
+          <p className="font-nunito text-chili-red border border-chili-red/40 rounded-lg px-4 py-3">
+            No se pudo cargar la lista de precios de esta agencia. Puede haber precios ya cargados que no se están mostrando; recargá la página antes de agregar uno nuevo.
+          </p>
+        ) : (
+          <DataTable columns={precioColumns} data={precios} emptyState="Sin precios cargados para esta agencia." />
+        )}
       </section>
 
       <section>

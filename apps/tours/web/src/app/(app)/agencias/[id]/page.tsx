@@ -22,7 +22,10 @@ export default async function AgenciaDetailPage({ params }: { params: Promise<{ 
   const [agencias, tours, precios, pagos, saldo] = await Promise.all([
     apiFetchJson<Agencia[]>("/agencias").catch(() => []),
     apiFetchJson<Tour[]>("/tours").catch(() => []),
-    apiFetchJson<AgenciaPrecio[]>("/agencia-precios").catch(() => []),
+    // null (not []) on failure: an errored price list must not be rendered as
+    // "this agencia has no prices" — that reads as a data state and hides the
+    // reason "Agregar precio" then answers 409 for a tour that is already priced.
+    apiFetchJson<AgenciaPrecio[]>("/agencia-precios").catch(() => null),
     apiFetchJson<AgenciaPago[]>(`/agencia-pagos?agencia_id=${agenciaId}`).catch(() => []),
     apiFetchJson<Saldo>(`/agencias/${agenciaId}/saldo`).catch(() => ({ agencia_id: agenciaId, PEN: 0, USD: 0 })),
   ]);
@@ -30,14 +33,15 @@ export default async function AgenciaDetailPage({ params }: { params: Promise<{ 
   const agencia = agencias.find((a) => a.id === agenciaId);
   if (!agencia) redirect("/agencias");
 
-  const preciosAgencia = precios.filter((p) => p.agencia_id === agenciaId);
+  const preciosAgencia = (precios ?? []).filter((p) => p.agencia_id === agenciaId);
 
   return (
     <AgenciaDetailClient
       agencia={agencia}
       tours={tours}
       precios={preciosAgencia}
-      allPrecios={precios}
+      allPrecios={precios ?? []}
+      preciosError={precios === null}
       pagos={pagos}
       saldo={saldo}
     />
