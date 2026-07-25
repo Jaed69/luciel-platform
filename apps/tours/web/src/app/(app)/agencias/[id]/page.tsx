@@ -6,7 +6,7 @@ import { AgenciaDetailClient } from "./AgenciaDetailClient";
 
 type Agencia = { id: number; codigo?: string; nombre: string; activo: boolean };
 type Tour = { id: number; nombre: string };
-type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; precio: number; precio_usd: number | null; activo: boolean };
+type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; precio: number; precio_usd: number | null; activo: boolean; creado_en: string };
 type AgenciaPago = { id: number; agencia_id: number; fecha: string; monto: number; moneda: string; metodo: string; referencia: string | null; nota: string | null };
 type Saldo = { agencia_id: number; PEN: number; USD: number };
 
@@ -32,5 +32,14 @@ export default async function AgenciaDetailPage({ params }: { params: Promise<{ 
 
   const preciosAgencia = precios.filter((p) => p.agencia_id === agenciaId);
 
-  return <AgenciaDetailClient agencia={agencia} tours={tours} precios={preciosAgencia} pagos={pagos} saldo={saldo} />;
+  return (
+    <AgenciaDetailClient
+      agencia={agencia}
+      tours={tours}
+      precios={preciosAgencia}
+      allPrecios={precios}
+      pagos={pagos}
+      saldo={saldo}
+    />
+  );
 }

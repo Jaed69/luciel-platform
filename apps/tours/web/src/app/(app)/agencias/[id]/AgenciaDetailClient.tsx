@@ -10,7 +10,7 @@ import { showToast } from "@/components/Toast";
 
 type Agencia = { id: number; codigo?: string; nombre: string; activo: boolean };
 type Tour = { id: number; nombre: string };
-type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; precio: number | null; precio_usd: number | null; activo: boolean };
+type AgenciaPrecio = { id: number; agencia_id: number; tour_id: number; precio: number | null; precio_usd: number | null; activo: boolean; creado_en: string };
 type AgenciaPago = { id: number; agencia_id: number; fecha: string; monto: number; moneda: string; metodo: string; referencia: string | null; nota: string | null };
 type Saldo = { agencia_id: number; PEN: number; USD: number };
 
@@ -179,12 +179,14 @@ export function AgenciaDetailClient({
   agencia,
   tours,
   precios,
+  allPrecios,
   pagos,
   saldo,
 }: {
   agencia: Agencia;
   tours: Tour[];
   precios: AgenciaPrecio[];
+  allPrecios: AgenciaPrecio[];
   pagos: AgenciaPago[];
   saldo: Saldo;
 }) {
@@ -195,7 +197,13 @@ export function AgenciaDetailClient({
   const tourNombre = (id: number) => tours.find((t) => t.id === id)?.nombre ?? `T-${id}`;
 
   async function handleDeletePrecio(r: AgenciaPrecio) {
-    if (!window.confirm(`¿Eliminar el precio de ${tourNombre(r.tour_id)}?`)) return;
+    const esUltimoDeLaAgencia = precios.length === 1;
+    const esUltimoDelTour = allPrecios.filter((p) => p.tour_id === r.tour_id).length === 1;
+    const mensaje =
+      esUltimoDeLaAgencia || esUltimoDelTour
+        ? `Este es el único precio activo para ${tourNombre(r.tour_id)}; al eliminarlo, el tour dejará de estar disponible para venta.`
+        : `¿Eliminar el precio de ${tourNombre(r.tour_id)}?`;
+    if (!window.confirm(mensaje)) return;
     const res = await fetch(`/api/agencia-precios/${r.id}`, { method: "DELETE" });
     if (res.ok) {
       showToast("success", "Precio eliminado");
@@ -207,8 +215,9 @@ export function AgenciaDetailClient({
 
   const precioColumns: Column<AgenciaPrecio>[] = [
     { key: "tour", header: "Tour", render: (r) => tourNombre(r.tour_id) },
-    { key: "precio", header: "Precio (PEN)", render: (r) => (r.precio != null ? `${r.precio}` : "—") },
-    { key: "precio_usd", header: "Precio (USD)", render: (r) => (r.precio_usd != null ? `${r.precio_usd}` : "—") },
+    { key: "precio", header: "Precio (PEN)", render: (r) => (r.precio != null ? `${r.precio}` : "— PEN no cargado") },
+    { key: "precio_usd", header: "Precio (USD)", render: (r) => (r.precio_usd != null ? `${r.precio_usd}` : "— USD no cargado") },
+    { key: "creado_en", header: "Fecha de vínculo", render: (r) => new Date(r.creado_en).toLocaleDateString("es-PE") },
     {
       key: "acciones",
       header: "Acciones",
