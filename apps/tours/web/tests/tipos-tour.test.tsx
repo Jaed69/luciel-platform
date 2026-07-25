@@ -55,6 +55,7 @@ describe("TiposTourTab", () => {
     fireEvent.change(screen.getByLabelText("Código"), { target: { value: "T-NEW" } });
     fireEvent.change(screen.getByLabelText("Nombre"), { target: { value: "Nuevo Tour" } });
     fireEvent.change(screen.getByLabelText("Tiempo"), { target: { value: "2 horas" } });
+    fireEvent.change(screen.getByLabelText("Precio (PEN)"), { target: { value: "100" } });
     fireEvent.click(screen.getByRole("button", { name: /guardar/i }));
 
     await waitFor(() => {

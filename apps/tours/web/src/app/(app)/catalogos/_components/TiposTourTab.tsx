@@ -19,6 +19,7 @@ export type TipoTourRow = {
   precio_default_usd: number | null;
   moneda_default: string;
   activo: boolean;
+  estado: string;
 };
 
 function SubNavTabs({ tabs, entidad }: { tabs: string[]; entidad: string }) {
@@ -54,7 +55,9 @@ function TipoTourFormModal({
   const [tiempo, setTiempo] = useState("");
   const [precioDefault, setPrecioDefault] = useState("");
   const [precioDefaultUsd, setPrecioDefaultUsd] = useState("");
+  const [monedaDefault, setMonedaDefault] = useState("PEN");
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -64,12 +67,23 @@ function TipoTourFormModal({
       setTiempo(initial?.tiempo ?? "");
       setPrecioDefault(initial?.precio_default != null ? String(initial.precio_default) : "");
       setPrecioDefaultUsd(initial?.precio_default_usd != null ? String(initial.precio_default_usd) : "");
+      setMonedaDefault(initial?.moneda_default ?? "PEN");
+      setFormError(null);
     }
   }, [open, initial]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
+    setFormError(null);
+    if (monedaDefault === "PEN" && !precioDefault) {
+      setFormError("Ingresa el precio en PEN (moneda por defecto seleccionada)");
+      return;
+    }
+    if (monedaDefault === "USD" && !precioDefaultUsd) {
+      setFormError("Ingresa el precio en USD (moneda por defecto seleccionada)");
+      return;
+    }
     setSubmitting(true);
     const body = {
       codigo,
@@ -78,7 +92,7 @@ function TipoTourFormModal({
       tiempo: tiempo || null,
       precio_default: precioDefault ? Number(precioDefault) : null,
       precio_default_usd: precioDefaultUsd ? Number(precioDefaultUsd) : null,
-      moneda_default: "PEN",
+      moneda_default: monedaDefault,
     };
     const url = initial ? `/api/tours/${initial.id}` : "/api/tours";
     const method = initial ? "PUT" : "POST";
@@ -93,7 +107,14 @@ function TipoTourFormModal({
       onSaved();
       onClose();
     } else {
-      showToast("error", "Error al guardar");
+      try {
+        const err = await res.json();
+        const detail = err.detail;
+        const msg = typeof detail === "string" ? detail : (detail?.mensaje ?? "Error al guardar");
+        showToast("error", msg);
+      } catch {
+        showToast("error", "Error al guardar");
+      }
     }
   }
 
@@ -127,6 +148,14 @@ function TipoTourFormModal({
           <span className="text-sm font-nunito text-text-espresso-soft">Precio (USD)</span>
           <input type="number" step="0.01" value={precioDefaultUsd} onChange={(e) => setPrecioDefaultUsd(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" />
         </label>
+        <label className="block">
+          <span className="text-sm font-nunito text-text-espresso-soft">Moneda por defecto</span>
+          <select value={monedaDefault} onChange={(e) => setMonedaDefault(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas">
+            <option value="PEN">PEN</option>
+            <option value="USD">USD</option>
+          </select>
+        </label>
+        {formError && <p className="text-sm font-nunito text-chili-red">{formError}</p>}
         <div className="flex gap-3 justify-end mt-2">
           <Button variant="outlined" type="button" onClick={onClose}>Cancelar</Button>
           <Button variant="primary" type="submit" disabled={submitting}>
@@ -169,6 +198,7 @@ export function TiposTourTab({ tours, tabs }: { tours: TipoTourRow[]; tabs: stri
   }
 
   async function handleRestore(row: TipoTourRow) {
+    if (!window.confirm(`¿Restaurar ${row.nombre}?`)) return;
     const res = await fetch(`/api/tours/${row.id}/restore`, { method: "POST" });
     if (res.ok) {
       window.location.reload();
@@ -183,6 +213,22 @@ export function TiposTourTab({ tours, tabs }: { tours: TipoTourRow[]; tabs: stri
     { key: "precio_pen", header: "Precio (PEN)", render: (r) => (r.precio_default != null ? `S/ ${r.precio_default}` : "—") },
     { key: "precio_usd", header: "Precio (USD)", render: (r) => (r.precio_default_usd != null ? `$ ${r.precio_default_usd}` : "—") },
     { key: "estado", header: "Estado", render: (r) => (r.activo ? "Activo" : <span className="opacity-60">Inactivo</span>) },
+    {
+      key: "estado_operativo",
+      header: "Disponibilidad",
+      render: (r) =>
+        r.estado === "disponible_para_venta" ? (
+          <span className="inline-block rounded-full px-3 py-1 text-[13px] font-semibold border bg-green-100 text-green-700 border-green-700/40">
+            Disponible para venta
+          </span>
+        ) : r.estado === "sin_agencia_vinculada" ? (
+          <span className="inline-block rounded-full px-3 py-1 text-[13px] font-semibold border bg-amber-warning/20 text-amber-warning border-amber-warning">
+            Sin agencia vinculada
+          </span>
+        ) : (
+          <span className="opacity-60">—</span>
+        ),
+    },
     {
       key: "acciones",
       header: "Acciones",
