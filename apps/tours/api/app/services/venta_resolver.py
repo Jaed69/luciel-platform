@@ -33,14 +33,20 @@ async def active_agencia_tour_ids(session: AsyncSession) -> tuple[set[int], set[
     return agencia_ids, tour_ids
 
 
-async def resolve_agencia_para_tour(session: AsyncSession, tour: ToursCatalogo) -> AgenciaTourPrecio | None:
+async def resolve_agencia_para_tour(
+    session: AsyncSession, tour: ToursCatalogo
+) -> tuple[AgenciaTourPrecio | None, dict[str, list[AgenciaTourPrecio]] | None]:
     """Pick the AgenciaTourPrecio a venta for this tour should default to.
 
-    - No active price → None (tour is not disponible_para_venta).
-    - Exactly 1 active price → that one.
-    - 2+ → lowest price in the tour's moneda_default (whichever of
-      precio/precio_usd matches that currency), ties broken by the most
-      recently created price row (creado_en desc).
+    Returns (resolved, grouped):
+    - No active price → (None, None) — tour is not disponible_para_venta.
+    - All candidates quote in a single currency → (resolved, None): lowest
+      price wins, ties broken by the most recently created price row
+      (creado_en desc). Auto-select with 1 candidate, preselect with 2+.
+    - Candidates span 2+ currencies → (None, grouped): no auto/preselect,
+      caller must let the vendedor pick manually. A row carrying both precio
+      and precio_usd is grouped by the tour's own moneda_default only (not
+      both groups).
     """
     rows = list((await session.execute(
         select(AgenciaTourPrecio).where(
@@ -49,29 +55,33 @@ async def resolve_agencia_para_tour(session: AsyncSession, tour: ToursCatalogo) 
         )
     )).scalars().all())
     if not rows:
-        return None
-    if len(rows) == 1:
-        return rows[0]
+        return None, None
 
-    moneda = tour.moneda_default.value if hasattr(tour.moneda_default, "value") else str(tour.moneda_default)
-    campo = "precio" if moneda == "PEN" else "precio_usd"
-    candidatos = [r for r in rows if getattr(r, campo) is not None]
-    if not candidatos:
-        # None of the active prices carry the tour's default currency — fall
-        # back to comparing whatever price each row does have, so we still
-        # resolve deterministically instead of picking arbitrarily.
-        candidatos = rows
+    moneda_default = tour.moneda_default.value if hasattr(tour.moneda_default, "value") else str(tour.moneda_default)
 
-        def _key(r: AgenciaTourPrecio):
-            precio = r.precio if r.precio is not None else r.precio_usd
-            precio = float(precio) if precio is not None else float("inf")
-            return (precio, -r.creado_en.timestamp())
-    else:
-        def _key(r: AgenciaTourPrecio):
-            return (float(getattr(r, campo)), -r.creado_en.timestamp())
+    grouped: dict[str, list[AgenciaTourPrecio]] = {}
+    for r in rows:
+        if r.precio is not None and r.precio_usd is not None:
+            # Dual-currency row — resolved by the tour's own moneda_default,
+            # counts only in that one group.
+            moneda = moneda_default
+        elif r.precio is not None:
+            moneda = "PEN"
+        else:
+            moneda = "USD"
+        grouped.setdefault(moneda, []).append(r)
 
-    candidatos.sort(key=_key)
-    return candidatos[0]
+    if len(grouped) > 1:
+        return None, grouped
+
+    candidatos = rows
+    campo = "precio" if next(iter(grouped)) == "PEN" else "precio_usd"
+
+    def _key(r: AgenciaTourPrecio):
+        return (float(getattr(r, campo)), -r.creado_en.timestamp())
+
+    candidatos = sorted(candidatos, key=_key)
+    return candidatos[0], None
 
 
 async def recent_tour_ids_for_vendedor(
@@ -117,20 +127,57 @@ async def tour_search(session: AsyncSession, q: str | None, vendedor_id: int | N
 
     resultados: list[dict] = []
     for tour in tours:
-        precio_row = await resolve_agencia_para_tour(session, tour)
-        if precio_row is None:
-            continue  # shouldn't happen given active_tour_ids, but stay defensive
-        agencia = (await session.execute(
-            select(Agencias).where(Agencias.id == precio_row.agencia_id)
-        )).scalar_one_or_none()
+        precio_row, grouped = await resolve_agencia_para_tour(session, tour)
+        if precio_row is None and grouped is None:
+            continue  # no agencia at all — shouldn't happen given active_tour_ids, but stay defensive
+
+        if precio_row is not None:
+            agencia = (await session.execute(
+                select(Agencias).where(Agencias.id == precio_row.agencia_id)
+            )).scalar_one_or_none()
+            resultados.append({
+                "tour_id": tour.id,
+                "nombre": tour.nombre,
+                "agencia_id": precio_row.agencia_id,
+                "agencia_nombre": agencia.nombre if agencia is not None else None,
+                "precio": float(precio_row.precio) if precio_row.precio is not None else None,
+                "precio_usd": float(precio_row.precio_usd) if precio_row.precio_usd is not None else None,
+                "es_reciente": tour.id in recientes,
+                "requires_manual_selection": False,
+                "candidatos": None,
+            })
+            continue
+
+        # Mixed-currency case — surface every candidate, let the vendedor pick.
+        candidatos_rows = [r for rows in grouped.values() for r in rows]
+        agencia_ids = {r.agencia_id for r in candidatos_rows}
+        agencias_by_id = {
+            a.id: a.nombre
+            for a in (await session.execute(
+                select(Agencias).where(Agencias.id.in_(agencia_ids))
+            )).scalars().all()
+        }
+        candidatos = [
+            {
+                "agencia_id": r.agencia_id,
+                "agencia_nombre": agencias_by_id.get(r.agencia_id),
+                "precio": float(r.precio) if r.precio is not None else None,
+                "precio_usd": float(r.precio_usd) if r.precio_usd is not None else None,
+                "moneda": moneda,
+            }
+            for moneda, rows in grouped.items()
+            for r in rows
+        ]
         resultados.append({
             "tour_id": tour.id,
             "nombre": tour.nombre,
-            "agencia_id": precio_row.agencia_id,
-            "agencia_nombre": agencia.nombre if agencia is not None else None,
-            "precio": float(precio_row.precio) if precio_row.precio is not None else None,
-            "precio_usd": float(precio_row.precio_usd) if precio_row.precio_usd is not None else None,
+            "agencia_id": None,
+            "agencia_nombre": None,
+            "precio": None,
+            "precio_usd": None,
             "es_reciente": tour.id in recientes,
+            "requires_manual_selection": True,
+            "candidatos": candidatos,
         })
 
     resultados.sort(key=lambda r: (not r["es_reciente"], r["nombre"].lower()))

@@ -43,15 +43,17 @@ async def test_resolve_agencia_para_tour_single_active_price(async_session):
     async_session.add(precio)
     await async_session.flush()
 
-    resolved = await resolve_agencia_para_tour(async_session, tour_a)
+    resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
     assert resolved is not None
     assert resolved.agencia_id == ag1.id
+    assert grouped is None
 
 
 async def test_resolve_agencia_para_tour_no_active_price_returns_none(async_session):
     _, _, tour_a, *_ = await _seed_base(async_session)
-    resolved = await resolve_agencia_para_tour(async_session, tour_a)
+    resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
     assert resolved is None
+    assert grouped is None
 
 
 async def test_resolve_agencia_para_tour_ignores_inactive_price(async_session):
@@ -59,8 +61,9 @@ async def test_resolve_agencia_para_tour_ignores_inactive_price(async_session):
     precio = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100, activo=False)
     async_session.add(precio)
     await async_session.flush()
-    resolved = await resolve_agencia_para_tour(async_session, tour_a)
+    resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
     assert resolved is None
+    assert grouped is None
 
 
 async def test_resolve_agencia_para_tour_two_prices_picks_lowest_in_default_currency(async_session):
@@ -70,9 +73,10 @@ async def test_resolve_agencia_para_tour_two_prices_picks_lowest_in_default_curr
     async_session.add_all([cara, barata])
     await async_session.flush()
 
-    resolved = await resolve_agencia_para_tour(async_session, tour_a)
+    resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
     assert resolved.agencia_id == ag2.id
     assert float(resolved.precio) == 90
+    assert grouped is None
 
 
 async def test_resolve_agencia_para_tour_tie_breaks_by_most_recent_creado_en(async_session):
@@ -88,8 +92,51 @@ async def test_resolve_agencia_para_tour_tie_breaks_by_most_recent_creado_en(asy
     async_session.add_all([older, newer])
     await async_session.flush()
 
-    resolved = await resolve_agencia_para_tour(async_session, tour_a)
+    resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
     assert resolved.agencia_id == ag2.id  # newer wins the tie
+    assert grouped is None
+
+
+async def test_resolve_agencia_para_tour_mixed_currency_requires_manual_selection(async_session):
+    ag1, ag2, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
+    pen_row = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100)
+    usd_row = AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, precio_usd=30)
+    async_session.add_all([pen_row, usd_row])
+    await async_session.flush()
+
+    resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
+    assert resolved is None
+    assert grouped is not None
+    assert set(grouped.keys()) == {"PEN", "USD"}
+    assert [r.agencia_id for r in grouped["PEN"]] == [ag1.id]
+    assert [r.agencia_id for r in grouped["USD"]] == [ag2.id]
+
+
+async def test_resolve_agencia_para_tour_dual_currency_row_grouped_by_tour_moneda_default(async_session):
+    ag1, ag2, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
+    dual = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100, precio_usd=30)
+    usd_only = AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, precio_usd=25)
+    async_session.add_all([dual, usd_only])
+    await async_session.flush()
+
+    resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
+    # dual carries a USD price too, but tour's moneda_default is PEN, so it
+    # only counts in the PEN group -> still spans 2 currencies (manual pick).
+    assert resolved is None
+    assert grouped is not None
+    assert [r.agencia_id for r in grouped["PEN"]] == [ag1.id]
+    assert [r.agencia_id for r in grouped["USD"]] == [ag2.id]
+
+
+async def test_resolve_agencia_para_tour_dual_currency_row_alone_auto_selects(async_session):
+    ag1, _, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
+    dual = AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100, precio_usd=30)
+    async_session.add(dual)
+    await async_session.flush()
+
+    resolved, grouped = await resolve_agencia_para_tour(async_session, tour_a)
+    assert grouped is None
+    assert resolved.agencia_id == ag1.id
 
 
 async def test_active_agencia_tour_ids(async_session):
@@ -168,6 +215,28 @@ async def test_tour_search_excludes_tours_without_active_price(async_session):
     ids = {r["tour_id"] for r in resultados}
     assert tour_a.id in ids
     assert tour_b.id not in ids and tour_c.id not in ids
+
+
+async def test_tour_search_mixed_currency_requires_manual_selection(async_session):
+    ag1, ag2, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
+    async_session.add_all([
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100),
+        AgenciaTourPrecio(agencia_id=ag2.id, tour_id=tour_a.id, precio_usd=30),
+    ])
+    await async_session.flush()
+
+    resultados = await tour_search(async_session, q=None, vendedor_id=None)
+    assert len(resultados) == 1
+    row = resultados[0]
+    assert row["tour_id"] == tour_a.id
+    assert row["requires_manual_selection"] is True
+    assert row["agencia_id"] is None
+    assert row["precio"] is None
+    assert row["precio_usd"] is None
+    assert {c["agencia_id"] for c in row["candidatos"]} == {ag1.id, ag2.id}
+    monedas = {c["agencia_id"]: c["moneda"] for c in row["candidatos"]}
+    assert monedas[ag1.id] == "PEN"
+    assert monedas[ag2.id] == "USD"
 
 
 async def test_tour_search_orders_recientes_first_then_alfabetico(async_session):

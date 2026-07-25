@@ -68,6 +68,7 @@ class AgenciaTourPrecioOut(BaseModel):
     precio: float | None
     precio_usd: float | None
     activo: bool
+    creado_en: datetime
 
 
 class AgenciaPagoIn(BaseModel):
@@ -137,6 +138,16 @@ class VentaRow(BaseModel):
     liquidacion_id: int | None
 
 
+class AgenciaCandidatoOut(BaseModel):
+    """One agencia×tour price candidate — surfaced on TourSearchOut when the
+    tour's active prices span 2+ currencies and can't be auto-resolved."""
+    agencia_id: int
+    agencia_nombre: str | None
+    precio: float | None
+    precio_usd: float | None
+    moneda: str  # "PEN" | "USD" — which currency this candidate is grouped under
+
+
 class TourSearchOut(BaseModel):
     """GET /ventas/tour-search row — D-33."""
     tour_id: int
@@ -146,6 +157,10 @@ class TourSearchOut(BaseModel):
     precio: float | None
     precio_usd: float | None
     es_reciente: bool
+    # Mixed-currency active prices (2+ groups) — no auto/preselect possible,
+    # vendedor must pick manually from candidatos.
+    requires_manual_selection: bool = False
+    candidatos: list[AgenciaCandidatoOut] | None = None
 
 
 class DuplicadoCheckOut(BaseModel):
