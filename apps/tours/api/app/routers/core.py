@@ -19,6 +19,7 @@ from app.models.core import (
     Asientos,
     AuditLog,
     Cuentas,
+    Usuarios,
 )
 from app.models.tours import Agencias, FormasPago, Monedas, Vendedores
 from app.schemas.core import (
@@ -45,6 +46,18 @@ async def _agencias_out(session: AsyncSession, rows: list[Agencias]) -> list[Cat
     for row in rows:
         item = CatalogoOut.model_validate(row)
         item.estado = "operativa" if row.id in active_agencia_ids else "sin_tours_vinculados"
+        out.append(item)
+    return out
+
+
+async def _vendedores_out(session: AsyncSession, rows: list[tuple[Vendedores, Any]]) -> list[CatalogoOut]:
+    """Attach usuario_activo (from the linked Usuarios row, D-32) to each
+    vendedor row — computed at query time via LEFT JOIN, never persisted.
+    None for legacy vendedores with no linked usuario."""
+    out: list[CatalogoOut] = []
+    for vendedor, usuario in rows:
+        item = CatalogoOut.model_validate(vendedor)
+        item.usuario_activo = usuario.activo if usuario else None
         out.append(item)
     return out
 
@@ -281,8 +294,15 @@ async def list_agencias(session: AsyncSession = Depends(get_session), _user: dic
 
 
 @router.get("/vendedores", response_model=list[CatalogoOut])
-async def list_vendedores(session: AsyncSession = Depends(get_session), _user: dict = Depends(get_current_user)) -> list[Vendedores]:
-    return list((await session.execute(select(Vendedores).order_by(Vendedores.id))).scalars().all())
+async def list_vendedores(session: AsyncSession = Depends(get_session), _user: dict = Depends(get_current_user)) -> list[CatalogoOut]:
+    rows = (
+        await session.execute(
+            select(Vendedores, Usuarios)
+            .outerjoin(Usuarios, Vendedores.usuario_id == Usuarios.id)
+            .order_by(Vendedores.id)
+        )
+    ).all()
+    return await _vendedores_out(session, [(v, u) for v, u in rows])
 
 
 @router.get("/formas-pago", response_model=list[CatalogoOut])
