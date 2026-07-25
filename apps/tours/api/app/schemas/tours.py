@@ -140,22 +140,34 @@ class VentaRow(BaseModel):
 
 class AgenciaCandidatoOut(BaseModel):
     """One agencia×tour price candidate — surfaced on TourSearchOut when the
-    tour's active prices span 2+ currencies and can't be auto-resolved."""
+    tour's active prices span 2+ currencies and can't be auto-resolved.
+
+    `costo`/`costo_usd` is what we owe this agencia (AgenciaTourPrecio, D-30) —
+    not a sale price."""
     agencia_id: int
     agencia_nombre: str | None
-    precio: float | None
-    precio_usd: float | None
+    costo: float | None
+    costo_usd: float | None
     moneda: str  # "PEN" | "USD" — which currency this candidate is grouped under
 
 
 class TourSearchOut(BaseModel):
-    """GET /ventas/tour-search row — D-33."""
+    """GET /ventas/tour-search row — D-33.
+
+    `costo`/`costo_usd` is the resolved agencia's cost (AgenciaTourPrecio).
+    `precio_venta`/`precio_venta_usd` is the tour's own default sale price
+    (ToursCatalogo.precio_default) — independent of which agencia is
+    providing it. Both are surfaced so the venta form can prefill costo
+    proveedor and monto a cobrar from their own distinct sources instead of
+    reusing the agencia's cost for both."""
     tour_id: int
     nombre: str
     agencia_id: int | None
     agencia_nombre: str | None
-    precio: float | None
-    precio_usd: float | None
+    costo: float | None
+    costo_usd: float | None
+    precio_venta: float | None = None
+    precio_venta_usd: float | None = None
     es_reciente: bool
     # Mixed-currency active prices (2+ groups) — no auto/preselect possible,
     # vendedor must pick manually from candidatos.

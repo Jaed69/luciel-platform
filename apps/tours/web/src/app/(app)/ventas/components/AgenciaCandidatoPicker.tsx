@@ -5,13 +5,13 @@ import { Button } from "@/components/Button";
 export type AgenciaCandidato = {
   agencia_id: number;
   agencia_nombre: string | null;
-  precio: number | null;
-  precio_usd: number | null;
+  costo: number | null;
+  costo_usd: number | null;
   moneda: "PEN" | "USD";
 };
 
 function formatMonto(candidato: AgenciaCandidato): string {
-  const value = candidato.moneda === "USD" ? candidato.precio_usd : candidato.precio;
+  const value = candidato.moneda === "USD" ? candidato.costo_usd : candidato.costo;
   if (value == null) return "—";
   return new Intl.NumberFormat("es-PE", { style: "currency", currency: candidato.moneda }).format(value);
 }

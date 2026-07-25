@@ -145,18 +145,33 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
 
   function handleTourSelect(row: TourSearchRow) {
     setTourId(String(row.tour_id));
-    const precio = moneda === "USD" ? row.precio_usd : row.precio;
+    // D-33 follow-up — costo (lo que le debemos a la agencia) y monto (precio
+    // de venta al público) son valores independientes: costo viene del
+    // vínculo agencia-tour, monto del precio de venta propio del tour. No
+    // reusar uno para el otro.
+    const costo = moneda === "USD" ? row.costo_usd : row.costo;
+    const precioVenta = moneda === "USD" ? row.precio_venta_usd : row.precio_venta;
     if (row.agencia_id != null) {
       setAgenciaId(String(row.agencia_id));
     }
-    if (precio != null) {
-      setCostoAuto(precio);
-      setMontoAuto(precio);
-      setCosto(fmtNum(precio));
-      setMonto(fmtNum(precio));
+    if (costo != null) {
+      setCostoAuto(costo);
+      setCosto(fmtNum(costo));
+    } else {
+      setCostoAuto(null);
+      setCosto("");
     }
-    setCostoEditing(false);
-    setMontoEditing(false);
+    if (precioVenta != null) {
+      setMontoAuto(precioVenta);
+      setMonto(fmtNum(precioVenta));
+    } else {
+      // Tour sin precio de venta configurado — nada que confirmar, se abre
+      // directo en modo edición para carga manual.
+      setMontoAuto(null);
+      setMonto("");
+    }
+    setCostoEditing(costo == null);
+    setMontoEditing(precioVenta == null);
     setMotivoCosto("");
     setMotivoMonto("");
 

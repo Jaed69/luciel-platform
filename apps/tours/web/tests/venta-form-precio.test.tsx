@@ -21,8 +21,15 @@ const DEFAULT_AGENCIA_PRECIOS = [
   { id: 1, agencia_id: 1, tour_id: 1, precio: 150, precio_usd: 42, activo: true },
 ];
 
+// costo (150) and precio_venta (220) are deliberately different values so
+// tests can prove Costo proveedor and Monto are prefilled independently,
+// not both from the same agencia number.
 const SINGLE_AGENCIA_RESULT = [
-  { tour_id: 1, nombre: "7 Lagunas", agencia_id: 1, agencia_nombre: "Cusco Top", precio: 150, precio_usd: 42, es_reciente: true },
+  { tour_id: 1, nombre: "7 Lagunas", agencia_id: 1, agencia_nombre: "Cusco Top", costo: 150, costo_usd: 42, precio_venta: 220, precio_venta_usd: 60, es_reciente: true },
+];
+
+const SINGLE_AGENCIA_SIN_PRECIO_VENTA_RESULT = [
+  { tour_id: 4, nombre: "City Tour", agencia_id: 1, agencia_nombre: "Cusco Top", costo: 80, costo_usd: null, precio_venta: null, precio_venta_usd: null, es_reciente: false },
 ];
 
 const MIXED_CURRENCY_RESULT = [
@@ -31,13 +38,15 @@ const MIXED_CURRENCY_RESULT = [
     nombre: "Rainbow Mountain",
     agencia_id: null,
     agencia_nombre: null,
-    precio: null,
-    precio_usd: null,
+    costo: null,
+    costo_usd: null,
+    precio_venta: 300,
+    precio_venta_usd: null,
     es_reciente: false,
     requires_manual_selection: true,
     candidatos: [
-      { agencia_id: 1, agencia_nombre: "Cusco Top", precio: 120, precio_usd: null, moneda: "PEN" },
-      { agencia_id: 2, agencia_nombre: "Andes Travel", precio: null, precio_usd: 33, moneda: "USD" },
+      { agencia_id: 1, agencia_nombre: "Cusco Top", costo: 120, costo_usd: null, moneda: "PEN" },
+      { agencia_id: 2, agencia_nombre: "Andes Travel", costo: null, costo_usd: 33, moneda: "USD" },
     ],
   },
 ];
@@ -102,22 +111,40 @@ describe("VentaFormModal — TourAgenciaSearch autofill", () => {
     mockFetch();
   });
 
-  it("auto-selects the single resolved agencia and prefills costo/monto", async () => {
+  it("prefills Costo proveedor from the agencia's costo and Monto from the tour's own precio_venta, independently", async () => {
     const input = await openModalAndSearch();
     fireEvent.mouseDown(screen.getByText("7 Lagunas"));
 
     await waitFor(() => {
       expect(screen.getByLabelText("Costo proveedor")).toHaveTextContent("150");
     });
-    expect(screen.getByLabelText("Monto")).toHaveTextContent("150");
+    expect(screen.getByLabelText("Monto")).toHaveTextContent("220");
     expect((input as HTMLInputElement).value).toBe("7 Lagunas");
     // No alternate-agencia dropdown when the tour only has one price agreement.
     expect(screen.queryByText("Andes Travel")).toBeNull();
   });
 
+  it("opens Monto directly in edit mode (no confirmed value) when the tour has no precio_venta configured", async () => {
+    mockFetch({}, SINGLE_AGENCIA_SIN_PRECIO_VENTA_RESULT);
+    render(<VentaFormModal role="vendedor" vendedorId="1" />);
+    fireEvent.click(submitButton());
+    const input = await screen.findByPlaceholderText("Busca un tour…");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "City" } });
+    await waitFor(() => expect(screen.getByText("City Tour")).toBeTruthy());
+    fireEvent.mouseDown(screen.getByText("City Tour"));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Costo proveedor")).toHaveTextContent("80");
+    });
+    const monto = screen.getByLabelText("Monto") as HTMLInputElement;
+    expect(monto.tagName).toBe("INPUT");
+    expect(monto.value).toBe("");
+  });
+
   it("shows an editable agencia dropdown, preselected, when the tour has 2+ agencias", async () => {
     mockFetch({ agenciaPrecios: MULTI_AGENCIA_PRECIOS }, [
-      { tour_id: 2, nombre: "Valle Sagrado", agencia_id: 1, agencia_nombre: "Cusco Top", precio: 100, precio_usd: 28, es_reciente: false },
+      { tour_id: 2, nombre: "Valle Sagrado", agencia_id: 1, agencia_nombre: "Cusco Top", costo: 100, costo_usd: 28, precio_venta: 140, precio_venta_usd: 38, es_reciente: false },
     ]);
     await openModalAndSearch("Valle");
     fireEvent.mouseDown(screen.getByText("Valle Sagrado"));
@@ -155,7 +182,7 @@ describe("VentaFormModal — TourAgenciaSearch manual agencia selection (mixed c
     expect(screen.getByLabelText("Monto")).toHaveTextContent("—");
   });
 
-  it("resolves the picked candidate into a normal onSelect row (costo/monto prefilled, agencia set)", async () => {
+  it("resolves the picked candidate into a normal onSelect row (costo from the candidate, monto from the tour's own precio_venta, agencia set)", async () => {
     mockFetch({}, MIXED_CURRENCY_RESULT);
     render(<VentaFormModal role="vendedor" vendedorId="1" />);
     fireEvent.click(submitButton());
@@ -171,7 +198,9 @@ describe("VentaFormModal — TourAgenciaSearch manual agencia selection (mixed c
     await waitFor(() => {
       expect(screen.getByLabelText("Costo proveedor")).toHaveTextContent("120");
     });
-    expect(screen.getByLabelText("Monto")).toHaveTextContent("120");
+    // Monto comes from the tour's own precio_venta (300), not the picked
+    // candidate's costo (120) — the whole point of this fix.
+    expect(screen.getByLabelText("Monto")).toHaveTextContent("300");
     expect((input as HTMLInputElement).value).toBe("Rainbow Mountain");
     // Picker closed after resolving.
     expect(screen.queryByText(/selecciona una agencia/i)).toBeNull();
@@ -187,7 +216,7 @@ describe("VentaFormModal — motivo required on edited costo/monto", () => {
   it("blocks submit with an error toast until a motivo is chosen for a changed monto", async () => {
     await openModalAndSearch();
     fireEvent.mouseDown(screen.getByText("7 Lagunas"));
-    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("150"));
+    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("220"));
 
     fireEvent.click(screen.getByRole("button", { name: /editar monto/i }));
     fireEvent.change(screen.getByLabelText("Monto"), { target: { value: "180" } });
@@ -210,7 +239,7 @@ describe("VentaFormModal — duplicado warning", () => {
     mockFetch({ duplicado: { duplicado: true, venta_id: 99 } });
     await openModalAndSearch();
     fireEvent.mouseDown(screen.getByText("7 Lagunas"));
-    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("150"));
+    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("220"));
 
     pickFormaPago();
     fireEvent.click(submitButton());
@@ -232,7 +261,7 @@ describe("VentaFormModal — undo toast", () => {
     });
     await openModalAndSearch();
     fireEvent.mouseDown(screen.getByText("7 Lagunas"));
-    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("150"));
+    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("220"));
 
     pickFormaPago();
     fireEvent.click(submitButton());

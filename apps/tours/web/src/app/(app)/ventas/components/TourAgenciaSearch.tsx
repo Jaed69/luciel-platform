@@ -7,16 +7,20 @@ export type TourSearchRow = {
   nombre: string;
   agencia_id: number | null;
   agencia_nombre: string | null;
-  precio: number | null;
-  precio_usd: number | null;
+  costo: number | null;
+  costo_usd: number | null;
+  precio_venta: number | null;
+  precio_venta_usd: number | null;
   es_reciente: boolean;
   requires_manual_selection: boolean;
   candidatos: AgenciaCandidato[] | null;
 };
 
+// Shows the tour's own sale price (precio_venta), not the agencia's costo —
+// this is what a vendedor browsing tours to sell should see.
 function formatPrecio(row: TourSearchRow): string {
-  if (row.precio != null) return new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(row.precio);
-  if (row.precio_usd != null) return new Intl.NumberFormat("es-PE", { style: "currency", currency: "USD" }).format(row.precio_usd);
+  if (row.precio_venta != null) return new Intl.NumberFormat("es-PE", { style: "currency", currency: "PEN" }).format(row.precio_venta);
+  if (row.precio_venta_usd != null) return new Intl.NumberFormat("es-PE", { style: "currency", currency: "USD" }).format(row.precio_venta_usd);
   return "—";
 }
 
@@ -92,8 +96,8 @@ export const TourAgenciaSearch = forwardRef<HTMLInputElement, {
       ...pendingRow,
       agencia_id: candidato.agencia_id,
       agencia_nombre: candidato.agencia_nombre,
-      precio: candidato.moneda === "PEN" ? candidato.precio : null,
-      precio_usd: candidato.moneda === "USD" ? candidato.precio_usd : null,
+      costo: candidato.moneda === "PEN" ? candidato.costo : null,
+      costo_usd: candidato.moneda === "USD" ? candidato.costo_usd : null,
       requires_manual_selection: false,
       candidatos: null,
     };

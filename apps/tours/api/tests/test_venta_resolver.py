@@ -217,6 +217,32 @@ async def test_tour_search_excludes_tours_without_active_price(async_session):
     assert tour_b.id not in ids and tour_c.id not in ids
 
 
+async def test_tour_search_precio_venta_independent_of_agencia_costo(async_session):
+    """D-33 follow-up — costo (agencia's AgenciaTourPrecio) and precio_venta
+    (tour's own ToursCatalogo.precio_default) must be independent fields, not
+    the same value reused twice."""
+    ag1, _, tour_a, tour_b, *_ = await _seed_base(async_session)
+    tour_a.precio_default = 250
+    async_session.add_all([
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_a.id, precio=100),
+        AgenciaTourPrecio(agencia_id=ag1.id, tour_id=tour_b.id, precio=100),
+    ])
+    await async_session.flush()
+
+    resultados = await tour_search(async_session, q=None, vendedor_id=None)
+    by_id = {r["tour_id"]: r for r in resultados}
+
+    row_a = by_id[tour_a.id]
+    assert row_a["costo"] == 100
+    assert row_a["precio_venta"] == 250
+
+    # tour_b has no precio_default configured — precio_venta stays None while
+    # costo (from its own agencia link) is still resolved normally.
+    row_b = by_id[tour_b.id]
+    assert row_b["costo"] == 100
+    assert row_b["precio_venta"] is None
+
+
 async def test_tour_search_mixed_currency_requires_manual_selection(async_session):
     ag1, ag2, tour_a, *_ = await _seed_base(async_session)  # moneda_default=PEN
     async_session.add_all([
@@ -231,8 +257,8 @@ async def test_tour_search_mixed_currency_requires_manual_selection(async_sessio
     assert row["tour_id"] == tour_a.id
     assert row["requires_manual_selection"] is True
     assert row["agencia_id"] is None
-    assert row["precio"] is None
-    assert row["precio_usd"] is None
+    assert row["costo"] is None
+    assert row["costo_usd"] is None
     assert {c["agencia_id"] for c in row["candidatos"]} == {ag1.id, ag2.id}
     monedas = {c["agencia_id"]: c["moneda"] for c in row["candidatos"]}
     assert monedas[ag1.id] == "PEN"
