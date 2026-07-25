@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/Button";
 import { Modal } from "@/components/Modal";
 import { showToast } from "@/components/Toast";
-import { Skeleton } from "@/components/Skeleton";
 import { TourAgenciaSearch, type TourSearchRow } from "./TourAgenciaSearch";
 
 type Catalogo = { id: number; codigo?: string; nombre: string };
@@ -40,9 +39,6 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
   const [costo, setCosto] = useState("");
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [notas, setNotas] = useState("");
-  const [preview, setPreview] = useState<{ porcentaje: number; comision: number } | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState(false);
 
   // D-33 — auto-resolved baselines (from tour-search precio) vs. manual edits.
   const [costoAuto, setCostoAuto] = useState<number | null>(null);
@@ -99,32 +95,6 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
         .catch(() => {});
     }
   }, [open, role, ownVendedorId]);
-
-  // Live comisión preview — debounced 300ms. Gate rendering on canPreview
-  // (below) instead of resetting preview/previewError here: stale values
-  // from a prior complete input set are simply ignored once inputs are
-  // incomplete again, no reset needed.
-  const canPreview = !!(tourId && vendedorId && monto);
-
-  useEffect(() => {
-    if (!canPreview) return;
-    const t = setTimeout(async () => {
-      setPreviewLoading(true);
-      setPreviewError(false);
-      try {
-        const res = await fetch(`/api/simular?vendedor_id=${vendedorId}&tour_id=${tourId}&monto=${monto}`);
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setPreview({ porcentaje: data.porcentaje, comision: data.comision });
-      } catch {
-        setPreviewError(true);
-        setPreview(null);
-      } finally {
-        setPreviewLoading(false);
-      }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [canPreview, tourId, vendedorId, monto]);
 
   function resetForm() {
     setTourId("");
@@ -434,26 +404,6 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
               </Button>
             </div>
           )}
-
-          {/* Live comisión preview */}
-          <div className="lg:col-span-2">
-            <p className="text-sm font-nunito font-semibold text-text-espresso-soft mb-1">Comisión estimada</p>
-            {!canPreview ? (
-              <p className="font-nunito text-text-espresso-soft text-sm">
-                Completa tour, vendedor y monto para previsualizar la comisión.
-              </p>
-            ) : previewLoading ? (
-              <Skeleton rows={1} />
-            ) : preview ? (
-              <p className="font-nunito text-text-espresso tabular-nums">
-                S/ {preview.comision.toFixed(2)} ({preview.porcentaje}%)
-              </p>
-            ) : previewError ? (
-              <p className="font-nunito text-chili-red text-sm">
-                No se pudo resolver una regla de comisión. Configura una regla en &quot;Catálogos → Comisiones&quot; o usa la regla global por defecto.
-              </p>
-            ) : null}
-          </div>
 
           <div className="lg:col-span-2 flex gap-6 justify-end">
             <Button variant="outlined" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
