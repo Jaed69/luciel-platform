@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { apiFetchJson } from "@/lib/api";
+import Link from "next/link";
 
 type Agencia = { id: number; codigo?: string; nombre: string; activo: boolean };
 type Saldo = { agencia_id: number; PEN: number; USD: number };
@@ -21,9 +22,9 @@ export default async function AgenciasPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-playfair text-primary text-[38px] font-semibold">Saldos agencias</h1>
-        <a href="/agencias/comparativo" className="text-sm font-nunito text-primary hover:underline">
+        <Link href="/agencias/comparativo" className="text-sm font-nunito text-primary hover:underline">
           Ver comparativo de precios →
-        </a>
+        </Link>
       </div>
       <div className="overflow-x-auto rounded-lg border border-gold/30">
         <table className="w-full border-collapse">

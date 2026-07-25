@@ -24,13 +24,20 @@ export function ComisionReglaFormModal({ open, onClose, initial, onSaved }: { op
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setVendedorId(initial?.vendedor_id != null ? String(initial.vendedor_id) : "");
+      setTourId(initial?.tour_id != null ? String(initial.tour_id) : "");
+      setPorcentaje(initial ? String(initial.porcentaje) : "");
+      setDescripcion(initial?.descripcion ?? "");
+      setError(null);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setVendedorId(initial?.vendedor_id != null ? String(initial.vendedor_id) : "");
-    setTourId(initial?.tour_id != null ? String(initial.tour_id) : "");
-    setPorcentaje(initial ? String(initial.porcentaje) : "");
-    setDescripcion(initial?.descripcion ?? "");
-    setError(null);
     Promise.all([
       fetch("/api/catalogos/vendedores").then((r) => r.json()).catch(() => []),
       fetch("/api/catalogos/tours").then((r) => r.json()).catch(() => []),
@@ -38,7 +45,7 @@ export function ComisionReglaFormModal({ open, onClose, initial, onSaved }: { op
       setVendedores(v);
       setTours(t);
     });
-  }, [open, initial]);
+  }, [open]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
 import { showToast } from "./Toast";
@@ -25,12 +25,14 @@ export function CatalogoFormModal({ entidad, open, onClose, initial, onSaved }: 
   const [nombre, setNombre] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setCodigo(initial?.codigo ?? "");
       setNombre(initial?.nombre ?? "");
     }
-  }, [open, initial]);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

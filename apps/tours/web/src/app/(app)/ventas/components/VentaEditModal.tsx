@@ -24,12 +24,19 @@ export function VentaEditModal({ venta, open, onClose, onSaved }: { venta: Venta
   const [costo, setCosto] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open && venta) {
+      setAgenciaId(String(venta.agencia_id));
+      setFormaPagoId(String(venta.forma_pago_id));
+      setMonto(String(venta.monto));
+      setCosto(venta.costo == null ? "" : String(venta.costo));
+    }
+  }
+
   useEffect(() => {
     if (!open || !venta) return;
-    setAgenciaId(String(venta.agencia_id));
-    setFormaPagoId(String(venta.forma_pago_id));
-    setMonto(String(venta.monto));
-    setCosto(venta.costo == null ? "" : String(venta.costo));
     Promise.all([
       fetch("/api/catalogos/agencias").then((r) => r.json()).catch(() => []),
       fetch("/api/catalogos/formas-pago").then((r) => r.json()).catch(() => []),

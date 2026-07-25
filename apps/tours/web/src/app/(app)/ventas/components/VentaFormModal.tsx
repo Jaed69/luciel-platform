@@ -58,6 +58,16 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
   const formRef = useRef<HTMLFormElement>(null);
   const defaultsAppliedRef = useRef(false);
 
+  // D-32 — un vendedor siempre registra a su propio nombre; se autocompleta
+  // sin esperar selección manual. Applied at render time (not inside the
+  // data-fetch effect below) since it's a synchronous derivation from props,
+  // not a reaction to an external system.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open && role === "vendedor" && ownVendedorId) setVendedorId(ownVendedorId);
+  }
+
   // Load catálogos when modal opens
   useEffect(() => {
     if (!open) return;
@@ -72,9 +82,6 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
       setFormasPago(fp);
       setAgenciaPrecios(precios);
     });
-    // D-32 — un vendedor siempre registra a su propio nombre; se autocompleta
-    // sin esperar selección manual.
-    if (role === "vendedor" && ownVendedorId) setVendedorId(ownVendedorId);
 
     // D-33 — remember last forma_pago/moneda from the most recent venta.
     if (!defaultsAppliedRef.current) {
@@ -93,16 +100,17 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
     }
   }, [open, role, ownVendedorId]);
 
-  // Live comisión preview — debounced 300ms
+  // Live comisión preview — debounced 300ms. Gate rendering on canPreview
+  // (below) instead of resetting preview/previewError here: stale values
+  // from a prior complete input set are simply ignored once inputs are
+  // incomplete again, no reset needed.
+  const canPreview = !!(tourId && vendedorId && monto);
+
   useEffect(() => {
-    if (!tourId || !vendedorId || !monto) {
-      setPreview(null);
-      setPreviewError(false);
-      return;
-    }
-    setPreviewLoading(true);
-    setPreviewError(false);
+    if (!canPreview) return;
     const t = setTimeout(async () => {
+      setPreviewLoading(true);
+      setPreviewError(false);
       try {
         const res = await fetch(`/api/simular?vendedor_id=${vendedorId}&tour_id=${tourId}&monto=${monto}`);
         if (!res.ok) throw new Error();
@@ -116,7 +124,7 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
       }
     }, 300);
     return () => clearTimeout(t);
-  }, [tourId, vendedorId, monto]);
+  }, [canPreview, tourId, vendedorId, monto]);
 
   function resetForm() {
     setTourId("");
@@ -415,7 +423,11 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
           {/* Live comisión preview */}
           <div className="lg:col-span-2">
             <p className="text-sm font-nunito font-semibold text-text-espresso-soft mb-1">Comisión estimada</p>
-            {previewLoading ? (
+            {!canPreview ? (
+              <p className="font-nunito text-text-espresso-soft text-sm">
+                Completa tour, vendedor y monto para previsualizar la comisión.
+              </p>
+            ) : previewLoading ? (
               <Skeleton rows={1} />
             ) : preview ? (
               <p className="font-nunito text-text-espresso tabular-nums">
@@ -425,11 +437,7 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
               <p className="font-nunito text-chili-red text-sm">
                 No se pudo resolver una regla de comisión. Configura una regla en &quot;Catálogos → Comisiones&quot; o usa la regla global por defecto.
               </p>
-            ) : (
-              <p className="font-nunito text-text-espresso-soft text-sm">
-                Completa tour, vendedor y monto para previsualizar la comisión.
-              </p>
-            )}
+            ) : null}
           </div>
 
           <div className="lg:col-span-2 flex gap-6 justify-end">

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Modal } from "./Modal";
 import { Button } from "./Button";
 import { showToast } from "./Toast";
@@ -24,7 +24,9 @@ export function UsuarioFormModal({ mode, open, onClose, initial, onSaved }: Usua
   const [submitting, setSubmitting] = useState(false);
   const [clientError, setClientError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setEmail(initial?.email ?? "");
       setUsername(initial?.username ?? "");
@@ -33,7 +35,7 @@ export function UsuarioFormModal({ mode, open, onClose, initial, onSaved }: Usua
       setActivo(initial?.activo ?? true);
       setClientError(null);
     }
-  }, [open, initial]);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

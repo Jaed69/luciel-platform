@@ -3,7 +3,7 @@
 // split out of the generic catalog CRUD which only ever handled codigo/nombre.
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/Button";
 import { Modal } from "@/components/Modal";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -59,7 +59,9 @@ function TipoTourFormModal({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setCodigo(initial?.codigo ?? "");
       setNombre(initial?.nombre ?? "");
@@ -70,7 +72,7 @@ function TipoTourFormModal({
       setMonedaDefault(initial?.moneda_default ?? "PEN");
       setFormError(null);
     }
-  }, [open, initial]);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
