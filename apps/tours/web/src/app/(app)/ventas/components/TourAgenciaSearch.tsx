@@ -1,5 +1,6 @@
 "use client";
 import { forwardRef, useEffect, useRef, useState } from "react";
+import { AgenciaCandidatoPicker, type AgenciaCandidato } from "./AgenciaCandidatoPicker";
 
 export type TourSearchRow = {
   tour_id: number;
@@ -9,6 +10,8 @@ export type TourSearchRow = {
   precio: number | null;
   precio_usd: number | null;
   es_reciente: boolean;
+  requires_manual_selection: boolean;
+  candidatos: AgenciaCandidato[] | null;
 };
 
 function formatPrecio(row: TourSearchRow): string {
@@ -31,6 +34,7 @@ export const TourAgenciaSearch = forwardRef<HTMLInputElement, {
   const [results, setResults] = useState<TourSearchRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [pendingRow, setPendingRow] = useState<TourSearchRow | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function fetchResults(q: string) {
@@ -68,6 +72,35 @@ export const TourAgenciaSearch = forwardRef<HTMLInputElement, {
     onSelect(row);
   }
 
+  // D-33 follow-up — rows the backend couldn't auto-resolve to a single
+  // agencia (mixed-currency candidatos) must not be committed as-is: their
+  // own agencia_id/precio are null. Force an explicit pick via the modal
+  // instead, and only then commit a fully resolved row.
+  function selectRow(row: TourSearchRow) {
+    if (row.requires_manual_selection && row.candidatos && row.candidatos.length > 0) {
+      setPendingRow(row);
+      setOpen(false);
+      setActiveIndex(-1);
+      return;
+    }
+    commit(row);
+  }
+
+  function handleCandidatoPick(candidato: AgenciaCandidato) {
+    if (!pendingRow) return;
+    const resolved: TourSearchRow = {
+      ...pendingRow,
+      agencia_id: candidato.agencia_id,
+      agencia_nombre: candidato.agencia_nombre,
+      precio: candidato.moneda === "PEN" ? candidato.precio : null,
+      precio_usd: candidato.moneda === "USD" ? candidato.precio_usd : null,
+      requires_manual_selection: false,
+      candidatos: null,
+    };
+    setPendingRow(null);
+    commit(resolved);
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -79,7 +112,7 @@ export const TourAgenciaSearch = forwardRef<HTMLInputElement, {
     } else if (e.key === "Enter") {
       e.preventDefault();
       if (open && activeIndex >= 0 && results[activeIndex]) {
-        commit(results[activeIndex]);
+        selectRow(results[activeIndex]);
       } else if (onEnterSubmit) {
         onEnterSubmit();
       }
@@ -123,13 +156,14 @@ export const TourAgenciaSearch = forwardRef<HTMLInputElement, {
                 key={row.tour_id}
                 role="option"
                 aria-selected={i === activeIndex}
-                onMouseDown={(e) => { e.preventDefault(); commit(row); }}
+                onMouseDown={(e) => { e.preventDefault(); selectRow(row); }}
                 onMouseEnter={() => setActiveIndex(i)}
                 className={`px-3 py-2 cursor-pointer flex justify-between gap-3 ${i === activeIndex ? "bg-gold/10" : ""}`}
               >
                 <span>
                   {row.nombre}
                   {row.es_reciente && <span className="ml-2 text-xs text-text-espresso-soft">reciente</span>}
+                  {row.requires_manual_selection && <span className="ml-2 text-xs text-text-espresso-soft">elige agencia</span>}
                   {row.agencia_nombre && <span className="block text-xs text-text-espresso-soft">{row.agencia_nombre}</span>}
                 </span>
                 <span className="tabular-nums shrink-0">{formatPrecio(row)}</span>
@@ -137,6 +171,15 @@ export const TourAgenciaSearch = forwardRef<HTMLInputElement, {
             ))
           )}
         </ul>
+      )}
+      {pendingRow && (
+        <AgenciaCandidatoPicker
+          open={pendingRow != null}
+          tourNombre={pendingRow.nombre}
+          candidatos={pendingRow.candidatos ?? []}
+          onPick={handleCandidatoPick}
+          onClose={() => setPendingRow(null)}
+        />
       )}
     </div>
   );

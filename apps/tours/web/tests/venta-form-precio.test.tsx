@@ -25,6 +25,23 @@ const SINGLE_AGENCIA_RESULT = [
   { tour_id: 1, nombre: "7 Lagunas", agencia_id: 1, agencia_nombre: "Cusco Top", precio: 150, precio_usd: 42, es_reciente: true },
 ];
 
+const MIXED_CURRENCY_RESULT = [
+  {
+    tour_id: 3,
+    nombre: "Rainbow Mountain",
+    agencia_id: null,
+    agencia_nombre: null,
+    precio: null,
+    precio_usd: null,
+    es_reciente: false,
+    requires_manual_selection: true,
+    candidatos: [
+      { agencia_id: 1, agencia_nombre: "Cusco Top", precio: 120, precio_usd: null, moneda: "PEN" },
+      { agencia_id: 2, agencia_nombre: "Andes Travel", precio: null, precio_usd: 33, moneda: "USD" },
+    ],
+  },
+];
+
 const MULTI_AGENCIA_PRECIOS = [
   { id: 1, agencia_id: 1, tour_id: 2, precio: 100, precio_usd: 28, activo: true },
   { id: 2, agencia_id: 2, tour_id: 2, precio: 90, precio_usd: 25, activo: true },
@@ -107,6 +124,57 @@ describe("VentaFormModal — TourAgenciaSearch autofill", () => {
 
     const select = await screen.findByDisplayValue("Cusco Top");
     expect(within(select.closest("label")!).getByText("Andes Travel")).toBeTruthy();
+  });
+});
+
+describe("VentaFormModal — TourAgenciaSearch manual agencia selection (mixed currency)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFetch();
+  });
+
+  it("opens the AgenciaCandidatoPicker instead of auto-selecting when requires_manual_selection is true", async () => {
+    mockFetch({}, MIXED_CURRENCY_RESULT);
+    render(<VentaFormModal role="vendedor" vendedorId="1" />);
+    fireEvent.click(submitButton());
+    const input = await screen.findByPlaceholderText("Busca un tour…");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "Rainbow" } });
+    await waitFor(() => expect(screen.getByText("Rainbow Mountain")).toBeTruthy());
+
+    fireEvent.mouseDown(screen.getByText("Rainbow Mountain"));
+
+    // Picker opens, grouped by moneda, instead of committing the unresolved row.
+    expect(await screen.findByText(/selecciona una agencia/i)).toBeTruthy();
+    expect(screen.getByText("Precios en soles")).toBeTruthy();
+    expect(screen.getByText("Precios en dólares")).toBeTruthy();
+    expect(screen.getByText("Cusco Top")).toBeTruthy();
+    expect(screen.getByText("Andes Travel")).toBeTruthy();
+
+    // Monto/Costo must not have been prefilled yet — no candidate resolved.
+    expect(screen.getByLabelText("Monto")).toHaveTextContent("—");
+  });
+
+  it("resolves the picked candidate into a normal onSelect row (costo/monto prefilled, agencia set)", async () => {
+    mockFetch({}, MIXED_CURRENCY_RESULT);
+    render(<VentaFormModal role="vendedor" vendedorId="1" />);
+    fireEvent.click(submitButton());
+    const input = await screen.findByPlaceholderText("Busca un tour…");
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: "Rainbow" } });
+    await waitFor(() => expect(screen.getByText("Rainbow Mountain")).toBeTruthy());
+    fireEvent.mouseDown(screen.getByText("Rainbow Mountain"));
+
+    await screen.findByText(/selecciona una agencia/i);
+    fireEvent.click(screen.getByText("Cusco Top"));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Costo proveedor")).toHaveTextContent("120");
+    });
+    expect(screen.getByLabelText("Monto")).toHaveTextContent("120");
+    expect((input as HTMLInputElement).value).toBe("Rainbow Mountain");
+    // Picker closed after resolving.
+    expect(screen.queryByText(/selecciona una agencia/i)).toBeNull();
   });
 });
 
