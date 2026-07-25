@@ -98,16 +98,23 @@ function RegistrarPagoModal({ agenciaId, onClose, onSaved }: { agenciaId: number
 function PrecioFormModal({
   agenciaId,
   tours,
+  preciosExistentes,
   initial,
   onClose,
   onSaved,
 }: {
   agenciaId: number;
   tours: Tour[];
+  preciosExistentes: AgenciaPrecio[];
   initial?: AgenciaPrecio | null;
   onClose: () => void;
   onSaved: () => void;
 }) {
+  // No ofrecer tours que ya tienen un precio cargado para esta agencia —
+  // evita el 409 de UniqueConstraint(agencia_id, tour_id). El tour en edición
+  // sigue disponible en su propio select aunque ya esté "usado".
+  const tourIdsConPrecio = new Set(preciosExistentes.map((p) => p.tour_id));
+  const toursDisponibles = tours.filter((t) => t.id === initial?.tour_id || !tourIdsConPrecio.has(t.id));
   const [tourId, setTourId] = useState(initial?.tour_id ? String(initial.tour_id) : "");
   const [precio, setPrecio] = useState(initial?.precio != null ? String(initial.precio) : "");
   const [precioUsd, setPrecioUsd] = useState(initial?.precio_usd != null ? String(initial.precio_usd) : "");
@@ -139,7 +146,14 @@ function PrecioFormModal({
       onSaved();
       onClose();
     } else {
-      showToast("error", "Error al guardar");
+      try {
+        const err = await res.json();
+        const detail = err.detail;
+        const msg = typeof detail === "string" ? detail : (detail?.mensaje ?? "Error al guardar");
+        showToast("error", msg);
+      } catch {
+        showToast("error", "Error al guardar");
+      }
     }
   }
 
@@ -151,7 +165,7 @@ function PrecioFormModal({
           <span className="text-sm font-nunito text-text-espresso-soft">Tour</span>
           <select required value={tourId} onChange={(e) => setTourId(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas">
             <option value="">Selecciona…</option>
-            {tours.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
+            {toursDisponibles.map((t) => <option key={t.id} value={t.id}>{t.nombre}</option>)}
           </select>
         </label>
         <label className="block">
@@ -273,6 +287,7 @@ export function AgenciaDetailClient({
         <PrecioFormModal
           agenciaId={agencia.id}
           tours={tours}
+          preciosExistentes={precios}
           initial={editPrecio}
           onClose={() => setPrecioModalOpen(false)}
           onSaved={() => window.location.reload()}
