@@ -15,6 +15,8 @@ export interface Message {
   name: string;
   text: string;
   approved: boolean; // solo se muestran approved:true en el sitio publicado
+  role?: string; // capítulo II: "rol" de la ficha de perfil (ej. "coro / voz aguda")
+  avatar?: string; // capítulo II: ruta bajo /assets/avatars/ — sin foto se muestra la inicial
 }
 
 export const artAlbums: Album[] = [
@@ -45,8 +47,8 @@ export const artAlbums: Album[] = [
 
 // Mensajes de cariño curados por el dueño del sitio (no es un formulario público).
 export const birthdayWishes: Message[] = [
-  { name: 'Ana', text: 'Feliz cumple, tu arte nos inspira cada dia.', approved: true },
-  { name: 'Beto', text: 'Que este ano venga cargado de color y creatividad.', approved: true },
+  { name: 'Ana', text: 'Feliz cumple, tu arte nos inspira cada dia.', approved: true, role: 'coro / voz aguda' },
+  { name: 'Beto', text: 'Que este ano venga cargado de color y creatividad.', approved: true, role: 'coro / bajo' },
 ];
 
 // Mensajes del guestbook publico. El formulario real envia a un servicio externo
@@ -55,3 +57,14 @@ export const guestbookMessages: Message[] = [
   { name: 'Cami', text: 'Gracias por compartir tu arte con todos nosotros.', approved: true },
   { name: 'Diego', text: 'Feliz cumple Lemondrea, un abrazo enorme.', approved: true },
 ];
+
+// Última hoja del libro: dedicatoria de despedida.
+// BORRADOR — reemplaza el texto y la firma por los tuyos antes de enviar el regalo.
+export const dedication = {
+  lines: [
+    'Este libro se hizo para guardar un año entero de tu arte, de tus ideas y de la gente que te quiere.',
+    'Que cada página te recuerde lo que ya lograste, y que el capítulo que viene lo escribas con la misma luz de siempre.',
+    'Feliz cumpleaños, Lemondrea.',
+  ],
+  signature: 'Con cariño, tu amigo', // ← firma aquí
+};

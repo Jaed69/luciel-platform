@@ -1,385 +1,961 @@
-/* Tema visual "cumple grafiti" para lemon.luciel.dev — no toca tokens.css
-   (que se comparte con el resto de luciel.dev) para no romper esa consistencia. */
+/* Tema "libro de cuento" para lemon.luciel.dev — port del diseño de Claude Design:
+   intro de circo (telón + focos), libro de cuero que se abre, y cinco capítulos
+   con lenguajes visuales propios (atelier gótico, transmisión sci-fi, cine de
+   madrugada, canal abierto, despedida). */
 
-@import url('https://fonts.googleapis.com/css2?family=Permanent+Marker&family=Kalam:wght@400;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=UnifrakturMaguntia&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Jost:wght@400;500;600&display=swap');
 
 :root {
-  --lemon-wall-dark: #5e2408;
-  --lemon-wall-mid: #9c4413;
-  --lemon-paper: #f1e3c2;
-  --lemon-paper-dark: #e3d0a3;
-  --lemon-ink: #241a12;
-  --lemon-ink-soft: #5a4630;
-  --lemon-yellow: #f0b90c;
+  --lemon-gold: oklch(0.75 0.13 85);
+  --lemon-gold-bright: oklch(0.8 0.13 85);
+  --lemon-marquee: oklch(0.9 0.13 90);
+  --lemon-cream: oklch(0.94 0.03 75);
+  --lemon-maroon: oklch(0.42 0.13 20);
+  --lemon-maroon-dark: oklch(0.28 0.09 20);
+  --lemon-pink: oklch(0.7 0.2 340);
+  --lemon-neon: oklch(0.85 0.13 200);
+  --lemon-amber: oklch(0.85 0.14 70);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .lemon-sticker,
-  .lemon-tv-flicker,
-  .lemon-fade-in,
-  .lemon-panel,
-  .lemon-polaroid-grid,
-  .lemon-tv-wrap {
-    animation: none !important;
-    transition: none !important;
-  }
+/* ---------- keyframes ---------- */
+@keyframes lemonFloatBob { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-14px) rotate(4deg); } }
+@keyframes lemonSpin { to { transform: rotate(360deg); } }
+@keyframes lemonPopIn { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+@keyframes lemonFadeUp { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes lemonConfettiFall { from { transform: translateY(-10vh) rotate(0deg); opacity: 1; } to { transform: translateY(110vh) rotate(360deg); opacity: 0.9; } }
+@keyframes lemonPulseGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(190, 60, 80, 0.45); } 50% { box-shadow: 0 0 0 14px rgba(190, 60, 80, 0); } }
+@keyframes lemonCoverOpen { from { transform: perspective(1600px) rotateY(0deg); } to { transform: perspective(1600px) rotateY(-108deg); opacity: 0.3; } }
+@keyframes lemonCoverClose { from { transform: perspective(1600px) rotateY(-108deg); opacity: 0.3; } to { transform: perspective(1600px) rotateY(0deg); opacity: 1; } }
+@keyframes lemonPageInNext { from { opacity: 0; transform: perspective(1400px) rotateY(-16deg) translateX(50px); } to { opacity: 1; transform: perspective(1400px) rotateY(0) translateX(0); } }
+@keyframes lemonPageInPrev { from { opacity: 0; transform: perspective(1400px) rotateY(16deg) translateX(-50px); } to { opacity: 1; transform: perspective(1400px) rotateY(0) translateX(0); } }
+@keyframes lemonWiggle { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+@keyframes lemonCurtainL { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+@keyframes lemonCurtainR { from { transform: translateX(0); } to { transform: translateX(100%); } }
+@keyframes lemonBulb { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+@keyframes lemonSheetNext {
+  0% { transform: rotateY(0deg); box-shadow: -6px 0 24px rgba(0, 0, 0, 0.18); }
+  45% { box-shadow: -30px 8px 50px rgba(0, 0, 0, 0.4); }
+  100% { transform: rotateY(-168deg); box-shadow: 26px 8px 44px rgba(0, 0, 0, 0.22); opacity: 0.92; }
+}
+@keyframes lemonSheetPrev {
+  0% { transform: rotateY(-168deg); opacity: 0.92; }
+  55% { box-shadow: -30px 8px 50px rgba(0, 0, 0, 0.4); }
+  100% { transform: rotateY(0deg); box-shadow: -6px 0 24px rgba(0, 0, 0, 0.18); }
+}
+@keyframes lemonGlitch {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  50% { transform: translate(2px, -1px); }
+  75% { transform: translate(-1px, -1px); }
 }
 
+/* ---------- base ---------- */
 .lemon-body {
-  font-family: 'Kalam', cursive;
-  color: var(--lemon-ink);
+  margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 15% 20%, rgba(0, 0, 0, 0.25), transparent 40%),
-    radial-gradient(circle at 85% 75%, rgba(0, 0, 0, 0.2), transparent 45%),
-    url('/assets/wall-texture.webp'),
-    linear-gradient(135deg, var(--lemon-wall-mid), var(--lemon-wall-dark) 70%);
-  background-size: cover, cover, cover, cover;
-  background-blend-mode: normal, normal, overlay, normal;
-  display: flex;
-  padding: 28px;
-  gap: 28px;
-  flex-wrap: wrap;
-}
-
-/* stickers decorativos flotando sobre la pared */
-.lemon-sticker {
-  position: fixed;
-  pointer-events: none;
-  opacity: 0.9;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
-  animation: lemon-float 6s ease-in-out infinite;
-}
-@keyframes lemon-float {
-  0%, 100% { transform: translateY(0) rotate(-4deg); }
-  50% { transform: translateY(-10px) rotate(4deg); }
-}
-
-/* ---------- SIDEBAR ---------- */
-.lemon-sidebar {
-  width: 210px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding-top: 6px;
-}
-.lemon-back-btn {
-  align-self: flex-start;
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  color: var(--lemon-paper);
-  background: none;
-  border: none;
-  cursor: pointer;
+  width: 100%;
+  background: radial-gradient(120% 100% at 50% 0%, oklch(0.2 0.03 20), oklch(0.12 0.02 20));
+  color: var(--lemon-cream);
+  font-family: 'Jost', sans-serif;
+  position: relative;
+  overflow-x: hidden;
   display: flex;
   align-items: center;
-  gap: 6px;
-  opacity: 0.85;
+  justify-content: center;
+  padding: 32px;
 }
-.lemon-back-btn:hover { opacity: 1; }
+.lemon-body * { box-sizing: border-box; }
+.lemon-body a { color: var(--lemon-gold); }
+.lemon-body a:hover { color: var(--lemon-pink); }
 
-.lemon-menu-item {
-  font-family: 'Permanent Marker', cursive;
-  font-size: 17px;
-  text-align: left;
-  color: var(--lemon-ink);
-  background: var(--lemon-paper);
-  border: none;
-  cursor: pointer;
-  padding: 16px 18px 20px;
-  clip-path: polygon(0% 0%, 100% 0%, 100% 82%, 94% 100%, 88% 84%, 82% 100%, 76% 84%, 70% 100%, 64% 84%, 58% 100%, 52% 84%, 46% 100%, 40% 84%, 34% 100%, 28% 84%, 22% 100%, 16% 84%, 10% 100%, 4% 84%, 0% 96%);
-  transform: rotate(-1.2deg);
-  transition: transform 0.15s ease, filter 0.15s ease;
-  box-shadow: 0 6px 10px rgba(0, 0, 0, 0.25);
-}
-.lemon-menu-item:nth-child(2) { transform: rotate(1deg); }
-.lemon-menu-item:nth-child(3) { transform: rotate(-0.6deg); }
-.lemon-menu-item:nth-child(4) { transform: rotate(0.8deg); }
-.lemon-menu-item:hover { filter: brightness(0.97); }
-.lemon-menu-item.is-active {
-  background: var(--lemon-yellow);
-  transform: rotate(0deg) scale(1.03);
-  text-decoration: underline wavy;
-}
-
-/* ---------- LIBRO (ocupa todo el stage) ---------- */
-.lemon-stage { flex: 1; display: flex; align-items: flex-start; justify-content: center; min-width: 280px; }
-.lemon-book {
-  position: relative;
-  width: 100%;
-  max-width: 1400px;
-  background: #2b1c10;
-  border-radius: 14px;
-  padding: 22px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-}
-.lemon-page {
-  background: var(--lemon-paper);
-  border-radius: 8px;
-  min-height: min(70vh, 820px);
-  padding: 28px 32px;
-  perspective: 1200px;
-}
-@supports (height: 100svh) {
-  .lemon-page { min-height: min(70svh, 820px); }
-}
-
-/* pasar-hoja: swap animado de contenido (panel/album/clip) */
-.lemon-panel,
-.lemon-polaroid-grid,
-.lemon-tv-wrap {
-  transition: opacity 0.22s ease, transform 0.22s ease;
-}
-.lemon-panel.is-turning-out,
-.lemon-polaroid-grid.is-turning-out,
-.lemon-tv-wrap.is-turning-out {
-  opacity: 0;
-  transform: rotateY(-8deg) translateX(-12px);
-}
-.lemon-panel.is-turning-in,
-.lemon-polaroid-grid.is-turning-in,
-.lemon-tv-wrap.is-turning-in {
-  opacity: 0;
-  transform: rotateY(8deg) translateX(12px);
-}
-.lemon-book-title {
-  font-family: 'Permanent Marker', cursive;
-  font-size: 26px;
-  margin-bottom: 6px;
-  color: var(--lemon-wall-dark);
-}
-.lemon-book-sub { font-size: 14px; color: var(--lemon-ink-soft); margin-bottom: 18px; }
-
-.lemon-ctx-menu {
+/* ---------- confetti ---------- */
+.lemon-confetti { position: fixed; inset: 0; pointer-events: none; z-index: 300; overflow: hidden; }
+.lemon-confetti span {
   position: absolute;
-  right: -26px;
-  top: 34px;
+  top: -5%;
+  width: 9px;
+  height: 13px;
+  border-radius: 2px;
+  animation: lemonConfettiFall var(--dur, 2.8s) linear var(--delay, 0s) 1 both;
+}
+
+/* ---------- escenario (index) ---------- */
+.lemon-stage {
+  position: relative;
+  width: min(96vw, 940px);
+  aspect-ratio: 16 / 10;
+  border-radius: 18px;
+  overflow: hidden;
+  background: radial-gradient(70% 90% at 50% 100%, oklch(0.3 0.05 30), oklch(0.1 0.02 20));
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6), inset 0 0 0 10px oklch(0.42 0.14 60), inset 0 0 0 13px var(--lemon-gold-bright);
+}
+.lemon-stage-bulbs {
+  position: absolute;
+  top: 16px;
+  left: 26px;
+  right: 26px;
+  display: flex;
+  justify-content: space-between;
+  z-index: 30;
+  pointer-events: none;
+}
+.lemon-stage-bulbs i {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--lemon-marquee);
+  box-shadow: 0 0 12px oklch(0.85 0.15 85);
+  animation: lemonBulb 1.4s ease-in-out infinite;
+}
+.lemon-stage-inner {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  max-width: 150px;
-}
-.lemon-ctx-item {
-  font-family: 'Space Mono', monospace;
-  font-size: 11px;
-  background: var(--lemon-paper-dark);
-  color: var(--lemon-ink-soft);
-  padding: 8px 12px;
-  border-radius: 0 8px 8px 0;
-  cursor: pointer;
-  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.25);
-  transition: transform 0.12s ease;
-}
-.lemon-ctx-item:hover { transform: translateX(3px); }
-.lemon-ctx-item.is-active { background: var(--lemon-yellow); color: var(--lemon-ink); font-weight: 700; }
-
-/* polaroids */
-.lemon-polaroid-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 14px;
-}
-.lemon-polaroid {
-  background: #fff;
-  padding: 8px 8px 22px;
-  width: 130px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 60px 40px 70px;
   text-align: center;
-  color: var(--lemon-ink-soft);
-  animation: lemon-fade-in 0.4s ease both;
+  z-index: 10;
 }
-.lemon-polaroid img { width: 100%; height: 100px; object-fit: cover; margin-bottom: 6px; background: #ddd; }
-.lemon-polaroid:nth-child(odd) { transform: rotate(-3deg); }
-.lemon-polaroid:nth-child(even) { transform: rotate(2.5deg); }
-@keyframes lemon-fade-in {
-  from { opacity: 0; transform: translateY(8px) rotate(0deg); }
-  to { opacity: 1; }
+.lemon-stage-glow {
+  position: absolute;
+  bottom: -30%;
+  left: 50%;
+  width: 70%;
+  height: 120%;
+  transform: translateX(-50%);
+  background: radial-gradient(50% 60% at 50% 100%, oklch(0.85 0.1 85 / 0.22), transparent 70%);
+  pointer-events: none;
 }
-
-/* mensajes / guestbook */
-.lemon-note {
-  background: var(--lemon-paper-dark);
-  border-left: 4px solid #6b2f1c;
-  padding: 10px 14px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.12);
+.lemon-stage-act { display: flex; flex-direction: column; align-items: center; gap: 16px; position: relative; z-index: 12; animation: lemonPopIn 0.6s 0.2s both; }
+.lemon-stage-title {
+  font-family: 'Bungee', sans-serif;
+  font-size: clamp(20px, 3.4vw, 34px);
+  line-height: 1.1;
+  color: var(--lemon-marquee);
+  text-shadow: 0 0 20px oklch(0.7 0.18 30);
 }
-.lemon-note b { font-family: 'Permanent Marker', cursive; font-weight: 400; font-size: 14px; }
-.lemon-note--pending { border-left-style: dashed; opacity: 0.85; }
-.lemon-note-badge {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--lemon-ink-soft);
-  background: rgba(0, 0, 0, 0.08);
-  border-radius: 4px;
-  padding: 1px 6px;
-  margin-left: 8px;
-  vertical-align: middle;
-}
-.lemon-guestbook-status {
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  margin-top: 8px;
-}
-.lemon-guestbook-status.is-error { color: #a02a2a; }
-.lemon-guestbook-status.is-success { color: #2a7a3b; }
-
-.lemon-form-block { margin-top: 20px; border-top: 1px dashed rgba(0, 0, 0, 0.2); padding-top: 16px; }
-.lemon-form-block label { display: block; font-family: 'Space Mono', monospace; font-size: 11px; color: var(--lemon-ink-soft); margin-bottom: 4px; }
-.lemon-form-block input,
-.lemon-form-block textarea {
-  width: 100%;
-  font-family: 'Kalam', cursive;
-  font-size: 14px;
-  border: 1px solid var(--lemon-ink-soft);
-  border-radius: 6px;
-  background: #fffdf6;
-  padding: 8px 10px;
-  margin-bottom: 12px;
-}
-.lemon-form-block textarea { min-height: 70px; resize: vertical; }
-.lemon-submit-btn {
-  font-family: 'Permanent Marker', cursive;
-  font-size: 15px;
-  background: var(--lemon-yellow);
-  border: none;
-  border-radius: 6px;
-  padding: 8px 18px;
-  cursor: pointer;
-}
-.lemon-submit-btn:hover { filter: brightness(0.95); }
-.lemon-mod-note { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--lemon-ink-soft); margin-top: 8px; }
-
-/* ---------- TV (video memories, ocupa toda la seccion) ---------- */
-.lemon-tv-wrap { display: flex; justify-content: center; }
-.lemon-tv-frame {
-  width: 100%;
-  background: #3a3530;
-  border-radius: 16px;
-  padding: 16px 16px 22px;
-  box-shadow: 0 10px 18px rgba(0, 0, 0, 0.3), inset 0 0 0 2px #524b43;
-}
-.lemon-tv-screen {
+.lemon-poster {
+  position: relative;
+  width: min(70vw, 420px);
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  border: 3px solid var(--lemon-gold-bright);
   background: #111;
+}
+.lemon-poster img, .lemon-poster iframe { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
+.lemon-poster-play {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: oklch(0.55 0.2 25);
+  border: 3px solid oklch(0.95 0.03 90);
+  cursor: pointer;
+  animation: lemonPulseGlow 2s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lemon-poster-play:hover { background: var(--lemon-gold-bright); }
+.lemon-poster-play .tri {
+  width: 0;
+  height: 0;
+  border-top: 13px solid transparent;
+  border-bottom: 13px solid transparent;
+  border-left: 20px solid oklch(0.97 0.02 90);
+  margin-left: 4px;
+}
+.lemon-stage-hint { font-size: 14px; color: oklch(0.85 0.04 80); }
+.lemon-loader {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 5px solid oklch(0.35 0.06 30);
+  border-top-color: var(--lemon-marquee);
+  animation: lemonSpin 0.9s linear infinite;
+}
+.lemon-loading-label { font-family: 'Bungee', sans-serif; font-size: 15px; color: var(--lemon-marquee); }
+.lemon-glitch { animation: lemonGlitch 0.35s infinite; }
+.lemon-reveal-title { font-family: 'Bungee', sans-serif; font-size: clamp(15px, 2.4vw, 22px); color: oklch(0.95 0.03 90); }
+.lemon-btn-gold {
+  font-family: 'Bungee', sans-serif;
+  font-size: 14px;
+  background: var(--lemon-marquee);
+  color: oklch(0.2 0.05 30);
+  border: none;
+  padding: 15px 30px;
+  border-radius: 999px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: transform 0.2s, background 0.2s, color 0.2s;
+}
+.lemon-btn-gold:hover { transform: scale(1.05); background: var(--lemon-pink); color: oklch(0.97 0.02 90); }
+.lemon-btn-gold--pulse { animation: lemonPulseGlow 2.2s ease-in-out infinite; }
+
+.lemon-curtain { position: absolute; z-index: 20; }
+.lemon-curtain--l {
+  inset: 0 50% 0 0;
+  background: repeating-linear-gradient(90deg, oklch(0.44 0.17 25), oklch(0.44 0.17 25) 16px, oklch(0.33 0.14 25) 16px, oklch(0.33 0.14 25) 34px);
+  box-shadow: inset -30px 0 60px rgba(0, 0, 0, 0.45);
+}
+.lemon-curtain--r {
+  inset: 0 0 0 50%;
+  background: repeating-linear-gradient(90deg, oklch(0.33 0.14 25), oklch(0.33 0.14 25) 18px, oklch(0.44 0.17 25) 18px, oklch(0.44 0.17 25) 34px);
+  box-shadow: inset 30px 0 60px rgba(0, 0, 0, 0.45);
+}
+.lemon-stage.is-open .lemon-curtain--l { animation: lemonCurtainL 1.5s cubic-bezier(0.6, 0, 0.3, 1) both; }
+.lemon-stage.is-open .lemon-curtain--r { animation: lemonCurtainR 1.5s cubic-bezier(0.6, 0, 0.3, 1) both; }
+.lemon-marquee-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  text-align: center;
+  padding: 40px;
+}
+.lemon-marquee-title {
+  font-family: 'Bungee', sans-serif;
+  font-size: clamp(22px, 4vw, 42px);
+  color: var(--lemon-marquee);
+  text-shadow: 0 6px 0 oklch(0.35 0.14 25), 0 0 30px oklch(0.6 0.2 25);
+}
+.lemon-stage-footlight {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 26px;
+  background: linear-gradient(0deg, oklch(0.8 0.13 85 / 0.55), transparent);
+  z-index: 25;
+  pointer-events: none;
+}
+.lemon-skip-link { font-family: 'Jost', sans-serif; font-size: 13px; margin-top: 4px; opacity: 0.8; }
+
+/* ---------- portada / contraportada ---------- */
+.lemon-cover-wrap {
+  position: relative;
+  width: min(90vw, 420px);
+  aspect-ratio: 3 / 4;
+  transform-style: preserve-3d;
+  transform-origin: left center;
+}
+.lemon-cover-wrap.is-opening { animation: lemonCoverOpen 0.65s ease-in both; }
+.lemon-cover-wrap.is-closing { animation: lemonCoverClose 0.65s ease-out both; }
+.lemon-cover {
+  position: absolute;
+  inset: 0;
+  border-radius: 6px 14px 14px 6px;
+  background: repeating-linear-gradient(115deg, oklch(0.28 0.09 20), oklch(0.28 0.09 20) 10px, oklch(0.24 0.08 20) 10px, oklch(0.24 0.08 20) 20px);
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55), inset 0 0 0 2px oklch(0.75 0.13 85 / 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 40px;
+  text-align: center;
+}
+.lemon-cover-diamond { width: 56px; height: 56px; border: 2px solid var(--lemon-gold); transform: rotate(45deg); }
+.lemon-cover-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(26px, 4.4vw, 38px);
+  font-weight: 600;
+  color: var(--lemon-gold);
+  line-height: 1.2;
+}
+.lemon-cover-sub { font-size: 14px; letter-spacing: 0.14em; text-transform: uppercase; color: oklch(0.88 0.04 70); }
+.lemon-btn-cover {
+  margin-top: 12px;
+  font-family: 'Jost', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  background: var(--lemon-gold);
+  color: oklch(0.18 0.03 20);
+  border: none;
+  padding: 14px 30px;
+  border-radius: 999px;
+  cursor: pointer;
+  animation: lemonPulseGlow 2.2s ease-in-out infinite;
+  transition: transform 0.2s;
+}
+.lemon-btn-cover:hover { transform: scale(1.05); }
+
+/* ---------- libro abierto ---------- */
+.lemon-book { position: relative; width: min(94vw, 880px); }
+.lemon-book-topbar { display: flex; justify-content: space-between; align-items: center; padding: 0 6px; margin-bottom: 14px; gap: 10px; flex-wrap: wrap; }
+.lemon-book-topbar .close-btn,
+.lemon-book-topbar .replay-link {
+  background: none;
+  border: none;
+  color: oklch(0.7 0.05 70);
+  font-size: 13px;
+  cursor: pointer;
+  font-family: 'Jost', sans-serif;
+  text-decoration: none;
+  padding: 0;
+}
+.lemon-book-topbar .close-btn:hover, .lemon-book-topbar .replay-link:hover { color: var(--lemon-gold); }
+.lemon-page-count { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 15px; color: oklch(0.7 0.05 70); }
+
+.lemon-tabs {
+  position: absolute;
+  right: -34px;
+  top: 54px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20;
+}
+.lemon-tab {
+  background: var(--lemon-maroon-dark);
+  color: var(--lemon-gold);
+  border: none;
+  font-family: 'Jost', sans-serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  writing-mode: vertical-rl;
+  border-radius: 0 6px 6px 0;
+  padding: 12px 7px;
+}
+.lemon-tab:hover { opacity: 0.85; }
+.lemon-tab.is-active { background: var(--lemon-maroon); color: var(--lemon-cream); }
+
+.lemon-book-3d { position: relative; perspective: 2400px; }
+.lemon-spine {
+  position: absolute;
+  left: -22px;
+  top: 6px;
+  bottom: 6px;
+  width: 34px;
+  border-radius: 10px 0 0 10px;
+  background: linear-gradient(90deg, oklch(0.2 0.07 20), oklch(0.32 0.1 20) 60%, oklch(0.24 0.08 20));
+  box-shadow: inset -6px 0 14px rgba(0, 0, 0, 0.5), -8px 10px 30px rgba(0, 0, 0, 0.5);
+}
+.lemon-edge-r {
+  position: absolute;
+  right: -13px;
+  top: 8px;
+  bottom: 8px;
+  width: 15px;
+  border-radius: 0 4px 4px 0;
+  background: repeating-linear-gradient(180deg, oklch(0.9 0.03 80), oklch(0.9 0.03 80) 2px, oklch(0.74 0.04 70) 2px, oklch(0.74 0.04 70) 3px);
+  box-shadow: 6px 8px 22px rgba(0, 0, 0, 0.45);
+}
+.lemon-edge-b {
+  position: absolute;
+  left: 12px;
+  right: -6px;
+  bottom: -11px;
+  height: 12px;
+  border-radius: 0 0 5px 5px;
+  background: repeating-linear-gradient(90deg, oklch(0.9 0.03 80), oklch(0.9 0.03 80) 2px, oklch(0.74 0.04 70) 2px, oklch(0.74 0.04 70) 3px);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+}
+.lemon-sheet {
+  border-radius: 3px 8px 8px 3px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+  min-height: 560px;
+  padding: 48px 44px 60px;
+  color: oklch(0.24 0.05 30);
+  position: relative;
+  overflow: hidden;
+}
+.lemon-sheet-gutter {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 36px;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.22), transparent);
+  pointer-events: none;
+}
+.lemon-chapter-label {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  z-index: 4;
+}
+.lemon-flip-sheet {
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  pointer-events: none;
+  z-index: 60;
+  border-radius: 3px 8px 8px 3px;
+  background: linear-gradient(100deg, oklch(0.88 0.03 78), oklch(0.96 0.02 80) 35%, oklch(0.92 0.03 78));
+}
+.lemon-flip-sheet.next { animation: lemonSheetNext 0.9s cubic-bezier(0.42, 0.05, 0.32, 1) both; }
+.lemon-flip-sheet.prev { animation: lemonSheetPrev 0.9s cubic-bezier(0.42, 0.05, 0.32, 1) both; }
+.lemon-page-nav {
+  position: absolute;
+  bottom: 22px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 40px;
+  z-index: 5;
+}
+.lemon-page-nav button {
+  background: none;
+  border: none;
+  font-size: 26px;
+  cursor: pointer;
+  transition: transform 0.15s;
+  color: inherit;
+}
+.lemon-page-nav button:hover { transform: scale(1.15); }
+.lemon-page-nav button:disabled { opacity: 0.25; cursor: default; }
+
+.lemon-chapter { animation-duration: 0.5s; animation-fill-mode: both; }
+.lemon-chapter.turn-next { animation-name: lemonPageInNext; }
+.lemon-chapter.turn-prev { animation-name: lemonPageInPrev; }
+
+/* ---------- capítulo I + V · atelier gótico ---------- */
+.lemon-sheet--atelier {
+  background:
+    radial-gradient(130% 90% at 50% 0%, oklch(0.26 0.02 320 / 0.75), transparent 62%),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.035) 0 2px, transparent 2px 10px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.028) 0 2px, transparent 2px 10px),
+    oklch(0.15 0.012 320);
+}
+.lemon-sheet--atelier .lemon-chapter-label { color: oklch(0.78 0.03 320); }
+.lemon-sheet--atelier .lemon-page-nav { color: oklch(0.9 0.02 320); }
+.lemon-atelier { position: relative; color: oklch(0.93 0.01 320); }
+.lemon-lace-top {
+  position: absolute;
+  top: -14px;
+  left: -14px;
+  right: -14px;
+  height: 14px;
+  background: radial-gradient(circle at 10px 14px, transparent 8px, oklch(0.88 0.01 320) 8px);
+  background-size: 20px 14px;
+  opacity: 0.5;
+  pointer-events: none;
+}
+.lemon-orn { position: absolute; color: oklch(0.8 0.02 320); pointer-events: none; }
+.lemon-orn--cross { left: -30px; top: 8px; font-size: 20px; opacity: 0.5; }
+.lemon-orn--fleuron { right: -4px; bottom: -8px; font-size: 22px; opacity: 0.4; }
+.lemon-atelier-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; padding-top: 10px; }
+.lemon-atelier-title {
+  font-family: 'UnifrakturMaguntia', serif;
+  font-size: clamp(30px, 4vw, 48px);
+  color: oklch(0.96 0.01 320);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+}
+.lemon-atelier-tag { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 16px; color: oklch(0.7 0.07 20); }
+.lemon-atelier-rule { height: 1px; background: linear-gradient(90deg, oklch(0.85 0.02 320 / 0.8), transparent); margin: 14px 0 10px; }
+.lemon-atelier-intro {
+  margin: 0 0 34px;
+  color: oklch(0.78 0.02 320);
+  max-width: 52ch;
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 17px;
+}
+.lemon-frames { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 34px 24px; }
+.lemon-frame-cell { animation: lemonFadeUp 0.55s both; }
+.lemon-frame {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transform: rotate(var(--rot, -2deg));
+  transition: transform 0.3s;
+}
+.lemon-frame:hover { transform: rotate(0deg) scale(1.04); }
+.lemon-frame-tape {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  margin-left: -34px;
+  width: 68px;
+  height: 18px;
+  background: var(--tape, oklch(0.28 0.11 20));
+  transform: rotate(-4deg);
+  z-index: 3;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+.lemon-frame-img {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.55);
+  border: 9px solid oklch(0.12 0.01 320);
+  border-bottom-width: 36px;
+  outline: 1px solid oklch(0.72 0.02 320 / 0.5);
+  outline-offset: -1px;
+  background: oklch(0.22 0.01 320);
+}
+.lemon-frame-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lemon-frame-lace {
+  height: 8px;
+  margin-top: -10px;
+  background: radial-gradient(circle at 7px 0, transparent 5px, oklch(0.85 0.01 320) 5px);
+  background-size: 14px 8px;
+  opacity: 0.45;
+}
+.lemon-frame-caption { font-size: 15px; color: oklch(0.85 0.02 320); text-align: center; font-family: 'Cormorant Garamond', serif; font-style: italic; }
+
+/* despedida (capítulo V, mismo lenguaje del atelier) */
+.lemon-farewell { max-width: 56ch; margin: 0 auto; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; padding-top: 26px; }
+.lemon-farewell-text {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: clamp(17px, 2.4vw, 21px);
+  line-height: 1.7;
+  color: oklch(0.88 0.02 320);
+  margin: 0;
+}
+.lemon-farewell-sign {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 30px;
+  color: var(--lemon-gold);
+  transform: rotate(-4deg);
+}
+.lemon-farewell-diamond { width: 34px; height: 34px; border: 1.5px solid var(--lemon-gold); transform: rotate(45deg); opacity: 0.8; }
+
+/* ---------- capítulo II + IV · transmisión ---------- */
+.lemon-sheet--signal {
+  background:
+    radial-gradient(120% 80% at 50% 0%, oklch(0.32 0.13 250 / 0.8), transparent 65%),
+    repeating-linear-gradient(180deg, rgba(120, 220, 255, 0.06) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(120, 220, 255, 0.05) 0 1px, transparent 1px 34px),
+    oklch(0.17 0.07 260);
+}
+.lemon-sheet--signal-b {
+  background:
+    radial-gradient(120% 80% at 50% 100%, oklch(0.32 0.13 250 / 0.8), transparent 65%),
+    repeating-linear-gradient(180deg, rgba(120, 220, 255, 0.06) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(90deg, rgba(120, 220, 255, 0.05) 0 1px, transparent 1px 34px),
+    oklch(0.17 0.07 260);
+}
+.lemon-sheet--signal .lemon-chapter-label,
+.lemon-sheet--signal-b .lemon-chapter-label { color: oklch(0.8 0.12 200); }
+.lemon-sheet--signal .lemon-page-nav,
+.lemon-sheet--signal-b .lemon-page-nav { color: var(--lemon-neon); }
+.lemon-signal-kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: var(--lemon-neon);
+}
+.lemon-signal-kicker i { width: 8px; height: 8px; background: var(--lemon-neon); display: inline-block; animation: lemonBulb 1.6s ease-in-out infinite; }
+.lemon-signal-title {
+  font-family: 'Jost', sans-serif;
+  font-weight: 600;
+  font-size: clamp(26px, 3.4vw, 40px);
+  letter-spacing: 0.16em;
+  color: oklch(0.97 0.02 200);
+  margin-top: 10px;
+  text-shadow: 0 0 24px oklch(0.7 0.16 220 / 0.8);
+}
+.lemon-signal-intro { margin: 8px 0 30px; color: oklch(0.82 0.05 220); font-size: 14px; max-width: 52ch; font-family: 'Courier New', monospace; }
+.lemon-profiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+.lemon-profile-cell { animation: lemonPopIn 0.5s both; }
+.lemon-profile {
+  position: relative;
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  padding: 18px;
+  background: linear-gradient(180deg, var(--soft), oklch(0.2 0.07 260 / 0.85));
+  box-shadow: 0 0 34px var(--glow), inset 0 0 40px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.lemon-profile:hover { transform: translateY(-6px); box-shadow: 0 0 54px var(--glow); }
+.lemon-profile .corner { position: absolute; width: 16px; height: 16px; }
+.lemon-profile .corner.tl { top: 8px; left: 8px; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+.lemon-profile .corner.br { bottom: 8px; right: 8px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+.lemon-profile-kicker { text-align: center; font-family: 'Courier New', monospace; font-size: 10px; letter-spacing: 0.3em; color: var(--accent); margin-bottom: 12px; }
+.lemon-profile-grid { display: grid; grid-template-columns: 96px 1fr; gap: 14px; align-items: start; }
+.lemon-avatar {
+  width: 96px;
+  height: 120px;
+  border-radius: 48px 48px 12px 12px;
+  overflow: hidden;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 20px var(--glow);
+  background: repeating-linear-gradient(180deg, rgba(120, 220, 255, 0.08) 0 1px, transparent 1px 6px), oklch(0.2 0.07 260);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Jost', sans-serif;
+  font-weight: 600;
+  font-size: 40px;
+  color: var(--accent);
+}
+.lemon-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.lemon-profile-name { font-family: 'Jost', sans-serif; font-weight: 600; font-size: 22px; letter-spacing: 0.22em; color: oklch(0.97 0.02 200); text-transform: uppercase; }
+.lemon-profile-meta { font-family: 'Courier New', monospace; font-size: 11px; color: var(--accent); line-height: 1.7; margin-top: 8px; }
+.lemon-profile-msg {
+  margin-top: 14px;
+  border-top: 1px solid var(--soft);
+  padding-top: 12px;
+  font-family: 'Jost', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  color: oklch(0.94 0.02 220);
+}
+.lemon-profile-foot { margin-top: 14px; display: flex; justify-content: space-between; align-items: flex-end; }
+.lemon-profile-sig-label { font-family: 'Courier New', monospace; font-size: 9px; letter-spacing: 0.24em; color: var(--accent); opacity: 0.8; }
+.lemon-profile-sig { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 24px; color: oklch(0.97 0.02 200); transform: rotate(-6deg); }
+
+/* ---------- capítulo III · cine de madrugada ---------- */
+.lemon-sheet--cine {
+  background:
+    radial-gradient(60% 40% at 80% 10%, oklch(0.45 0.16 35 / 0.55), transparent 62%),
+    radial-gradient(circle at 6px 6px, rgba(255, 190, 120, 0.05) 1.5px, transparent 1.7px) 0 0 / 16px 16px,
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.16) 0 3px, transparent 3px 26px),
+    linear-gradient(180deg, oklch(0.24 0.06 45), oklch(0.16 0.04 35));
+}
+.lemon-sheet--cine .lemon-chapter-label { color: oklch(0.8 0.13 60); }
+.lemon-sheet--cine .lemon-page-nav { color: var(--lemon-amber); }
+.lemon-cine { position: relative; }
+.lemon-cine-panel {
+  position: relative;
+  background: linear-gradient(180deg, oklch(0.19 0.04 42), oklch(0.13 0.03 35));
+  margin: -6px -6px 0;
+  padding: 26px 24px 28px;
+  border-radius: 14px;
+  box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.7), 0 16px 40px rgba(0, 0, 0, 0.5);
+  border: 2px solid oklch(0.42 0.1 50);
+  overflow: hidden;
+}
+.lemon-cine-graffiti {
+  position: absolute;
+  right: -10px;
+  bottom: -24px;
+  font-family: 'Bungee', sans-serif;
+  font-size: 96px;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 2px oklch(0.55 0.14 60 / 0.35);
+  transform: rotate(-6deg);
+  pointer-events: none;
+}
+.lemon-cine-uu { position: absolute; left: 18px; bottom: 10px; font-family: 'Bungee', sans-serif; font-size: 14px; color: oklch(0.7 0.16 60 / 0.5); transform: rotate(-3deg); pointer-events: none; }
+.lemon-cine-kicker { font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 0.24em; color: oklch(0.85 0.14 75); display: flex; align-items: center; gap: 9px; }
+.lemon-cine-kicker i { width: 9px; height: 9px; border-radius: 50%; background: oklch(0.65 0.2 30); display: inline-block; animation: lemonBulb 1.2s ease-in-out infinite; }
+.lemon-cine-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 8px; position: relative; }
+.lemon-cine-title { font-family: 'Bungee', sans-serif; font-size: clamp(22px, 3vw, 34px); color: oklch(0.93 0.06 80); text-shadow: 3px 3px 0 oklch(0.45 0.19 28); }
+.lemon-cine-tag { font-family: 'Courier New', monospace; font-size: 12px; color: oklch(0.82 0.08 70); transform: rotate(-2deg); }
+.lemon-cine-intro { margin: 10px 0 26px; color: oklch(0.85 0.04 75); font-size: 14px; }
+.lemon-cine-grid { display: grid; grid-template-columns: 300px 1fr; gap: 22px; }
+.lemon-clip-list { display: flex; flex-direction: column; gap: 10px; }
+.lemon-clip {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: oklch(0.24 0.04 45);
+  border: 2px dashed oklch(0.62 0.12 60);
+  border-radius: 12px;
+  padding: 8px;
+  cursor: pointer;
+  text-align: left;
+  color: oklch(0.95 0.03 85);
+  transition: transform 0.2s, border-color 0.2s;
+}
+.lemon-clip:hover { border-color: oklch(0.85 0.14 75); transform: rotate(-1deg) translateX(3px); }
+.lemon-clip.is-active { background: oklch(0.34 0.07 50); }
+.lemon-clip-thumb {
+  width: 124px;
+  height: 78px;
+  overflow: hidden;
+  flex-shrink: 0;
   border-radius: 8px;
+  border-left: 5px dotted oklch(0.6 0.08 60);
+  border-right: 5px dotted oklch(0.6 0.08 60);
+  background: #111;
+}
+.lemon-clip-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lemon-clip-title { font-family: 'Courier New', monospace; font-size: 12px; letter-spacing: 0.05em; }
+.lemon-screen-col { display: flex; flex-direction: column; gap: 12px; }
+.lemon-screen {
+  width: 100%;
   aspect-ratio: 16 / 9;
   overflow: hidden;
   position: relative;
+  border-radius: 10px;
+  border: 3px solid oklch(0.78 0.13 70);
+  box-shadow: 0 0 60px oklch(0.75 0.16 65 / 0.4);
+  background: #0a0a0a;
 }
-.lemon-tv-screen iframe,
-.lemon-tv-screen img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.lemon-tv-play-btn {
-  position: absolute; inset: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, 0.35);
-  border: none; cursor: pointer;
+.lemon-screen img, .lemon-screen iframe { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
+.lemon-screen-play {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid oklch(0.78 0.13 70);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
 }
-.lemon-tv-play-btn .play {
-  width: 0; height: 0;
-  border-style: solid;
-  border-width: 18px 0 18px 28px;
-  border-color: transparent transparent transparent rgba(255, 255, 255, 0.92);
-  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+.lemon-screen-play .tri { width: 0; height: 0; border-top: 10px solid transparent; border-bottom: 10px solid transparent; border-left: 15px solid oklch(0.95 0.03 85); margin-left: 3px; }
+.lemon-screen-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lemon-screen-title { font-family: 'Courier New', monospace; font-size: 13px; color: oklch(0.93 0.06 85); }
+.lemon-playing-tag {
+  background: oklch(0.9 0.14 90);
+  color: oklch(0.28 0.08 60);
+  font-family: 'Courier New', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  transform: rotate(-3deg);
 }
-.lemon-tv-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
-.lemon-tv-label {
-  font-family: 'Space Mono', monospace;
+.lemon-screen-note { font-size: 12px; color: oklch(0.78 0.04 80); }
+.lemon-moon {
+  position: absolute;
+  top: -22px;
+  right: -18px;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  z-index: 6;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(0, 0, 0, 0.22) 7px, transparent 8px),
+    radial-gradient(circle at 62% 48%, rgba(0, 0, 0, 0.18) 11px, transparent 12px),
+    radial-gradient(circle at 44% 70%, rgba(0, 0, 0, 0.16) 8px, transparent 9px),
+    radial-gradient(circle at 70% 22%, rgba(0, 0, 0, 0.14) 5px, transparent 6px),
+    radial-gradient(circle at 40% 36%, oklch(0.62 0.19 35), oklch(0.42 0.19 28) 72%, oklch(0.3 0.15 25));
+  box-shadow: 0 0 50px oklch(0.5 0.22 28 / 0.85), 0 0 120px oklch(0.45 0.2 25 / 0.5);
+}
+.lemon-sticker-note {
+  position: absolute;
+  z-index: 6;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  animation: lemonFloatBob 5s ease-in-out infinite;
+}
+.lemon-sticker-note--cat {
+  top: -18px;
+  left: -30px;
+  transform: rotate(-8deg);
+  background: oklch(0.95 0.05 340);
+  border: 2px dashed oklch(0.5 0.15 20);
+  border-radius: 14px;
+  padding: 5px 11px;
+  color: oklch(0.4 0.15 20);
+}
+.lemon-sticker-note--core {
+  bottom: -14px;
+  right: 24px;
+  transform: rotate(7deg);
+  background: oklch(0.9 0.14 90);
+  border-radius: 12px;
+  padding: 6px 12px;
+  color: oklch(0.3 0.08 60);
+  animation-duration: 6s;
+  animation-delay: 1s;
+}
+
+/* ---------- capítulo IV · guestbook ---------- */
+.lemon-guest-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 26px; }
+.lemon-guest-list { display: flex; flex-direction: column; gap: 14px; }
+.lemon-guest-card {
+  position: relative;
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, var(--soft), oklch(0.2 0.07 260 / 0.85));
+  box-shadow: 0 0 24px var(--glow);
+  animation: lemonFadeUp 0.45s both;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.lemon-guest-glyph {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  background: oklch(0.2 0.07 260);
+}
+.lemon-guest-body { display: flex; flex-direction: column; gap: 5px; }
+.lemon-guest-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lemon-guest-name { font-family: 'Jost', sans-serif; font-weight: 600; letter-spacing: 0.16em; font-size: 15px; color: oklch(0.97 0.02 200); }
+.lemon-pending-badge {
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: 999px;
+  animation: lemonWiggle 1.4s ease-in-out infinite;
+}
+.lemon-guest-msg { font-size: 14px; line-height: 1.5; color: oklch(0.93 0.02 220); }
+.lemon-guest-form {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid var(--accent, var(--lemon-neon));
+  border-radius: 14px;
+  height: fit-content;
+  background: linear-gradient(180deg, oklch(0.24 0.08 260 / 0.9), oklch(0.19 0.06 260 / 0.9));
+  box-shadow: 0 0 34px oklch(0.6 0.12 250 / 0.25);
+}
+.lemon-guest-form-kicker { font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 0.22em; color: var(--accent, var(--lemon-neon)); }
+.lemon-emblems { display: flex; gap: 10px; flex-wrap: wrap; }
+.lemon-emblem {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s;
+  color: var(--c);
+  background: oklch(0.22 0.06 260);
+  border: 2px solid oklch(0.4 0.06 260);
+  padding: 0;
+}
+.lemon-emblem.is-active {
+  background: var(--c-soft);
+  border-color: var(--c);
+  box-shadow: 0 0 20px var(--c-glow);
+  transform: scale(1.08);
+}
+.lemon-guest-form input,
+.lemon-guest-form textarea {
+  background: oklch(0.16 0.05 260);
+  border: 1px solid oklch(0.42 0.07 250);
+  border-radius: 8px;
+  padding: 11px 13px;
+  color: oklch(0.95 0.02 220);
+  font-family: 'Jost', sans-serif;
+  font-size: 14px;
+  outline: none;
+  width: 100%;
+}
+.lemon-guest-form input { letter-spacing: 0.1em; }
+.lemon-guest-form textarea { line-height: 1.5; resize: vertical; }
+.lemon-guest-form input:focus, .lemon-guest-form textarea:focus { border-color: var(--accent, var(--lemon-neon)); }
+.lemon-guest-submit {
+  font-family: 'Courier New', monospace;
+  font-weight: 700;
   font-size: 12px;
-  color: var(--lemon-paper);
-  background: #1c1815;
-  padding: 5px 12px;
-  border-radius: 4px;
+  letter-spacing: 0.16em;
+  background: transparent;
+  color: var(--accent, var(--lemon-neon));
+  border: 2px solid var(--accent, var(--lemon-neon));
+  border-radius: 999px;
+  padding: 13px;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
 }
-.lemon-tv-dots { display: flex; gap: 5px; }
-.lemon-tv-dots span { width: 6px; height: 6px; border-radius: 50%; background: #6b625a; display: block; }
+.lemon-guest-submit:hover { transform: scale(1.03); background: oklch(0.28 0.08 260); }
+.lemon-guest-submit:disabled { opacity: 0.5; cursor: default; transform: none; }
+.lemon-guest-note { font-size: 11px; color: oklch(0.72 0.04 230); font-family: 'Courier New', monospace; }
+.lemon-guest-status { font-family: 'Courier New', monospace; font-size: 12px; min-height: 1em; }
+.lemon-guest-status.is-error { color: oklch(0.75 0.18 25); }
+.lemon-guest-status.is-success { color: oklch(0.85 0.14 150); }
 
-/* power-on flicker cuando entras a video memories */
-.lemon-tv-flicker { animation: lemon-flicker 0.5s steps(2, end) 2; }
-@keyframes lemon-flicker {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.6); }
-}
-
-/* ---------- sonido ---------- */
-.lemon-sound-btn {
-  position: fixed; top: 16px; right: 16px;
-  font-family: 'Space Mono', monospace;
+/* ---------- controles fijos (sonido / fullscreen) ---------- */
+.lemon-sound-btn, .lemon-fullscreen-btn {
+  position: fixed;
+  top: 16px;
+  font-family: 'Courier New', monospace;
   font-size: 12px;
-  background: var(--lemon-paper); color: var(--lemon-ink);
-  border: none; border-radius: 6px; padding: 8px 14px;
-  cursor: pointer; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  display: flex; align-items: center; gap: 8px;
-  z-index: 10;
+  background: oklch(0.22 0.05 20 / 0.85);
+  color: var(--lemon-cream);
+  border: 1px solid oklch(0.75 0.13 85 / 0.4);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 100;
 }
-.lemon-sound-dot { width: 8px; height: 8px; border-radius: 50%; background: #999; }
-.lemon-sound-dot.is-on { background: #3b9c4a; }
+.lemon-sound-btn { right: 16px; }
+.lemon-fullscreen-btn { left: 16px; }
+.lemon-sound-btn:hover, .lemon-fullscreen-btn:hover { border-color: var(--lemon-gold); }
+.lemon-sound-dot { width: 8px; height: 8px; border-radius: 50%; background: #777; }
+.lemon-sound-dot.is-on { background: oklch(0.8 0.18 150); box-shadow: 0 0 8px oklch(0.8 0.18 150); }
 
-/* ---------- pantalla completa ---------- */
-.lemon-fullscreen-btn {
-  position: fixed; top: 16px; left: 16px;
-  font-family: 'Space Mono', monospace;
-  font-size: 12px;
-  background: var(--lemon-paper); color: var(--lemon-ink);
-  border: none; border-radius: 6px; padding: 8px 14px;
-  cursor: pointer; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-  z-index: 10;
-}
+/* ---------- fin (contraportada cerrada) ---------- */
+.lemon-end-note { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; animation: lemonPopIn 0.5s 0.4s both; }
+.lemon-end-title { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; color: var(--lemon-gold); }
 
-/* ---------- RESPONSIVE ---------- */
-@media (max-width: 900px) {
-  .lemon-body { padding: 20px; gap: 16px; }
-  .lemon-page { padding: 22px 20px; }
-  .lemon-ctx-menu {
-    position: static;
-    flex-direction: row;
-    flex-wrap: wrap;
-    max-width: none;
-    margin-top: 14px;
-    top: auto;
-    right: auto;
-  }
-  .lemon-ctx-item {
-    border-radius: 8px;
-  }
-  .lemon-ctx-item:hover { transform: none; filter: brightness(0.95); }
-  .lemon-tv-frame { padding: 12px 12px 18px; }
-}
-
-@media (max-width: 600px) {
-  .lemon-body { flex-direction: column; padding: 12px; gap: 12px; }
-  .lemon-stage { min-width: 0; }
-
-  .lemon-sidebar {
-    width: 100%;
-    flex-direction: row;
-    overflow-x: auto;
-    gap: 10px;
-    padding-top: 50px;
-  }
-  .lemon-menu-item {
-    flex-shrink: 0;
-    font-size: 14px;
-    padding: 10px 14px 14px;
-  }
-
-  .lemon-page { padding: 16px 14px; min-height: 320px; }
-
-  .lemon-polaroid-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; }
-  .lemon-polaroid img { height: 84px; }
-
-  .lemon-sticker { display: none; }
-
-  .lemon-sound-btn,
-  .lemon-fullscreen-btn {
-    top: auto;
-    bottom: 12px;
-  }
+/* ---------- responsive ---------- */
+@media (max-width: 760px) {
+  .lemon-body { padding: 18px 12px; }
+  .lemon-tabs { position: static; flex-direction: row; gap: 8px; margin-bottom: 12px; }
+  .lemon-tab { writing-mode: horizontal-tb; flex: 1; border-radius: 6px; padding: 10px 6px; }
+  .lemon-sheet { padding: 32px 20px 64px; }
+  .lemon-cine-grid { grid-template-columns: 1fr; }
+  .lemon-guest-grid { grid-template-columns: 1fr; }
+  .lemon-page-nav { padding: 0 18px; }
+  .lemon-orn--cross { left: -14px; }
+  .lemon-sticker-note--cat { left: -10px; }
+  .lemon-moon { right: -10px; width: 72px; height: 72px; }
+  .lemon-sound-btn, .lemon-fullscreen-btn { top: auto; bottom: 12px; }
   .lemon-sound-btn { right: 12px; }
   .lemon-fullscreen-btn { left: 12px; }
+}
+
+/* ---------- rendimiento / accesibilidad ----------
+   En teléfonos modestos y para quien pide menos movimiento, se apagan las
+   animaciones decorativas de bucle infinito (focos, flotantes, glow) y las
+   transiciones 3D; el cambio de página queda como corte simple. */
+@media (prefers-reduced-motion: reduce) {
+  .lemon-stage-bulbs i,
+  .lemon-signal-kicker i,
+  .lemon-cine-kicker i,
+  .lemon-sticker-note,
+  .lemon-pending-badge,
+  .lemon-btn-cover,
+  .lemon-btn-gold--pulse,
+  .lemon-poster-play,
+  .lemon-loader,
+  .lemon-glitch { animation: none !important; }
+  .lemon-chapter, .lemon-flip-sheet, .lemon-confetti span,
+  .lemon-cover-wrap.is-opening, .lemon-cover-wrap.is-closing,
+  .lemon-stage.is-open .lemon-curtain--l, .lemon-stage.is-open .lemon-curtain--r {
+    animation-duration: 0.01s !important;
+  }
+  .lemon-frame, .lemon-profile, .lemon-clip { transition: none; }
 }

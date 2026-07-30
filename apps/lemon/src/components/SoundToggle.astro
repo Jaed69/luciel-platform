@@ -1,7 +1,7 @@
 ---
-// Ambiente sonoro sintetizado (Web Audio API) — no es música con licencia,
-// es un placeholder audible. Reemplázalo por <audio loop> con pistas reales
-// cuando las tengas (ver nota al final del componente).
+// Ambiente sonoro sintetizado (Web Audio API) — placeholder audible con un
+// mood por capítulo. Cuando exista una pista real con licencia, reemplaza
+// scheduleAmbient por un <audio loop> por capítulo manteniendo el mismo botón.
 ---
 
 <button class="lemon-sound-btn" id="lemon-sound-btn" type="button">
@@ -15,7 +15,10 @@
     messages: { notes: [392.0, 440.0, 523.3, 587.3], noteDur: 0.9, gap: 1.0, type: 'triangle' },
     videos: { notes: [130.8, 164.8, 196.0, 146.8], noteDur: 2.6, gap: 2.7, type: 'sine' },
     guestbook: { notes: [349.2, 392.0, 440.0, 523.3, 587.3], noteDur: 0.6, gap: 0.7, type: 'triangle' },
+    farewell: { notes: [220.0, 261.6, 329.6, 293.7], noteDur: 2.0, gap: 2.2, type: 'sine' },
   };
+
+  const SOUND_KEY = 'lemon.sound';
 
   let audioCtx: AudioContext | null = null;
   let isSoundOn = false;
@@ -62,9 +65,9 @@
   const dot = document.getElementById('lemon-sound-dot');
   const label = document.getElementById('lemon-sound-label');
 
-  btn?.addEventListener('click', () => {
-    isSoundOn = !isSoundOn;
-    if (isSoundOn) {
+  function setSound(on: boolean, persist = true) {
+    isSoundOn = on;
+    if (on) {
       ensureCtx();
       stopAmbient();
       scheduleAmbient(currentSection);
@@ -75,9 +78,30 @@
       dot?.classList.remove('is-on');
       if (label) label.textContent = 'sonido: apagado';
     }
-  });
+    if (persist) {
+      try {
+        localStorage.setItem(SOUND_KEY, on ? 'on' : 'off');
+      } catch {}
+    }
+  }
 
-  // escucha los clics del menu principal (evento delegado, sin acoplarse a BookStage)
+  btn?.addEventListener('click', () => setSound(!isSoundOn));
+
+  // Preferencia recordada: el AudioContext necesita un gesto del usuario,
+  // así que se reactiva en la primera interacción de la visita.
+  let wantsSound = false;
+  try {
+    wantsSound = localStorage.getItem(SOUND_KEY) === 'on';
+  } catch {}
+  if (wantsSound) {
+    if (label) label.textContent = 'sonido: toca para activar';
+    const resume = () => {
+      if (!isSoundOn) setSound(true, false);
+    };
+    document.addEventListener('pointerdown', resume, { once: true });
+  }
+
+  // cambia el mood al cambiar de capítulo (delegado, sin acoplarse al libro)
   document.addEventListener('click', (e) => {
     const target = (e.target as HTMLElement)?.closest('[data-section-btn]') as HTMLElement | null;
     if (!target) return;

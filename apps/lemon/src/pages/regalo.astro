@@ -1,36 +1,480 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import Sidebar from '../components/Sidebar.astro';
-import BookStage from '../components/BookStage.astro';
 import SoundToggle from '../components/SoundToggle.astro';
 import FullscreenToggle from '../components/FullscreenToggle.astro';
+import GuestbookForm from '../components/GuestbookForm.astro';
 import { sections as videoSections } from '../data/videos';
-import { artAlbums, birthdayWishes, guestbookMessages } from '../data/content';
+import { artAlbums, birthdayWishes, guestbookMessages, dedication } from '../data/content';
 
-const menuSections = [
-  { key: 'art', label: "Lemon's art" },
-  { key: 'messages', label: 'Birthday wishes' },
-  { key: 'videos', label: 'Video memories' },
-  { key: 'guestbook', label: 'Guestbook' },
+const TOTAL_PAGES = 5;
+
+const chapters = [
+  { key: 'art', label: 'Arte', chapterLabel: 'capítulo I · el taller' },
+  { key: 'messages', label: 'Mensajes', chapterLabel: 'capítulo II · transmisión' },
+  { key: 'videos', label: 'Videos', chapterLabel: 'capítulo III · cine de madrugada' },
+  { key: 'guestbook', label: 'Visitas', chapterLabel: 'capítulo IV · nueva transmisión' },
+  { key: 'farewell', label: 'Despedida', chapterLabel: 'capítulo V · hasta pronto' },
 ];
 
-// Aplana todas las secciones de videos.ts en una sola lista de clips para la TV.
+// capítulo I: todas las fotos de todos los álbumes, prendidas sobre papel negro
+const photos = artAlbums.flatMap((a) => a.photos);
+const tapes = ['oklch(0.28 0.11 20)', 'oklch(0.9 0.01 320)', 'oklch(0.22 0.02 320)'];
+const rotations = [-2.2, 1.6, -1.1, 2.4, -1.8];
+
+// capítulo II: fichas de perfil con color de neón propio
+const hues = [200, 320, 150, 40, 280, 95];
+const wishes = birthdayWishes.map((w, i) => {
+  const hue = hues[i % hues.length];
+  return {
+    ...w,
+    accent: `oklch(0.82 0.14 ${hue})`,
+    glow: `oklch(0.82 0.14 ${hue} / .35)`,
+    soft: `oklch(0.82 0.14 ${hue} / .12)`,
+    code: '#' + String(721 + i * 409).padStart(4, '0'),
+    role: w.role ?? 'invitade',
+    delay: (i * 0.14).toFixed(2),
+    initial: w.name.charAt(0).toUpperCase(),
+  };
+});
+
+// capítulo III: clips aplanados de videos.ts
 const clips = videoSections.flatMap((s) =>
-  s.videos.map((v) => ({ title: v.title, youtubeId: v.youtubeId, date: v.date }))
+  s.videos.map((v) => ({
+    title: v.title,
+    youtubeId: v.youtubeId,
+    note: v.description ?? '',
+    thumb: `https://i.ytimg.com/vi/${v.youtubeId}/hqdefault.jpg`,
+  })),
 );
 
-const approvedWishes = birthdayWishes.filter((m) => m.approved);
 const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
 ---
 
-<Layout title="lemon.luciel.dev — regalo" description="Un libro digital de recuerdos, arte y buenos deseos.">
+<Layout title="lemon.luciel.dev — el libro" description="Un libro digital de recuerdos, arte y buenos deseos.">
   <SoundToggle />
   <FullscreenToggle />
-  <Sidebar sections={menuSections} />
-  <BookStage
-    artAlbums={artAlbums}
-    birthdayWishes={approvedWishes}
-    guestbookMessages={approvedGuestbook}
-    clips={clips}
-  />
+
+  <!-- portada -->
+  <div class="lemon-cover-wrap" id="cover">
+    <div class="lemon-cover">
+      <div class="lemon-cover-diamond"></div>
+      <div class="lemon-cover-title">Feliz cumpleaños,<br />Lemondrea</div>
+      <div class="lemon-cover-sub">un libro de recuerdos, arte y buenos deseos</div>
+      <button class="lemon-btn-cover" id="open-cover" type="button">Abrir el libro</button>
+    </div>
+  </div>
+
+  <!-- fin (tras cerrar la contraportada) -->
+  <div class="lemon-end-note" id="end-note" hidden>
+    <div class="lemon-cover-diamond"></div>
+    <div class="lemon-end-title">fin — gracias por leer</div>
+    <button class="lemon-btn-cover" id="reopen-cover" type="button">Volver a abrir</button>
+    <a class="lemon-skip-link" href="/">ver el show otra vez</a>
+  </div>
+
+  <!-- libro abierto -->
+  <div class="lemon-book" id="book" hidden>
+    <div class="lemon-book-topbar">
+      <button class="close-btn" id="close-book" type="button">← cerrar el libro</button>
+      <a class="replay-link" href="/">ver el show otra vez</a>
+      <div class="lemon-page-count">Página <span id="page-num">1</span> de {TOTAL_PAGES}</div>
+    </div>
+
+    <div class="lemon-tabs" id="tabs">
+      {chapters.map((c, i) => (
+        <button class={`lemon-tab ${i === 0 ? 'is-active' : ''}`} data-page={i} data-section-btn={c.key} type="button">
+          {c.label}
+        </button>
+      ))}
+    </div>
+
+    <div class="lemon-book-3d">
+      <div class="lemon-spine"></div>
+      <div class="lemon-edge-r"></div>
+      <div class="lemon-edge-b"></div>
+
+      <!-- capítulo I · el taller -->
+      <section class="lemon-sheet lemon-sheet--atelier" data-sheet="0">
+        <div class="lemon-sheet-gutter"></div>
+        <div class="lemon-chapter-label">{chapters[0].chapterLabel}</div>
+        <div class="lemon-chapter lemon-atelier">
+          <div class="lemon-lace-top"></div>
+          <div class="lemon-orn lemon-orn--cross">†</div>
+          <div class="lemon-orn lemon-orn--fleuron">❦</div>
+          <div class="lemon-atelier-head">
+            <div class="lemon-atelier-title">El taller de Lemon</div>
+            <div class="lemon-atelier-tag">atelier · mmxxvi</div>
+          </div>
+          <div class="lemon-atelier-rule"></div>
+          <p class="lemon-atelier-intro">Obras y proceso creativo del año, prendidas con cinta y encaje sobre papel negro.</p>
+          <div class="lemon-frames">
+            {photos.map((p, i) => (
+              <div class="lemon-frame-cell" style={`animation-delay:${(i * 0.08).toFixed(2)}s`}>
+                <div class="lemon-frame" style={`--rot:${rotations[i % 5]}deg; --tape:${tapes[i % 3]}`}>
+                  <div class="lemon-frame-tape"></div>
+                  <div class="lemon-frame-img"><img src={p.src} alt={p.caption} loading="lazy" /></div>
+                  <div class="lemon-frame-lace"></div>
+                  <div class="lemon-frame-caption">{p.caption}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="lemon-page-nav"><button data-nav="prev" disabled>‹</button><button data-nav="next">›</button></div>
+      </section>
+
+      <!-- capítulo II · transmisión -->
+      <section class="lemon-sheet lemon-sheet--signal" data-sheet="1" hidden>
+        <div class="lemon-sheet-gutter"></div>
+        <div class="lemon-chapter-label">{chapters[1].chapterLabel}</div>
+        <div class="lemon-chapter">
+          <div class="lemon-signal-kicker"><i></i>TRANSMISIÓN ENTRANTE · {String(wishes.length).padStart(2, '0')} PERFILES</div>
+          <div class="lemon-signal-title">BIRTHDAY WISHES</div>
+          <p class="lemon-signal-intro">Cada invitado subió su mensaje al escenario. Selecciona un perfil para leerlo.</p>
+          <div class="lemon-profiles">
+            {wishes.map((w) => (
+              <div class="lemon-profile-cell" style={`animation-delay:${w.delay}s`}>
+                <div class="lemon-profile" style={`--accent:${w.accent}; --glow:${w.glow}; --soft:${w.soft}`}>
+                  <div class="corner tl"></div>
+                  <div class="corner br"></div>
+                  <div class="lemon-profile-kicker">P R O F I L E</div>
+                  <div class="lemon-profile-grid">
+                    <div class="lemon-avatar">
+                      {w.avatar ? <img src={w.avatar} alt={`avatar de ${w.name}`} loading="lazy" /> : w.initial}
+                    </div>
+                    <div>
+                      <div class="lemon-profile-name">{w.name}</div>
+                      <div class="lemon-profile-meta">
+                        <div>id · {w.code}</div>
+                        <div>rol · {w.role}</div>
+                        <div>estado · en línea</div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="lemon-profile-msg">{w.text}</div>
+                  <div class="lemon-profile-foot">
+                    <div class="lemon-profile-sig-label">SIGNATURE</div>
+                    <div class="lemon-profile-sig">{w.name}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="lemon-page-nav"><button data-nav="prev">‹</button><button data-nav="next">›</button></div>
+      </section>
+
+      <!-- capítulo III · cine de madrugada -->
+      <section class="lemon-sheet lemon-sheet--cine" data-sheet="2" hidden>
+        <div class="lemon-sheet-gutter"></div>
+        <div class="lemon-chapter-label">{chapters[2].chapterLabel}</div>
+        <div class="lemon-chapter lemon-cine">
+          <div class="lemon-cine-panel">
+            <div class="lemon-cine-graffiti">lemon</div>
+            <div class="lemon-cine-uu">u_u</div>
+            <div class="lemon-cine-kicker"><i></i>CINE DE MADRUGADA · CINTA 01</div>
+            <div class="lemon-cine-head">
+              <div class="lemon-cine-title">video memories</div>
+              <div class="lemon-cine-tag">＊ ｍｅｍｅｓ ＆ ｇａｔｏｓ ＊</div>
+            </div>
+            <p class="lemon-cine-intro">Elige un clip de la bobina. Palomitas opcionales, llorar permitido.</p>
+            <div class="lemon-cine-grid">
+              <div class="lemon-clip-list" id="clip-list">
+                {clips.map((c, i) => (
+                  <button
+                    class={`lemon-clip ${i === 0 ? 'is-active' : ''}`}
+                    data-clip={i}
+                    data-youtube-id={c.youtubeId}
+                    data-title={c.title}
+                    data-note={c.note}
+                    type="button"
+                  >
+                    <span class="lemon-clip-thumb"><img src={c.thumb} alt="" loading="lazy" /></span>
+                    <span class="lemon-clip-title">{c.title}</span>
+                  </button>
+                ))}
+              </div>
+              <div class="lemon-screen-col">
+                <div class="lemon-screen" id="screen" data-youtube-id={clips[0]?.youtubeId}>
+                  <img id="screen-thumb" src={clips[0]?.thumb} alt={clips[0]?.title} loading="lazy" />
+                  <button class="lemon-screen-play" id="screen-play" type="button" aria-label="Reproducir clip">
+                    <span class="tri"></span>
+                  </button>
+                </div>
+                <div class="lemon-screen-meta">
+                  <div class="lemon-screen-title" id="screen-title">{clips[0]?.title}</div>
+                  <div class="lemon-playing-tag">ᓚᘏᗢ reproduciendo</div>
+                </div>
+                <div class="lemon-screen-note" id="screen-note">{clips[0]?.note}</div>
+              </div>
+            </div>
+          </div>
+          <div class="lemon-moon"></div>
+          <div class="lemon-sticker-note lemon-sticker-note--cat">♡ gatito aprueba</div>
+          <div class="lemon-sticker-note lemon-sticker-note--core">★ 3 a.m. core</div>
+        </div>
+        <div class="lemon-page-nav"><button data-nav="prev">‹</button><button data-nav="next">›</button></div>
+      </section>
+
+      <!-- capítulo IV · libro de visitas -->
+      <section class="lemon-sheet lemon-sheet--signal-b" data-sheet="3" hidden>
+        <div class="lemon-sheet-gutter"></div>
+        <div class="lemon-chapter-label">{chapters[3].chapterLabel}</div>
+        <div class="lemon-chapter">
+          <div class="lemon-signal-kicker"><i></i>CANAL ABIERTO · DEJA TU SEÑAL</div>
+          <div class="lemon-signal-title">LIBRO DE VISITAS</div>
+          <p class="lemon-signal-intro">Elige tu emblema, escribe tu deseo y quedará como una ficha más en la transmisión.</p>
+          <GuestbookForm approvedMessages={approvedGuestbook} />
+        </div>
+        <div class="lemon-page-nav"><button data-nav="prev">‹</button><button data-nav="next">›</button></div>
+      </section>
+
+      <!-- capítulo V · despedida -->
+      <section class="lemon-sheet lemon-sheet--atelier" data-sheet="4" hidden>
+        <div class="lemon-sheet-gutter"></div>
+        <div class="lemon-chapter-label">{chapters[4].chapterLabel}</div>
+        <div class="lemon-chapter lemon-atelier">
+          <div class="lemon-lace-top"></div>
+          <div class="lemon-orn lemon-orn--cross">†</div>
+          <div class="lemon-orn lemon-orn--fleuron">❦</div>
+          <div class="lemon-atelier-head">
+            <div class="lemon-atelier-title">Hasta el próximo capítulo</div>
+          </div>
+          <div class="lemon-atelier-rule"></div>
+          <div class="lemon-farewell">
+            {dedication.lines.map((line) => (
+              <p class="lemon-farewell-text">{line}</p>
+            ))}
+            <div class="lemon-farewell-sign">{dedication.signature}</div>
+            <div class="lemon-farewell-diamond"></div>
+            <button class="lemon-btn-cover" id="close-back-cover" type="button">Cerrar el libro</button>
+          </div>
+        </div>
+        <div class="lemon-page-nav"><button data-nav="prev">‹</button><button data-nav="next" disabled>›</button></div>
+      </section>
+
+      <div class="lemon-flip-sheet" id="flip-sheet" hidden></div>
+    </div>
+  </div>
 </Layout>
+
+<script>
+  const TOTAL = 5;
+  const PAGE_KEY = 'lemon.page';
+  const INTRO_KEY = 'lemon.introSeen';
+
+  const cover = document.getElementById('cover')!;
+  const book = document.getElementById('book')!;
+  const endNote = document.getElementById('end-note')!;
+  const flipSheet = document.getElementById('flip-sheet')!;
+  const pageNum = document.getElementById('page-num')!;
+  const sheets = Array.from(document.querySelectorAll<HTMLElement>('[data-sheet]'));
+  const tabs = Array.from(document.querySelectorAll<HTMLElement>('.lemon-tab'));
+
+  let page = 0;
+  let flipping = false;
+
+  function readSavedPage(): number | null {
+    try {
+      const v = localStorage.getItem(PAGE_KEY);
+      if (v === null) return null;
+      const n = parseInt(v, 10);
+      return Number.isInteger(n) && n >= 0 && n < TOTAL ? n : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function savePage() {
+    try {
+      localStorage.setItem(PAGE_KEY, String(page));
+    } catch {}
+  }
+
+  function renderPage(dir?: 'next' | 'prev') {
+    sheets.forEach((s) => {
+      const isCurrent = Number(s.dataset.sheet) === page;
+      s.hidden = !isCurrent;
+      if (isCurrent && dir) {
+        const chapter = s.querySelector<HTMLElement>('.lemon-chapter');
+        if (chapter) {
+          chapter.classList.remove('turn-next', 'turn-prev');
+          void chapter.offsetWidth;
+          chapter.classList.add(dir === 'next' ? 'turn-next' : 'turn-prev');
+        }
+      }
+    });
+    tabs.forEach((t) => t.classList.toggle('is-active', Number(t.dataset.page) === page));
+    pageNum.textContent = String(page + 1);
+    document.querySelectorAll<HTMLButtonElement>('[data-nav="prev"]').forEach((b) => (b.disabled = page === 0));
+    document.querySelectorAll<HTMLButtonElement>('[data-nav="next"]').forEach((b) => (b.disabled = page === TOTAL - 1));
+    savePage();
+  }
+
+  function turnTo(idx: number) {
+    if (flipping || idx === page || idx < 0 || idx >= TOTAL) return;
+    const dir = idx > page ? 'next' : 'prev';
+    flipping = true;
+    flipSheet.hidden = false;
+    flipSheet.classList.remove('next', 'prev');
+    void flipSheet.offsetWidth;
+    flipSheet.classList.add(dir);
+    setTimeout(() => {
+      page = idx;
+      renderPage(dir);
+    }, 280);
+    setTimeout(() => {
+      flipSheet.hidden = true;
+      flipping = false;
+    }, 900);
+  }
+
+  // ---------- portada / contraportada ----------
+  function launchConfetti() {
+    const colors = ['oklch(0.42 0.13 20)', 'oklch(0.75 0.13 85)', 'oklch(0.7 0.2 340)', 'oklch(0.65 0.15 220)'];
+    const count = window.innerWidth < 600 ? 12 : 18;
+    const wrap = document.createElement('div');
+    wrap.className = 'lemon-confetti';
+    for (let i = 0; i < count; i++) {
+      const c = document.createElement('span');
+      c.style.left = `${Math.round(Math.random() * 96)}%`;
+      c.style.background = colors[i % 4];
+      c.style.setProperty('--delay', `${(Math.random() * 1).toFixed(2)}s`);
+      c.style.setProperty('--dur', `${(2.2 + Math.random() * 1.4).toFixed(2)}s`);
+      wrap.appendChild(c);
+    }
+    document.body.appendChild(wrap);
+    setTimeout(() => wrap.remove(), 4600);
+  }
+
+  function openBook(withConfetti: boolean) {
+    cover.classList.add('is-opening');
+    setTimeout(() => {
+      cover.hidden = true;
+      cover.classList.remove('is-opening');
+      book.hidden = false;
+      renderPage();
+      if (withConfetti) launchConfetti();
+    }, 650);
+    try {
+      localStorage.setItem(INTRO_KEY, '1');
+    } catch {}
+  }
+
+  document.getElementById('open-cover')!.addEventListener('click', () => openBook(true));
+
+  document.getElementById('close-book')!.addEventListener('click', () => {
+    book.hidden = true;
+    cover.hidden = false;
+    cover.classList.add('is-closing');
+    setTimeout(() => cover.classList.remove('is-closing'), 700);
+  });
+
+  document.getElementById('close-back-cover')!.addEventListener('click', () => {
+    book.hidden = true;
+    cover.hidden = false;
+    cover.classList.add('is-closing');
+    setTimeout(() => {
+      cover.hidden = true;
+      cover.classList.remove('is-closing');
+      endNote.hidden = false;
+    }, 700);
+    try {
+      localStorage.removeItem(PAGE_KEY); // el libro quedó "terminado": la próxima visita empieza del inicio
+    } catch {}
+  });
+
+  document.getElementById('reopen-cover')!.addEventListener('click', () => {
+    endNote.hidden = true;
+    page = 0;
+    openBook(false);
+  });
+
+  // Visitas siguientes: si ya hay una página guardada, el libro se abre solo ahí.
+  const saved = readSavedPage();
+  if (saved !== null) {
+    page = saved;
+    cover.hidden = true;
+    book.hidden = false;
+    renderPage();
+  }
+
+  // ---------- navegación ----------
+  tabs.forEach((t) => t.addEventListener('click', () => turnTo(Number(t.dataset.page))));
+  document.querySelectorAll<HTMLElement>('[data-nav]').forEach((b) =>
+    b.addEventListener('click', () => turnTo(page + (b.dataset.nav === 'next' ? 1 : -1))),
+  );
+
+  document.addEventListener('keydown', (e) => {
+    if (book.hidden) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('input, textarea')) return;
+    if (e.key === 'ArrowRight') turnTo(page + 1);
+    if (e.key === 'ArrowLeft') turnTo(page - 1);
+  });
+
+  let touchX = 0;
+  let touchY = 0;
+  document.addEventListener('touchstart', (e) => {
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+  }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    if (book.hidden) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('input, textarea, iframe, button, a')) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    const dy = e.changedTouches[0].clientY - touchY;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      turnTo(page + (dx < 0 ? 1 : -1));
+    }
+  }, { passive: true });
+
+  // ---------- cine: selector de clips + click-to-embed ----------
+  const screen = document.getElementById('screen');
+  const screenThumb = document.getElementById('screen-thumb') as HTMLImageElement | null;
+  const screenTitle = document.getElementById('screen-title');
+  const screenNote = document.getElementById('screen-note');
+  const screenPlay = document.getElementById('screen-play');
+
+  function resetScreen(youtubeId: string, title: string, note: string) {
+    if (!screen) return;
+    screen.dataset.youtubeId = youtubeId;
+    screen.replaceChildren();
+    const img = document.createElement('img');
+    img.id = 'screen-thumb';
+    img.src = `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg`;
+    img.alt = title;
+    screen.appendChild(img);
+    const btn = document.createElement('button');
+    btn.className = 'lemon-screen-play';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Reproducir clip');
+    btn.innerHTML = '<span class="tri"></span>';
+    btn.addEventListener('click', playScreen);
+    screen.appendChild(btn);
+    if (screenTitle) screenTitle.textContent = title;
+    if (screenNote) screenNote.textContent = note;
+  }
+
+  function playScreen() {
+    if (!screen) return;
+    const youtubeId = screen.dataset.youtubeId;
+    if (!youtubeId) return;
+    const iframe = document.createElement('iframe');
+    iframe.src = `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1`;
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+    iframe.allowFullscreen = true;
+    iframe.title = screenTitle?.textContent ?? 'clip';
+    screen.replaceChildren(iframe);
+  }
+
+  screenPlay?.addEventListener('click', playScreen);
+
+  document.querySelectorAll<HTMLElement>('[data-clip]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-clip]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      resetScreen(btn.dataset.youtubeId ?? '', btn.dataset.title ?? '', btn.dataset.note ?? '');
+    });
+  });
+</script>
