@@ -7,28 +7,73 @@ interface Props {
 const { approvedMessages } = Astro.props;
 
 const FORM_ENDPOINT = 'https://formspree.io/f/xrenqgel';
+
+// Emblemas del "canal": glifo + tono de neón. El elegido tiñe el formulario
+// y viaja con el mensaje (campo emblem) para reproducirlo al aprobar.
+const emblems = [
+  { glyph: '★', hue: 200 },
+  { glyph: '♡', hue: 340 },
+  { glyph: '✦', hue: 280 },
+  { glyph: '☾', hue: 95 },
+  { glyph: '✿', hue: 150 },
+  { glyph: '☂', hue: 40 },
+];
+
+const hueFor = (i: number) => emblems[i % emblems.length].hue;
+const cards = approvedMessages.map((m, i) => ({
+  ...m,
+  glyph: emblems[i % emblems.length].glyph,
+  accent: `oklch(0.82 0.14 ${hueFor(i)})`,
+  glow: `oklch(0.82 0.14 ${hueFor(i)} / .3)`,
+  soft: `oklch(0.82 0.14 ${hueFor(i)} / .12)`,
+}));
 ---
 
-<div id="guestbook-notes">
-  {approvedMessages.map((m) => (
-    <div class="lemon-note"><b>{m.name}:</b> {m.text}</div>
-  ))}
-</div>
+<div class="lemon-guest-grid">
+  <div class="lemon-guest-list" id="guestbook-notes">
+    {cards.map((m) => (
+      <div class="lemon-guest-card" style={`--accent:${m.accent}; --glow:${m.glow}; --soft:${m.soft}`}>
+        <div class="lemon-guest-glyph">{m.glyph}</div>
+        <div class="lemon-guest-body">
+          <div class="lemon-guest-name-row"><div class="lemon-guest-name">{m.name}</div></div>
+          <div class="lemon-guest-msg">{m.text}</div>
+        </div>
+      </div>
+    ))}
+  </div>
 
-<form class="lemon-form-block" action={FORM_ENDPOINT} method="POST" id="guestbook-form">
-  <label for="gb-name">Tu nombre</label>
-  <input id="gb-name" name="name" placeholder="Escribe tu nombre" required />
-  <label for="gb-message">Tu mensaje</label>
-  <textarea id="gb-message" name="message" placeholder="Escribe tu mensaje de cumpleaños" required></textarea>
-  <button class="lemon-submit-btn" type="submit">Enviar mensaje</button>
-  <div id="guestbook-status" class="lemon-guestbook-status" role="status"></div>
-  <div class="lemon-mod-note">Tu mensaje llega por correo al dueño del sitio y se agrega aquí manualmente tras revisarlo.</div>
-</form>
+  <form class="lemon-guest-form" action={FORM_ENDPOINT} method="POST" id="guestbook-form">
+    <div class="lemon-guest-form-kicker">NUEVO PERFIL</div>
+    <div class="lemon-emblems" id="emblems">
+      {emblems.map((e, i) => (
+        <button
+          class={`lemon-emblem ${i === 0 ? 'is-active' : ''}`}
+          type="button"
+          data-emblem={i}
+          data-glyph={e.glyph}
+          data-hue={e.hue}
+          style={`--c:oklch(0.82 0.14 ${e.hue}); --c-soft:oklch(0.82 0.14 ${e.hue} / .2); --c-glow:oklch(0.82 0.14 ${e.hue} / .5)`}
+          aria-label={`Emblema ${e.glyph}`}
+        >
+          {e.glyph}
+        </button>
+      ))}
+    </div>
+    <input type="hidden" name="emblem" id="gb-emblem" value={emblems[0].glyph} />
+    <input id="gb-name" name="name" placeholder="tu nombre" required autocomplete="name" />
+    <textarea id="gb-message" name="message" placeholder="tu deseo para Lemondrea" rows="4" required></textarea>
+    <button class="lemon-guest-submit" type="submit">ENVIAR SEÑAL <span id="gb-submit-glyph">{emblems[0].glyph}</span></button>
+    <div id="guestbook-status" class="lemon-guest-status" role="status"></div>
+    <div class="lemon-guest-note">Tu mensaje llega por correo al dueño del sitio y se publica tras revisarlo.</div>
+  </form>
+</div>
 
 <script>
   interface EchoMessage {
     name: string;
     text: string;
+    glyph: string;
+    hue: number;
     submittedAt: number;
   }
 
@@ -48,28 +93,62 @@ const FORM_ENDPOINT = 'https://formspree.io/f/xrenqgel';
     try {
       localStorage.setItem(LS_KEY, JSON.stringify(echoes.slice(-MAX_ECHOES)));
     } catch {
-      // localStorage no disponible (modo privado, cuota) — el echo sigue mostrandose en esta carga, solo no persiste
+      // localStorage no disponible — el echo se muestra en esta carga, solo no persiste
     }
   }
 
   function renderEcho(notesEl: HTMLElement, m: EchoMessage) {
-    const div = document.createElement('div');
-    div.className = 'lemon-note lemon-note--pending';
-    const b = document.createElement('b');
-    b.textContent = `${m.name}:`;
-    div.appendChild(b);
-    div.append(` ${m.text} `);
-    const badge = document.createElement('span');
-    badge.className = 'lemon-note-badge';
-    badge.textContent = 'pendiente';
-    div.appendChild(badge);
-    notesEl.appendChild(div);
+    const hue = Number.isFinite(m.hue) ? m.hue : 200;
+    const card = document.createElement('div');
+    card.className = 'lemon-guest-card';
+    card.style.setProperty('--accent', `oklch(0.82 0.14 ${hue})`);
+    card.style.setProperty('--glow', `oklch(0.82 0.14 ${hue} / .3)`);
+    card.style.setProperty('--soft', `oklch(0.82 0.14 ${hue} / .12)`);
+
+    const glyph = document.createElement('div');
+    glyph.className = 'lemon-guest-glyph';
+    glyph.textContent = m.glyph || '★';
+
+    const body = document.createElement('div');
+    body.className = 'lemon-guest-body';
+    const row = document.createElement('div');
+    row.className = 'lemon-guest-name-row';
+    const name = document.createElement('div');
+    name.className = 'lemon-guest-name';
+    name.textContent = m.name;
+    const badge = document.createElement('div');
+    badge.className = 'lemon-pending-badge';
+    badge.textContent = 'en revisión';
+    row.append(name, badge);
+    const msg = document.createElement('div');
+    msg.className = 'lemon-guest-msg';
+    msg.textContent = m.text;
+    body.append(row, msg);
+
+    card.append(glyph, body);
+    notesEl.prepend(card);
   }
 
   const notesEl = document.getElementById('guestbook-notes');
   const form = document.getElementById('guestbook-form') as HTMLFormElement | null;
   const statusEl = document.getElementById('guestbook-status');
+  const emblemInput = document.getElementById('gb-emblem') as HTMLInputElement | null;
+  const submitGlyph = document.getElementById('gb-submit-glyph');
   const endpoint = form?.action;
+
+  let selectedHue = 200;
+
+  document.querySelectorAll<HTMLElement>('[data-emblem]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-emblem]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      const glyph = btn.dataset.glyph ?? '★';
+      selectedHue = Number(btn.dataset.hue ?? 200);
+      if (emblemInput) emblemInput.value = glyph;
+      if (submitGlyph) submitGlyph.textContent = glyph;
+      // el color elegido tiñe el formulario entero
+      form?.style.setProperty('--accent', `oklch(0.82 0.14 ${selectedHue})`);
+    });
+  });
 
   if (notesEl) {
     loadEchoes().forEach((m) => renderEcho(notesEl, m));
@@ -79,7 +158,7 @@ const FORM_ENDPOINT = 'https://formspree.io/f/xrenqgel';
     e.preventDefault();
     if (!endpoint || !statusEl) return;
 
-    const submitBtn = form.querySelector<HTMLButtonElement>('.lemon-submit-btn');
+    const submitBtn = form.querySelector<HTMLButtonElement>('.lemon-guest-submit');
     const nameInput = form.querySelector<HTMLInputElement>('#gb-name');
     const messageInput = form.querySelector<HTMLTextAreaElement>('#gb-message');
 
@@ -99,16 +178,19 @@ const FORM_ENDPOINT = 'https://formspree.io/f/xrenqgel';
       const echo: EchoMessage = {
         name: nameInput?.value.trim() || 'Anónimo',
         text: messageInput?.value.trim() || '',
+        glyph: emblemInput?.value || '★',
+        hue: selectedHue,
         submittedAt: Date.now(),
       };
       if (notesEl) renderEcho(notesEl, echo);
       saveEchoes([...loadEchoes(), echo]);
 
       form.reset();
-      statusEl.textContent = '¡Gracias! Tu mensaje quedará pendiente de revisión.';
+      if (emblemInput) emblemInput.value = echo.glyph; // reset() borra el hidden; el emblema elegido se conserva
+      statusEl.textContent = 'Señal enviada. Tu mensaje quedará pendiente de revisión.';
       statusEl.classList.add('is-success');
     } catch {
-      statusEl.textContent = 'No se pudo enviar tu mensaje. Probá de nuevo en un momento.';
+      statusEl.textContent = 'No se pudo enviar tu señal. Probá de nuevo en un momento.';
       statusEl.classList.add('is-error');
     } finally {
       if (submitBtn) submitBtn.disabled = false;
