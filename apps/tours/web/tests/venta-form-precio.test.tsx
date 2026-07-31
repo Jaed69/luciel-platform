@@ -82,9 +82,9 @@ function mockFetch(overrides: Record<string, any> = {}, tourSearchResult: any[] 
 }
 
 function submitButton() {
-  // Two "Registrar venta" buttons exist once the modal is open: the trigger
+  // Two "Registrar tour" buttons exist once the modal is open: the trigger
   // (still mounted behind it) and the in-form submit — the submit is last.
-  const matches = screen.getAllByRole("button", { name: /^registrar venta$/i });
+  const matches = screen.getAllByRole("button", { name: /^registrar tour$/i });
   return matches[matches.length - 1];
 }
 

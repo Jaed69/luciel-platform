@@ -22,8 +22,7 @@ type Venta = {
   liquidacion_codigo?: string | null;
   // D-34 — presentes sólo en filas de tipo traslado.
   tipo_servicio?: "tour" | "traslado";
-  hotel_id?: number | null;
-  comision_hotel?: number | null;
+  fecha_servicio?: string | null;
   destino?: string | null;
   nombre_huesped?: string | null;
   numero_habitacion?: string | null;
@@ -57,7 +56,22 @@ export function VentaTable({ ventas }: { ventas: Venta[] }) {
   }
 
   const columns: Column<Venta>[] = [
-    { key: "fecha", header: "Fecha", render: (r) => new Date(r.fecha).toLocaleDateString("es-PE") },
+    // Dos fechas distintas en un traslado (D-34): la de cobro es la contable y
+    // la de servicio la operativa. Se muestran separadas para no confundirlas.
+    { key: "fecha", header: "Fecha de cobro", render: (r) => new Date(r.fecha).toLocaleDateString("es-PE") },
+    {
+      key: "fecha_servicio",
+      header: "Fecha del servicio",
+      render: (r) =>
+        r.tipo_servicio === "traslado" && r.fecha_servicio ? (
+          <span>
+            {new Date(r.fecha_servicio).toLocaleDateString("es-PE")}
+            {r.hora ? <span className="text-text-espresso-soft"> {r.hora}</span> : null}
+          </span>
+        ) : (
+          <span className="text-text-espresso-soft">—</span>
+        ),
+    },
     {
       key: "tipo_servicio",
       header: "Tipo",
@@ -79,7 +93,6 @@ export function VentaTable({ ventas }: { ventas: Venta[] }) {
             {r.destino}
             <span className="text-text-espresso-soft">
               {" · "}{r.nombre_huesped}{r.numero_habitacion ? ` (hab. ${r.numero_habitacion})` : ""}
-              {r.hora ? ` · ${r.hora}` : ""}
             </span>
           </span>
         ) : (
@@ -88,16 +101,6 @@ export function VentaTable({ ventas }: { ventas: Venta[] }) {
     },
     { key: "vendedor_id", header: "Vendedor", render: (r) => `V-${r.vendedor_id}` },
     { key: "agencia_id", header: "Proveedor", render: (r) => `AG-${r.agencia_id}` },
-    {
-      key: "comision_hotel",
-      header: "Comisión hotel",
-      render: (r) =>
-        r.tipo_servicio === "traslado" && r.comision_hotel != null ? (
-          <span className="tabular-nums">{formatCurrency(r.comision_hotel, r.moneda)}</span>
-        ) : (
-          <span className="text-text-espresso-soft">—</span>
-        ),
-    },
     { key: "forma_pago_id", header: "Forma de pago", render: (r) => `FP-${r.forma_pago_id}` },
     { key: "moneda", header: "Moneda", render: (r) => r.moneda },
     {
@@ -145,7 +148,7 @@ export function VentaTable({ ventas }: { ventas: Venta[] }) {
       <DataTable
         columns={columns}
         data={ventas}
-        emptyState="No hay ventas registradas. Usa el botón Registrar venta para crear la primera."
+        emptyState="No hay nada registrado todavía. Usa Registrar tour o Registrar traslado para empezar."
       />
       <VentaEditModal
         venta={editTarget}

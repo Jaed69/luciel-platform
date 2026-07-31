@@ -270,9 +270,9 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
 
   return (
     <>
-      <Button variant="primary" onClick={() => setOpen(true)}>Registrar venta</Button>
+      <Button variant="primary" onClick={() => setOpen(true)}>Registrar tour</Button>
       <Modal open={open} onClose={() => setOpen(false)} maxW="lg">
-        <h2 className="font-playfair text-primary text-2xl font-semibold mb-4">Registrar venta</h2>
+        <h2 className="font-playfair text-primary text-2xl font-semibold mb-4">Registrar tour</h2>
         <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <label className="block lg:col-span-2">
             <span className="text-sm font-nunito text-text-espresso-soft">Tour</span>
@@ -408,7 +408,7 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
           <div className="lg:col-span-2 flex gap-6 justify-end">
             <Button variant="outlined" type="button" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button variant="outlined" type="button" onClick={handleSubmitAndCreateAnother} disabled={submitting}>Registrar y crear otra</Button>
-            <Button variant="primary" type="submit" disabled={submitting}>Registrar venta</Button>
+            <Button variant="primary" type="submit" disabled={submitting}>Registrar tour</Button>
           </div>
         </form>
       </Modal>

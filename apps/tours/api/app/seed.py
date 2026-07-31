@@ -57,17 +57,16 @@ CHART = [
     ("501-COSTOS-TOURS-USD", "Costos de tours (USD)", "costo", "USD"),
     ("501-COSTOS-COMISIONES", "Costos por comisiones", "costo", "PEN"),
     ("672-GAN-PERD-TC", "Ganancia/Pérdida por tipo de cambio", "gasto", "PEN"),
-    # D-34 — traslados. Ingreso y costo van en cuentas propias (no reusan las de
-    # tours) para poder leer la rentabilidad de cada línea de negocio por
-    # separado en el dashboard.
-    ("203-HOTELES-POR-PAGAR-PEN", "Hoteles por pagar (PEN)", "pasivo", "PEN"),
-    ("203-HOTELES-POR-PAGAR-USD", "Hoteles por pagar (USD)", "pasivo", "USD"),
+    # D-34 — traslados. Ingreso, costo y deuda con el proveedor van en cuentas
+    # propias (no reusan las de tours) para poder leer la rentabilidad y lo
+    # adeudado de cada línea de negocio por separado en el dashboard. El margen
+    # (ingreso − costo) queda para la casa: el hotel somos nosotros.
+    ("203-TRANSPORTE-POR-PAGAR-PEN", "Proveedores de transporte por pagar (PEN)", "pasivo", "PEN"),
+    ("203-TRANSPORTE-POR-PAGAR-USD", "Proveedores de transporte por pagar (USD)", "pasivo", "USD"),
     ("401-INGRESOS-TRASLADOS-PEN", "Ingresos por traslados (PEN)", "ingreso", "PEN"),
     ("401-INGRESOS-TRASLADOS-USD", "Ingresos por traslados (USD)", "ingreso", "USD"),
     ("501-COSTOS-TRASLADOS-PEN", "Costos de traslados (PEN)", "costo", "PEN"),
     ("501-COSTOS-TRASLADOS-USD", "Costos de traslados (USD)", "costo", "USD"),
-    ("502-COMISION-HOTEL-PEN", "Comisión a hoteles (PEN)", "costo", "PEN"),
-    ("502-COMISION-HOTEL-USD", "Comisión a hoteles (USD)", "costo", "USD"),
 ]
 
 

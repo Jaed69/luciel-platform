@@ -1,11 +1,12 @@
 // apps/tours/web/src/app/(app)/ventas/components/TrasladoFormModal.tsx
 // D-34 — alta de traslado. Comparte tabla y circuito contable con la venta de
 // tour, pero pide los datos operativos del servicio (huésped, habitación, hora,
-// destino) y el hotel que refirió al huésped.
+// destino) y lo presta un proveedor de transporte, no una agencia de tours.
 //
-// La comisión del hotel NO es un campo: es el margen (precio − costo) y la
-// calcula el backend. Acá sólo se previsualiza para que el operador vea cuánto
-// le va a quedar acreditado al hotel antes de guardar.
+// Dos fechas separadas y rotuladas: la del traslado (operativa) y la del cobro
+// (contable, la que fecha el asiento). Arrancan iguales porque suelen serlo.
+// El margen es nuestro — el hotel somos nosotros — así que se muestra como
+// ganancia, no como deuda con nadie.
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -29,12 +30,16 @@ export function TrasladoFormModal({ role, vendedorId: ownVendedorId }: { role?: 
 
   const [vendedorId, setVendedorId] = useState("");
   const [agenciaId, setAgenciaId] = useState("");
-  const [hotelId, setHotelId] = useState("");
   const [formaPagoId, setFormaPagoId] = useState("");
   const [moneda, setMoneda] = useState("PEN");
   const [monto, setMonto] = useState("");
   const [costo, setCosto] = useState("");
-  const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const hoy = new Date().toISOString().slice(0, 10);
+  const [fechaServicio, setFechaServicio] = useState(hoy);
+  const [fecha, setFecha] = useState(hoy);
+  // Mientras no la toquen a mano, la fecha de cobro sigue a la del traslado:
+  // lo normal es que coincidan y no queremos hacer tipear dos veces lo mismo.
+  const [fechaCobroEditada, setFechaCobroEditada] = useState(false);
   const [hora, setHora] = useState("");
   const [destino, setDestino] = useState("");
   const [nombreHuesped, setNombreHuesped] = useState("");
@@ -42,11 +47,12 @@ export function TrasladoFormModal({ role, vendedorId: ownVendedorId }: { role?: 
   const [observaciones, setObservaciones] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // D-32 — un vendedor siempre registra a su propio nombre.
+  // D-32/D-34 — el vendedor se resuelve solo con quien está logueado; sólo cae
+  // al selector si la cuenta no tiene un vendedor vinculado (p. ej. un admin).
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
     setPrevOpen(open);
-    if (open && role === "vendedor" && ownVendedorId) setVendedorId(ownVendedorId);
+    if (open && ownVendedorId) setVendedorId(ownVendedorId);
   }
 
   useEffect(() => {
@@ -59,15 +65,19 @@ export function TrasladoFormModal({ role, vendedorId: ownVendedorId }: { role?: 
       setVendedores(v);
       setAgencias(a);
       setFormasPago(fp);
+      // Efectivo por defecto: es como se cobra la enorme mayoría de traslados.
+      const efectivo = (fp as Catalogo[]).find((f) => /efectivo/i.test(f.nombre));
+      if (efectivo) setFormaPagoId((prev) => prev || String(efectivo.id));
     });
   }, [open]);
 
-  const proveedores = agencias.filter((a) => a.tipo !== "hotel");
-  const hoteles = agencias.filter((a) => a.tipo === "hotel");
+  // Las dos listas no se mezclan: un traslado sólo lo presta un transportista.
+  const transportistas = agencias.filter((a) => a.tipo === "proveedor_transporte");
+  const autoVendedor = Boolean(ownVendedorId);
 
   const montoNum = parseFloat(monto);
   const costoNum = costo === "" ? 0 : parseFloat(costo);
-  const comisionHotel =
+  const ganancia =
     Number.isFinite(montoNum) && Number.isFinite(costoNum) && montoNum > costoNum ? montoNum - costoNum : 0;
   const costoExcedido = Number.isFinite(montoNum) && Number.isFinite(costoNum) && costoNum > montoNum;
 
@@ -75,6 +85,7 @@ export function TrasladoFormModal({ role, vendedorId: ownVendedorId }: { role?: 
     setMonto("");
     setCosto("");
     setHora("");
+    setFechaCobroEditada(false);
     setDestino("");
     setNombreHuesped("");
     setNumeroHabitacion("");
@@ -91,12 +102,12 @@ export function TrasladoFormModal({ role, vendedorId: ownVendedorId }: { role?: 
       body: JSON.stringify({
         vendedor_id: parseInt(vendedorId),
         agencia_id: parseInt(agenciaId),
-        hotel_id: parseInt(hotelId),
         forma_pago_id: parseInt(formaPagoId),
         moneda,
         monto: montoNum,
         costo: costo === "" ? 0 : costoNum,
         fecha,
+        fecha_servicio: fechaServicio,
         hora,
         destino,
         nombre_huesped: nombreHuesped,
@@ -122,12 +133,36 @@ export function TrasladoFormModal({ role, vendedorId: ownVendedorId }: { role?: 
         <h2 className="font-playfair text-primary text-2xl font-semibold mb-4">Registrar traslado</h2>
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <label className="block">
-            <span className={LABEL}>Fecha</span>
-            <input required type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={INPUT} />
+            <span className={LABEL}>Fecha del traslado</span>
+            <input
+              required type="date" value={fechaServicio}
+              onChange={(e) => {
+                setFechaServicio(e.target.value);
+                if (!fechaCobroEditada) setFecha(e.target.value);
+              }}
+              className={INPUT}
+            />
+            <span className="text-[12px] text-text-espresso-soft font-nunito">Cuándo se hace el servicio</span>
           </label>
           <label className="block">
-            <span className={LABEL}>Hora</span>
+            <span className={LABEL}>Hora del traslado</span>
             <input required type="time" value={hora} onChange={(e) => setHora(e.target.value)} className={INPUT} />
+          </label>
+
+          <label className="block md:col-span-2">
+            <span className={LABEL}>Fecha de cobro</span>
+            <input
+              required type="date" value={fecha}
+              onChange={(e) => {
+                setFecha(e.target.value);
+                setFechaCobroEditada(true);
+              }}
+              className={INPUT}
+            />
+            <span className="text-[12px] text-text-espresso-soft font-nunito">
+              Cuándo nos pagan — es la fecha con la que entra a la contabilidad.
+              {!fechaCobroEditada && " Sigue a la del traslado hasta que la cambies."}
+            </span>
           </label>
 
           <label className="block">
@@ -151,26 +186,26 @@ export function TrasladoFormModal({ role, vendedorId: ownVendedorId }: { role?: 
           </label>
 
           <label className="block">
-            <span className={LABEL}>Hotel (recibe la comisión)</span>
-            <select required value={hotelId} onChange={(e) => setHotelId(e.target.value)} className={INPUT}>
-              <option value="">Selecciona…</option>
-              {hoteles.map((h) => <option key={h.id} value={h.id}>{h.nombre}</option>)}
-            </select>
-            {hoteles.length === 0 && (
-              <span className="text-[12px] text-chili-red font-nunito">
-                No hay hoteles cargados. Creá uno en Catálogos → Agencias con tipo “hotel”.
-              </span>
-            )}
-          </label>
-          <label className="block">
             <span className={LABEL}>Proveedor del transporte</span>
             <select required value={agenciaId} onChange={(e) => setAgenciaId(e.target.value)} className={INPUT}>
               <option value="">Selecciona…</option>
-              {proveedores.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
+              {transportistas.map((a) => <option key={a.id} value={a.id}>{a.nombre}</option>)}
             </select>
+            {transportistas.length === 0 && (
+              <span className="text-[12px] text-chili-red font-nunito">
+                No hay proveedores de transporte cargados. Creá uno en Catálogos → Agencias con tipo “proveedor de transporte”.
+              </span>
+            )}
           </label>
 
-          {role !== "vendedor" && (
+          {autoVendedor ? (
+            <div className="block">
+              <span className={LABEL}>Vendedor</span>
+              <p className="px-3 py-2 text-[15px] font-nunito">
+                {vendedores.find((v) => String(v.id) === ownVendedorId)?.nombre ?? "Tú"}
+              </p>
+            </div>
+          ) : (
             <label className="block">
               <span className={LABEL}>Vendedor</span>
               <select required value={vendedorId} onChange={(e) => setVendedorId(e.target.value)} className={INPUT}>
@@ -218,11 +253,11 @@ export function TrasladoFormModal({ role, vendedorId: ownVendedorId }: { role?: 
               </span>
             ) : (
               <>
-                <span className="text-text-espresso-soft">Comisión al hotel (precio − costo): </span>
+                <span className="text-text-espresso-soft">Ganancia (precio − costo): </span>
                 <strong className="tabular-nums">
-                  {formatCurrency(comisionHotel, moneda as "PEN" | "USD")}
+                  {formatCurrency(ganancia, moneda as "PEN" | "USD")}
                 </strong>
-                <span className="text-text-espresso-soft"> — se acredita como deuda con el hotel.</span>
+                <span className="text-text-espresso-soft"> — queda para la casa.</span>
               </>
             )}
           </div>
