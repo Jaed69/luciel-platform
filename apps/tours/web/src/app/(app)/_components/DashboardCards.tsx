@@ -4,7 +4,7 @@
 
 import { ReactNode } from "react";
 import { Button } from "@/components/Button";
-import { formatCurrency } from "@/lib/api";
+import { formatCurrency } from "@/lib/format";
 
 export type SaldosRow = {
   id: number;

@@ -18,16 +18,22 @@ type LiquidacionRow = {
   cerrada_en: string | null;
 };
 
-export default async function LiquidacionesPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
+export default async function LiquidacionesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role as string;
-  const userId = (session?.user as any)?.id as number | undefined;
 
+  // Next 16 — searchParams es una Promise; leerla sin await devolvía undefined
+  // en cada campo y descartaba todos los filtros en silencio.
+  const filtros = await searchParams;
   const qs = new URLSearchParams();
-  if (searchParams.estado) qs.set("estado", searchParams.estado);
-  if (searchParams.fecha_desde) qs.set("fecha_desde", searchParams.fecha_desde);
-  if (searchParams.fecha_hasta) qs.set("fecha_hasta", searchParams.fecha_hasta);
-  if (searchParams.vendedor_id) qs.set("vendedor_id", searchParams.vendedor_id);
+  if (filtros.estado) qs.set("estado", filtros.estado);
+  if (filtros.fecha_desde) qs.set("fecha_desde", filtros.fecha_desde);
+  if (filtros.fecha_hasta) qs.set("fecha_hasta", filtros.fecha_hasta);
+  if (filtros.vendedor_id) qs.set("vendedor_id", filtros.vendedor_id);
 
   let liquidaciones: LiquidacionRow[] = [];
   try {

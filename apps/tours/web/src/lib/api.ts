@@ -17,7 +17,7 @@ export async function apiFetchJson<T = any>(path: string, init: RequestInit = {}
   return res.json();
 }
 
-export function formatCurrency(monto: number, moneda: "PEN" | "USD"): string {
-  const currency = moneda === "PEN" ? "PEN" : "USD";
-  return new Intl.NumberFormat("es-PE", { style: "currency", currency }).format(monto);
-}
+// Re-exported for server components that already import from here; the
+// implementation lives in lib/format.ts so client components can pull it in
+// without dragging NextAuth's server-side bits along.
+export { formatCurrency } from "@/lib/format";

@@ -106,3 +106,54 @@ async def test_simular_returns_default_global_50(client):
     data = r.json()
     assert data["porcentaje"] == 50
     assert data["comision"] == 50  # 100 * 50/100
+
+async def _saldo_caja(client, moneda: str = "PEN") -> float:
+    """Saldo de 101-CAJA-{moneda} tal como lo ve el dashboard."""
+    r = await client.get(
+        "/dashboard/saldos",
+        params={"fecha_desde": "2000-01-01", "fecha_hasta": "2100-01-01"},
+        headers={"Authorization": f"Bearer {_token()}"},
+    )
+    assert r.status_code == 200, r.text
+    for cuenta in r.json():
+        if cuenta["codigo"] == f"101-CAJA-{moneda}":
+            return cuenta["saldo"]
+    return 0.0
+
+
+async def test_editar_venta_actualiza_el_asiento(client):
+    """PUT /tours_servicios/{id} reescribe las líneas del asiento.
+
+    Antes el asiento conservaba el monto original y /dashboard/saldos quedaba
+    desalineado de la tabla de ventas.
+    """
+    payload = {
+        "tour_id": 1, "vendedor_id": 1, "agencia_id": 1, "forma_pago_id": 1,
+        "moneda": "PEN", "monto": 100, "costo": 60, "fecha": "2026-07-04",
+    }
+    r = await client.post("/ventas", json=payload, headers={"Authorization": f"Bearer {_token()}"})
+    assert r.status_code == 201, r.text
+    ts_id = r.json()["tour_servicio_id"]
+    assert await _saldo_caja(client) == 100.0
+
+    r = await client.put(f"/tours_servicios/{ts_id}", json={"monto": 250}, headers={"Authorization": f"Bearer {_token()}"})
+    assert r.status_code == 200, r.text
+    assert await _saldo_caja(client) == 250.0
+
+
+async def test_eliminar_venta_revierte_el_asiento(client):
+    """DELETE /tours_servicios/{id} deja los saldos en cero (asiento de reversión)."""
+    payload = {
+        "tour_id": 1, "vendedor_id": 1, "agencia_id": 1, "forma_pago_id": 1,
+        "moneda": "PEN", "monto": 100, "costo": 60, "fecha": "2026-07-04",
+    }
+    r = await client.post("/ventas", json=payload, headers={"Authorization": f"Bearer {_token()}"})
+    ts_id = r.json()["tour_servicio_id"]
+    assert await _saldo_caja(client) == 100.0
+
+    r = await client.delete(f"/tours_servicios/{ts_id}", headers={"Authorization": f"Bearer {_token()}"})
+    assert r.status_code == 200, r.text
+    assert await _saldo_caja(client) == 0.0
+
+    ventas = (await client.get("/ventas", headers={"Authorization": f"Bearer {_token()}"})).json()
+    assert ventas == []

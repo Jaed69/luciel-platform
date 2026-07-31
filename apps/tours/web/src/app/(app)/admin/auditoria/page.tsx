@@ -43,15 +43,22 @@ function pretty(d: string | null): { pretty: string | null; passwordNull: boolea
   }
 }
 
-export default async function AuditoriaPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
+export default async function AuditoriaPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
   if (role !== "admin") redirect("/ventas");
 
+  // Next 16 — searchParams es una Promise; sin await los filtros se descartaban.
+  const filtros = await searchParams;
+
   const qs = new URLSearchParams();
-  if (searchParams.usuario_id) qs.set("usuario_id", searchParams.usuario_id);
-  if (searchParams.tabla) qs.set("tabla", searchParams.tabla);
-  if (searchParams.operacion) qs.set("operacion", searchParams.operacion);
+  if (filtros.usuario_id) qs.set("usuario_id", filtros.usuario_id);
+  if (filtros.tabla) qs.set("tabla", filtros.tabla);
+  if (filtros.operacion) qs.set("operacion", filtros.operacion);
 
   let rows: AuditLogRow[] = [];
   try {
@@ -65,18 +72,18 @@ export default async function AuditoriaPage({ searchParams }: { searchParams: Re
       <form className="bg-canvas rounded-xl shadow-lg p-4 border border-gold/30 flex flex-wrap gap-3 items-end mb-4">
         <div className="flex flex-col">
           <label htmlFor="usuario_id" className="text-sm font-nunito font-semibold text-text-espresso-soft mb-1">Usuario ID</label>
-          <input id="usuario_id" type="number" name="usuario_id" defaultValue={searchParams.usuario_id ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito" />
+          <input id="usuario_id" type="number" name="usuario_id" defaultValue={filtros.usuario_id ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito" />
         </div>
         <div className="flex flex-col">
           <label htmlFor="tabla" className="text-sm font-nunito font-semibold text-text-espresso-soft mb-1">Tabla</label>
-          <select id="tabla" name="tabla" defaultValue={searchParams.tabla ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
+          <select id="tabla" name="tabla" defaultValue={filtros.tabla ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
             <option value="">Todas</option>
             {TABLES_AUDITADAS.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div className="flex flex-col">
           <label htmlFor="operacion" className="text-sm font-nunito font-semibold text-text-espresso-soft mb-1">Acción</label>
-          <select id="operacion" name="operacion" defaultValue={searchParams.operacion ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
+          <select id="operacion" name="operacion" defaultValue={filtros.operacion ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
             <option value="">Todas</option>
             <option value="I">INSERT</option>
             <option value="U">UPDATE</option>

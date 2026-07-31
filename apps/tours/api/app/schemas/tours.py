@@ -136,6 +136,12 @@ class VentaRow(BaseModel):
     fecha: date
     asiento_id: int
     liquidacion_id: int | None
+    # Estado de la liquidación que contiene esta venta (None si no está en
+    # ninguna). La UI necesita distinguir `abierta` — editable/eliminable — de
+    # `cerrada`, que sí bloquea la edición (D-14); `liquidacion_id` a secas no
+    # alcanza para decidirlo.
+    liquidacion_estado: str | None = None
+    liquidacion_codigo: str | None = None
 
 
 class AgenciaCandidatoOut(BaseModel):

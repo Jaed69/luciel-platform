@@ -9,6 +9,7 @@ import { DataTable, type Column } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { CloseModal } from "./components/CloseModal";
 import { ReopenModal } from "./components/ReopenModal";
+import { CancelModal } from "./components/CancelModal";
 
 type Liquidacion = {
   id: number;
@@ -86,14 +87,16 @@ export default async function LiquidacionDetailPage({ params }: { params: Promis
 
       {liq.estado === "abierta" && precheck && (
         <section>
+          {/* `tour_id` en el pre-check es el id de la venta (tours_servicios), el
+              mismo que se muestra en /ventas — no el id del tour del catálogo. */}
           {precheck.fails.map((f, i) => (
             <div key={i} className="text-[13px] font-nunito text-chili-red mb-1">
-              ⚠️ T-{f.tour_id}: {f.problema === "costo_faltante" ? "sin costo cargado" : f.problema}
+              ⚠️ Venta #{f.tour_id}: {f.problema === "costo_faltante" ? "sin costo cargado — edítala en Ventas para poder cerrar" : f.problema}
             </div>
           ))}
           {precheck.warnings.map((w, i) => (
             <div key={i} className="text-[13px] font-nunito text-amber-warning mb-1">
-              ⓘ T-{w.tour_id}: conversión TC interno pendiente (USD sin paso previo)
+              ⓘ Venta #{w.tour_id}: conversión TC interno pendiente (USD sin paso previo)
             </div>
           ))}
           {precheck.fails.length === 0 && precheck.warnings.length === 0 && (
@@ -108,9 +111,19 @@ export default async function LiquidacionDetailPage({ params }: { params: Promis
       </section>
 
       {canManage && (
-        <section className="flex gap-3 pt-3">
-          {liq.estado === "abierta" && <CloseModal liquidacion={liq} disabled={hasBlockers} />}
+        <section className="flex flex-wrap gap-3 pt-3">
+          {liq.estado === "abierta" && (
+            <>
+              <CloseModal liquidacion={liq} disabled={hasBlockers} />
+              <CancelModal liquidacion={liq} />
+            </>
+          )}
           {liq.estado === "cerrada" && <ReopenModal liquidacion={liq} />}
+          {liq.estado === "revertida" && (
+            <p className="text-[13px] font-nunito text-text-espresso-soft">
+              Liquidación revertida — sus tours volvieron a quedar sin liquidar y pueden incluirse en una nueva liquidación.
+            </p>
+          )}
         </section>
       )}
     </div>

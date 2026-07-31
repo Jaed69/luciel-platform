@@ -22,6 +22,12 @@ export async function proxyJson(path: string, method: string, body?: string): Pr
     cache: "no-store",
   });
   const text = await res.text();
+  // 204/205/304 are null-body statuses — the Response constructor throws if we
+  // hand it a body (even ""), which turned every successful FastAPI 204 (venta
+  // undo, anular liquidación) into a 500 on the way back to the browser.
+  if (res.status === 204 || res.status === 205 || res.status === 304) {
+    return new Response(null, { status: res.status });
+  }
   // Status + body pass through verbatim so FastAPI's `detail` stays a JSON object
   // (e.g. {mensaje, referencias} on 409) — the client reads `err.detail.mensaje`.
   return new Response(text, { status: res.status, headers: { "Content-Type": "application/json" } });
