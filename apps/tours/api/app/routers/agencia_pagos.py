@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_session
 from app.dependencies import get_current_user, require_role
 from app.models.core import Cuentas
-from app.models.tours import AgenciaPagos, ToursServicios
+from app.models.tours import AgenciaPagos, Agencias, TipoAgencia, ToursServicios
 from app.schemas.tours import AgenciaPagoIn, AgenciaPagoOut, AgenciaSaldoOut
 from app.services.accounting import post_asiento
 
@@ -25,9 +25,23 @@ async def get_agencia_saldo(
     _user: dict = Depends(get_current_user),
 ) -> AgenciaSaldoOut:
     saldos: dict[str, float] = {"PEN": 0.0, "USD": 0.0}
+
+    # D-34 — de qué lado nace la deuda depende del tipo de tercero: a un
+    # proveedor le debemos el costo del servicio; a un hotel, la comisión por
+    # habernos referido al huésped. Los pagos se descuentan igual en ambos casos.
+    agencia = (await session.execute(select(Agencias).where(Agencias.id == agencia_id))).scalar_one_or_none()
+    es_hotel = agencia is not None and agencia.tipo == TipoAgencia.hotel
+
+    if es_hotel:
+        deuda_col = ToursServicios.comision_hotel
+        deuda_filtro = ToursServicios.hotel_id == agencia_id
+    else:
+        deuda_col = ToursServicios.costo
+        deuda_filtro = ToursServicios.agencia_id == agencia_id
+
     costo_rows = (await session.execute(
-        select(ToursServicios.moneda, func.coalesce(func.sum(ToursServicios.costo), 0))
-        .where(ToursServicios.agencia_id == agencia_id)
+        select(ToursServicios.moneda, func.coalesce(func.sum(deuda_col), 0))
+        .where(deuda_filtro)
         .group_by(ToursServicios.moneda)
     )).all()
     for moneda, total in costo_rows:
@@ -64,12 +78,19 @@ async def create_agencia_pago(
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(require_role("admin", "contabilidad")),
 ) -> AgenciaPagos:
-    codigo_agencias_por_pagar = f"202-AGENCIAS-POR-PAGAR-{body.moneda}"
+    # D-34 — un pago a hotel cancela el pasivo de comisiones (203), no el de
+    # costos de servicio (202); si no, se estaría descontando de la cuenta
+    # equivocada y ambos saldos contables quedarían mal.
+    destinatario = (await session.execute(select(Agencias).where(Agencias.id == body.agencia_id))).scalar_one_or_none()
+    if destinatario is None:
+        raise HTTPException(status_code=422, detail="Agencia u hotel no encontrado")
+    es_hotel = destinatario.tipo == TipoAgencia.hotel
+    codigo_por_pagar = f"203-HOTELES-POR-PAGAR-{body.moneda}" if es_hotel else f"202-AGENCIAS-POR-PAGAR-{body.moneda}"
     codigo_caja = f"101-CAJA-{body.moneda}"
 
-    agencias_por_pagar = (await session.execute(select(Cuentas).where(Cuentas.codigo == codigo_agencias_por_pagar))).scalar_one_or_none()
+    agencias_por_pagar = (await session.execute(select(Cuentas).where(Cuentas.codigo == codigo_por_pagar))).scalar_one_or_none()
     if agencias_por_pagar is None:
-        raise HTTPException(status_code=422, detail=f"Cuenta {codigo_agencias_por_pagar} no encontrada")
+        raise HTTPException(status_code=422, detail=f"Cuenta {codigo_por_pagar} no encontrada")
     caja = (await session.execute(select(Cuentas).where(Cuentas.codigo == codigo_caja))).scalar_one_or_none()
     if caja is None:
         raise HTTPException(status_code=422, detail=f"Cuenta {codigo_caja} no encontrada")
@@ -77,7 +98,7 @@ async def create_agencia_pago(
     asiento = await post_asiento(
         session,
         fecha=body.fecha,
-        concepto=f"Pago a agencia {body.agencia_id}",
+        concepto=f"Pago a {'hotel' if es_hotel else 'agencia'} {destinatario.nombre}",
         lineas=[
             {"cuenta_id": agencias_por_pagar.id, "debe": body.monto, "haber": 0},
             {"cuenta_id": caja.id, "debe": 0, "haber": body.monto},

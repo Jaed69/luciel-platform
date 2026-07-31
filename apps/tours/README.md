@@ -124,7 +124,8 @@ openssl s_client -connect tours.luciel.dev:443 -servername tours.luciel.dev < /d
 |--------|------|-------------|-----|
 | POST | `/auth/login` | Login — bcrypt verify, returns JWT | público |
 | POST | `/ventas` | Registra venta + asiento balanceado en misma tx (D-15) | admin/vendedor (propias) |
-| GET | `/ventas` | Lista tours_servicios con filtros + auto-filter vendedor (T-02.1-08) | cualquier autenticado |
+| GET | `/ventas` | Lista tours_servicios (tours y traslados) con filtros + auto-filter vendedor (T-02.1-08) | cualquier autenticado |
+| POST | `/traslados` | Registra un traslado (D-34): asiento caja/ingresos + costo a proveedor + comisión al hotel (derivada de monto − costo). No entra en liquidaciones | admin/contabilidad/vendedor (propias) |
 | GET | `/simular` | Preview comisión (resuelve precedencia 4 niveles — D-09/D-10) | cualquier autenticado |
 | GET/POST/PUT/DELETE | `/comision-reglas` | CRUD reglas de comisión; DELETE default global → 400 | admin |
 | POST | `/liquidaciones` | Crea liquidación abierta + auto-asigna tours_servicios in range with `liquidacion_id IS NULL` | admin/contabilidad |
@@ -158,3 +159,5 @@ Link a `.planning/phases/02.1-tours-panel-contable-hotel/02.1-CONTEXT.md`:
 - **D-16** `codigo` LIQ-AAAA-NNN generado al cerrar, seq incremental por año.
 - **D-21/D-23** Audit log via SQLAlchemy before_flush + ContextVar `current_user_id`.
 - **D-26** `password_hash` redacted → null en audit_log.
+
+- **D-34** Traslados como segunda línea de negocio sobre `tours_servicios`, discriminada por `tipo_servicio`: reusa el asiento balanceado, la edición/borrado y el audit trail en vez de duplicar el circuito. El destino es texto libre (`tour_id` apunta a la fila de catálogo genérica `SRV-TRASLADO`). La comisión al hotel es **derivada** (`monto − costo`), se acredita como deuda en `203-HOTELES-POR-PAGAR` y se cancela por `/agencia-pagos`; un hotel es una fila de `agencias` con `tipo='hotel'`. Los traslados no comisionan al vendedor y por eso quedan fuera de las liquidaciones.

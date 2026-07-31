@@ -23,10 +23,13 @@ from app.models.tours import (
     ComisionReglas,
     FormasPago,
     Liquidaciones,
+    TipoAgencia,
+    TipoServicio,
     ToursCatalogo,
     ToursServicios,
     Vendedores,
 )
+from app.seed import CODIGO_CATALOGO_TRASLADO
 from app.schemas.tours import (
     ComisionReglaIn,
     ComisionReglaOut,
@@ -35,11 +38,18 @@ from app.schemas.tours import (
     LiquidacionOut,
     SimularOut,
     TourSearchOut,
+    TrasladoIn,
     VentaIn,
     VentaOut,
     VentaRow,
 )
-from app.services.accounting import post_reversion_asiento, post_venta_tour, resync_venta_asiento
+from app.services.accounting import (
+    calcular_comision_hotel,
+    post_reversion_asiento,
+    post_venta_tour,
+    post_venta_traslado,
+    resync_venta_asiento,
+)
 from app.services.commission import resolve_comision, simular_comision
 from app.services.liquidaciones import (
     LiquidacionPrecheckError as _LiquidacionPrecheckError,
@@ -125,6 +135,7 @@ async def list_ventas(
     vendedor_id: int | None = Query(None),
     tour_id: int | None = Query(None),
     moneda: str | None = Query(None),
+    tipo_servicio: str | None = Query(None),
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> list[VentaRow]:
@@ -144,6 +155,8 @@ async def list_ventas(
         stmt = stmt.where(ToursServicios.tour_id == tour_id)
     if moneda is not None:
         stmt = stmt.where(ToursServicios.moneda == moneda)
+    if tipo_servicio is not None:
+        stmt = stmt.where(ToursServicios.tipo_servicio == tipo_servicio)
     rows = list((await session.execute(stmt)).scalars().all())
 
     # Resolve the containing liquidación's estado in one extra query so the UI can
@@ -174,9 +187,88 @@ async def list_ventas(
                 liquidacion_id=ts.liquidacion_id,
                 liquidacion_estado=(liq.estado.value if liq is not None else None),
                 liquidacion_codigo=(liq.codigo if liq is not None else None),
+                tipo_servicio=str(ts.tipo_servicio.value if hasattr(ts.tipo_servicio, "value") else ts.tipo_servicio),
+                hotel_id=ts.hotel_id,
+                comision_hotel=float(ts.comision_hotel) if ts.comision_hotel is not None else None,
+                destino=ts.destino,
+                nombre_huesped=ts.nombre_huesped,
+                numero_habitacion=ts.numero_habitacion,
+                hora=ts.hora,
+                observaciones=ts.observaciones,
             )
         )
     return out
+
+
+# --------------------------------------------------------------------------- #
+# POST /traslados — D-34
+# --------------------------------------------------------------------------- #
+@router.post("/traslados", response_model=VentaOut, status_code=201)
+async def create_traslado(
+    body: TrasladoIn,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(get_current_user),
+) -> VentaOut:
+    """Registra un traslado: mismo circuito que una venta de tour, más el hotel.
+
+    La comisión del hotel no viene en el body — se deriva de monto − costo
+    (D-34) y se acredita como deuda con el hotel en el mismo asiento.
+    """
+    if user["role"] == "vendedor" and body.vendedor_id != user["vendedor_id"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No puedes registrar traslados para otro vendedor")
+
+    proveedor = (await session.execute(select(Agencias).where(Agencias.id == body.agencia_id))).scalar_one_or_none()
+    if proveedor is None or not proveedor.activo:
+        raise HTTPException(status_code=422, detail="Proveedor no existe o está inactivo")
+    hotel = (await session.execute(select(Agencias).where(Agencias.id == body.hotel_id))).scalar_one_or_none()
+    if hotel is None or not hotel.activo:
+        raise HTTPException(status_code=422, detail="Hotel no existe o está inactivo")
+    if hotel.tipo != TipoAgencia.hotel:
+        raise HTTPException(status_code=422, detail=f"'{hotel.nombre}' no está registrada como hotel")
+    forma = (await session.execute(select(FormasPago).where(FormasPago.id == body.forma_pago_id))).scalar_one_or_none()
+    if forma is None or not forma.activo:
+        raise HTTPException(status_code=422, detail="Forma de pago no existe o está inactiva")
+    if body.moneda not in ("PEN", "USD"):
+        raise HTTPException(status_code=422, detail="Moneda debe ser PEN o USD")
+    if body.monto <= 0:
+        raise HTTPException(status_code=422, detail="Monto debe ser positivo")
+    if (body.costo or 0) > body.monto:
+        raise HTTPException(status_code=422, detail="El costo del proveedor no puede superar el precio cobrado al huésped")
+
+    # tour_id apunta siempre a la fila de catálogo genérica (el destino real es
+    # texto libre): tours_servicios.tour_id es NOT NULL con FK a tours_catalogo.
+    catalogo = (await session.execute(
+        select(ToursCatalogo).where(ToursCatalogo.codigo == CODIGO_CATALOGO_TRASLADO)
+    )).scalar_one_or_none()
+    if catalogo is None:
+        raise HTTPException(status_code=422, detail=f"Falta la fila de catálogo {CODIGO_CATALOGO_TRASLADO}")
+
+    try:
+        asiento, tour_servicio = await post_venta_traslado(
+            session,
+            tour_id=catalogo.id,
+            vendedor_id=body.vendedor_id,
+            agencia_id=body.agencia_id,
+            hotel_id=body.hotel_id,
+            forma_pago_id=body.forma_pago_id,
+            moneda=body.moneda,
+            monto=body.monto,
+            costo=body.costo,
+            fecha=body.fecha,
+            destino=body.destino.strip(),
+            nombre_huesped=body.nombre_huesped.strip(),
+            numero_habitacion=body.numero_habitacion.strip(),
+            hora=body.hora,
+            observaciones=(body.observaciones or "").strip() or None,
+            metadata=body.metadata,
+            creacion_usuario_id=user["id"],
+        )
+        await session.commit()
+    except ValueError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    return VentaOut(asiento_id=asiento.id, tour_servicio_id=tour_servicio.id)
 
 
 # --------------------------------------------------------------------------- #
@@ -370,10 +462,14 @@ async def create_liquidacion(
     await session.flush()  # populate liq.id
 
     # Auto-assign tours_servicios with liquidacion_id IS NULL within range (Plan 02).
+    # D-34 — los traslados quedan fuera: no pagan comisión al vendedor, así que
+    # incluirlos sólo los bloquearía por D-14 sin generar ningún asiento. La deuda
+    # con el hotel se salda por /agencia-pagos, no por acá.
     stmt = select(ToursServicios).where(
         ToursServicios.fecha >= body.fecha_desde,
         ToursServicios.fecha <= body.fecha_hasta,
         ToursServicios.liquidacion_id.is_(None),
+        ToursServicios.tipo_servicio == TipoServicio.tour,
     )
     if body.vendedor_id is not None:
         stmt = stmt.where(ToursServicios.vendedor_id == body.vendedor_id)
@@ -546,13 +642,21 @@ async def update_tour_servicio(
             await session.rollback()
             raise HTTPException(status_code=422, detail="Monto debe ser positivo")
         try:
+            tipo = str(ts.tipo_servicio.value if hasattr(ts.tipo_servicio, "value") else ts.tipo_servicio)
             await resync_venta_asiento(
                 session,
                 asiento_id=ts.asiento_id,
                 moneda=str(ts.moneda.value if hasattr(ts.moneda, "value") else ts.moneda),
                 monto=float(ts.monto),
                 costo=float(ts.costo) if ts.costo is not None else None,
+                tipo_servicio=tipo,
             )
+            # D-34 — la comisión del hotel es derivada: al reajustar el asiento
+            # hay que reajustar también lo que la fila dice que se le debe.
+            if tipo == "traslado":
+                ts.comision_hotel = calcular_comision_hotel(
+                    float(ts.monto), float(ts.costo) if ts.costo is not None else None
+                )
         except ValueError as exc:
             await session.rollback()
             raise HTTPException(status_code=422, detail=str(exc))

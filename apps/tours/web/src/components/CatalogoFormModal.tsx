@@ -8,7 +8,7 @@ type CatalogoFormModalProps = {
   entidad: string;
   open: boolean;
   onClose: () => void;
-  initial?: { id: number; codigo?: string; nombre: string } | null;
+  initial?: { id: number; codigo?: string; nombre: string; tipo?: string | null } | null;
   onSaved: () => void;
 };
 
@@ -23,7 +23,11 @@ const LABELS: Record<string, string> = {
 export function CatalogoFormModal({ entidad, open, onClose, initial, onSaved }: CatalogoFormModalProps) {
   const [codigo, setCodigo] = useState("");
   const [nombre, setNombre] = useState("");
+  // D-34 — sólo aplica a agencias: distingue al proveedor del servicio del
+  // hotel que refiere huéspedes y cobra comisión por los traslados.
+  const [tipo, setTipo] = useState("proveedor");
   const [submitting, setSubmitting] = useState(false);
+  const esAgencia = entidad === "agencias";
 
   const [prevOpen, setPrevOpen] = useState(open);
   if (open !== prevOpen) {
@@ -31,6 +35,7 @@ export function CatalogoFormModal({ entidad, open, onClose, initial, onSaved }: 
     if (open) {
       setCodigo(initial?.codigo ?? "");
       setNombre(initial?.nombre ?? "");
+      setTipo(initial?.tipo ?? "proveedor");
     }
   }
 
@@ -43,7 +48,7 @@ export function CatalogoFormModal({ entidad, open, onClose, initial, onSaved }: 
     const res = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codigo, nombre }),
+      body: JSON.stringify(esAgencia ? { codigo, nombre, tipo } : { codigo, nombre }),
     });
     setSubmitting(false);
     if (res.ok) {
@@ -93,6 +98,19 @@ export function CatalogoFormModal({ entidad, open, onClose, initial, onSaved }: 
             className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas"
           />
         </label>
+        {esAgencia && (
+          <label className="block">
+            <span className="text-sm font-nunito text-text-espresso-soft">Tipo</span>
+            <select
+              value={tipo}
+              onChange={(e) => setTipo(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas"
+            >
+              <option value="proveedor">Proveedor — le compramos el servicio</option>
+              <option value="hotel">Hotel — nos refiere huéspedes y cobra comisión</option>
+            </select>
+          </label>
+        )}
         <div className="flex gap-3 justify-end mt-2">
           <Button variant="outlined" type="button" onClick={onClose}>Cancelar</Button>
           <Button variant="primary" type="submit" disabled={submitting}>

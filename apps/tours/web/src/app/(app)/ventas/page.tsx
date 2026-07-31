@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { apiFetchJson } from "@/lib/api";
 import { VentaTable } from "./components/VentaTable";
 import { VentaFormModal } from "./components/VentaFormModal";
+import { TrasladoFormModal } from "./components/TrasladoFormModal";
 
 export default async function VentasPage() {
   const session = await getServerSession(authOptions);
@@ -18,7 +19,10 @@ export default async function VentasPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-playfair text-primary text-[38px] font-semibold">Ventas</h1>
-        <VentaFormModal role={role} vendedorId={vendedorId} />
+        <div className="flex gap-3">
+          <TrasladoFormModal role={role} vendedorId={vendedorId} />
+          <VentaFormModal role={role} vendedorId={vendedorId} />
+        </div>
       </div>
       <VentaTable ventas={ventas} />
     </div>
