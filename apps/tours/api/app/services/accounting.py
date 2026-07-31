@@ -134,26 +134,23 @@ async def build_traslado_lineas(
     moneda: str,
     monto: float,
     costo: float | None,
-    comision_hotel: float | None,
 ) -> list[dict[str, Any]]:
-    """Asiento de un traslado (D-34).
+    """Asiento de un traslado (D-34) — es una venta simple:
 
-        D 101-CAJA                  monto cobrado al huésped
-        H 401-INGRESOS-TRASLADOS    monto
-        D 501-COSTOS-TRASLADOS      costo del proveedor de transporte
-        H 202-AGENCIAS-POR-PAGAR    costo            → deuda con el proveedor
-        D 502-COMISION-HOTEL        comisión
-        H 203-HOTELES-POR-PAGAR     comisión         → deuda con el hotel
+        D 101-CAJA                     monto cobrado al huésped
+        H 401-INGRESOS-TRASLADOS       monto
+        D 501-COSTOS-TRASLADOS         costo del proveedor de transporte
+        H 203-TRANSPORTE-POR-PAGAR     costo  → deuda con el proveedor
 
-    Ingresos y costos van en cuentas separadas de las de tours a propósito: es
-    lo que permite leer la rentabilidad de cada línea de negocio por su lado.
+    El margen (monto − costo) no se le acredita a nadie: el hotel somos
+    nosotros, así que queda como resultado de la casa. Ingresos, costos y deuda
+    van en cuentas separadas de las de tours a propósito — es lo que permite
+    leer la rentabilidad de cada línea de negocio por su lado.
     """
     codigo_caja = f"101-CAJA-{moneda}"
     codigo_ingreso = f"401-INGRESOS-TRASLADOS-{moneda}"
     codigo_costo = f"501-COSTOS-TRASLADOS-{moneda}"
-    codigo_agencias_por_pagar = f"202-AGENCIAS-POR-PAGAR-{moneda}"
-    codigo_comision_hotel = f"502-COMISION-HOTEL-{moneda}"
-    codigo_hoteles_por_pagar = f"203-HOTELES-POR-PAGAR-{moneda}"
+    codigo_transporte_por_pagar = f"203-TRANSPORTE-POR-PAGAR-{moneda}"
 
     async def _cuenta(codigo: str) -> Cuentas:
         cta = (await session.execute(select(Cuentas).where(Cuentas.codigo == codigo))).scalar_one_or_none()
@@ -172,29 +169,11 @@ async def build_traslado_lineas(
     costo_val = costo or 0
     if _to_cents(costo_val) > 0:
         costo_cta = await _cuenta(codigo_costo)
-        agencias_por_pagar = await _cuenta(codigo_agencias_por_pagar)
+        transporte_por_pagar = await _cuenta(codigo_transporte_por_pagar)
         lineas.append({"cuenta_id": costo_cta.id, "debe": costo_val, "haber": 0})
-        lineas.append({"cuenta_id": agencias_por_pagar.id, "debe": 0, "haber": costo_val})
-
-    comision_val = comision_hotel or 0
-    if _to_cents(comision_val) > 0:
-        comision_cta = await _cuenta(codigo_comision_hotel)
-        hoteles_por_pagar = await _cuenta(codigo_hoteles_por_pagar)
-        lineas.append({"cuenta_id": comision_cta.id, "debe": comision_val, "haber": 0})
-        lineas.append({"cuenta_id": hoteles_por_pagar.id, "debe": 0, "haber": comision_val})
+        lineas.append({"cuenta_id": transporte_por_pagar.id, "debe": 0, "haber": costo_val})
 
     return lineas
-
-
-def calcular_comision_hotel(monto: float, costo: float | None) -> float:
-    """D-34 — la comisión del hotel es el margen: precio cobrado − costo proveedor.
-
-    Es un valor derivado, no un dato que se ingrese en el formulario. Se calcula
-    acá (y se persiste en la fila) para que nunca pueda divergir del asiento.
-    Nunca negativa: si el costo supera al precio, no hay comisión que acreditar.
-    """
-    margen = Decimal(str(monto)) - Decimal(str(costo or 0))
-    return float(margen) if margen > 0 else 0.0
 
 
 async def resync_venta_asiento(
@@ -214,18 +193,11 @@ async def resync_venta_asiento(
     revalidated on the new set, so an invalid edit raises before anything is
     committed.
 
-    `comision_hotel` sólo aplica a traslados (D-34) y se recalcula del margen
-    nuevo, para que editar el precio o el costo reajuste también lo que se le
-    acredita al hotel.
+    Un traslado usa sus propias cuentas (D-34), así que el tipo decide qué
+    juego de líneas se reescribe.
     """
     if tipo_servicio == "traslado":
-        lineas = await build_traslado_lineas(
-            session,
-            moneda=moneda,
-            monto=monto,
-            costo=costo,
-            comision_hotel=calcular_comision_hotel(monto, costo),
-        )
+        lineas = await build_traslado_lineas(session, moneda=moneda, monto=monto, costo=costo)
     else:
         lineas = await build_venta_lineas(session, moneda=moneda, monto=monto, costo=costo)
 
@@ -346,12 +318,12 @@ async def post_venta_traslado(
     tour_id: int,
     vendedor_id: int,
     agencia_id: int,
-    hotel_id: int,
     forma_pago_id: int,
     moneda: str,
     monto: float,
     costo: float | None,
     fecha: date,
+    fecha_servicio: date | None,
     destino: str,
     nombre_huesped: str,
     numero_habitacion: str,
@@ -368,10 +340,7 @@ async def post_venta_traslado(
     from app.models.tours import ToursServicios, TipoServicio
 
     costo_val = costo or 0
-    comision_hotel = calcular_comision_hotel(monto, costo_val)
-    lineas = await build_traslado_lineas(
-        session, moneda=moneda, monto=monto, costo=costo_val, comision_hotel=comision_hotel
-    )
+    lineas = await build_traslado_lineas(session, moneda=moneda, monto=monto, costo=costo_val)
 
     asiento = await post_asiento(
         session,
@@ -388,13 +357,12 @@ async def post_venta_traslado(
         tour_id=tour_id,
         vendedor_id=vendedor_id,
         agencia_id=agencia_id,
-        hotel_id=hotel_id,
         forma_pago_id=forma_pago_id,
         moneda=moneda,
         monto=monto,
         costo=costo_val,
-        comision_hotel=comision_hotel,
         fecha=fecha,
+        fecha_servicio=fecha_servicio,
         destino=destino,
         nombre_huesped=nombre_huesped,
         numero_habitacion=numero_habitacion,

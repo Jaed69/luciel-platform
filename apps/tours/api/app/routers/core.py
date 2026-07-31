@@ -46,9 +46,10 @@ async def _agencias_out(session: AsyncSession, rows: list[Agencias]) -> list[Cat
     for row in rows:
         item = CatalogoOut.model_validate(row)
         item.tipo = row.tipo.value if hasattr(row.tipo, "value") else str(row.tipo)
-        # Un hotel no vende tours: medirlo por "tours vinculados" no aplica.
-        if item.tipo == "hotel":
-            item.estado = "hotel"
+        # El estado operativo mide convenios de precio por tour: a un proveedor
+        # de transporte no le aplica.
+        if item.tipo == "proveedor_transporte":
+            item.estado = None
         else:
             item.estado = "operativa" if row.id in active_agencia_ids else "sin_tours_vinculados"
         out.append(item)
@@ -193,8 +194,8 @@ async def create_catalog(
     # D-34 — una agencia puede ser proveedor u hotel; el resto de los catálogos
     # no tiene esta dimensión y el campo se ignora.
     if entidad == "agencias" and body.tipo is not None:
-        if body.tipo not in ("proveedor", "hotel"):
-            raise HTTPException(status_code=422, detail="tipo debe ser 'proveedor' u 'hotel'")
+        if body.tipo not in ("proveedor_tour", "proveedor_transporte"):
+            raise HTTPException(status_code=422, detail="tipo debe ser 'proveedor_tour' o 'proveedor_transporte'")
         row.tipo = TipoAgencia(body.tipo)
     session.add(row)
     await session.commit()
@@ -222,8 +223,8 @@ async def update_catalog(
     row.codigo = body.codigo
     row.nombre = body.nombre
     if entidad == "agencias" and body.tipo is not None:
-        if body.tipo not in ("proveedor", "hotel"):
-            raise HTTPException(status_code=422, detail="tipo debe ser 'proveedor' u 'hotel'")
+        if body.tipo not in ("proveedor_tour", "proveedor_transporte"):
+            raise HTTPException(status_code=422, detail="tipo debe ser 'proveedor_tour' o 'proveedor_transporte'")
         row.tipo = TipoAgencia(body.tipo)
     # Do NOT touch row.activo — D-03.
     await session.commit()

@@ -23,9 +23,9 @@ const LABELS: Record<string, string> = {
 export function CatalogoFormModal({ entidad, open, onClose, initial, onSaved }: CatalogoFormModalProps) {
   const [codigo, setCodigo] = useState("");
   const [nombre, setNombre] = useState("");
-  // D-34 — sólo aplica a agencias: distingue al proveedor del servicio del
-  // hotel que refiere huéspedes y cobra comisión por los traslados.
-  const [tipo, setTipo] = useState("proveedor");
+  // D-34 — sólo aplica a agencias: separa quién opera tours de quién hace
+  // traslados. Son listas que no se mezclan en los formularios de venta.
+  const [tipo, setTipo] = useState("proveedor_tour");
   const [submitting, setSubmitting] = useState(false);
   const esAgencia = entidad === "agencias";
 
@@ -35,7 +35,7 @@ export function CatalogoFormModal({ entidad, open, onClose, initial, onSaved }: 
     if (open) {
       setCodigo(initial?.codigo ?? "");
       setNombre(initial?.nombre ?? "");
-      setTipo(initial?.tipo ?? "proveedor");
+      setTipo(initial?.tipo ?? "proveedor_tour");
     }
   }
 
@@ -106,8 +106,8 @@ export function CatalogoFormModal({ entidad, open, onClose, initial, onSaved }: 
               onChange={(e) => setTipo(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas"
             >
-              <option value="proveedor">Proveedor — le compramos el servicio</option>
-              <option value="hotel">Hotel — nos refiere huéspedes y cobra comisión</option>
+              <option value="proveedor_tour">Agencia de tours</option>
+              <option value="proveedor_transporte">Proveedor de transporte (traslados)</option>
             </select>
           </label>
         )}

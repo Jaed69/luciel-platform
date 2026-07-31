@@ -116,15 +116,15 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
             await conn.execute(text("ALTER TABLE agencia_tour_precios RENAME COLUMN precio_usd TO costo_usd"))
 
         # 8. D-34 traslados — columnas operativas + tipo de servicio en
-        # tours_servicios, y tipo en agencias (proveedor vs hotel). Todas
-        # nullable salvo los discriminadores, que llevan un DEFAULT constante
-        # (lo único que SQLite acepta en ADD COLUMN) para que las filas
-        # existentes queden clasificadas como tour/proveedor sin backfill.
+        # tours_servicios, y la línea de negocio del proveedor en agencias.
+        # Todas nullable salvo los discriminadores, que llevan un DEFAULT
+        # constante (lo único que SQLite acepta en ADD COLUMN) para que las
+        # filas existentes queden clasificadas como tour / proveedor de tour
+        # sin necesidad de backfill.
         ts_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(tours_servicios)"))).all()]
         for col, ddl in (
             ("tipo_servicio", "VARCHAR(16) NOT NULL DEFAULT 'tour'"),
-            ("hotel_id", "INTEGER REFERENCES agencias(id)"),
-            ("comision_hotel", "NUMERIC(12, 2)"),
+            ("fecha_servicio", "DATE"),
             ("destino", "VARCHAR(128)"),
             ("nombre_huesped", "VARCHAR(128)"),
             ("numero_habitacion", "VARCHAR(16)"),
@@ -138,11 +138,16 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
         ag_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(agencias)"))).all()]
         if "tipo" not in ag_cols:
             logger.info("schema_sync: adding agencias.tipo")
-            await conn.execute(text("ALTER TABLE agencias ADD COLUMN tipo VARCHAR(16) NOT NULL DEFAULT 'proveedor'"))
-
-        # Índice para el saldo por hotel (suma comision_hotel por hotel_id).
+            await conn.execute(text(
+                "ALTER TABLE agencias ADD COLUMN tipo VARCHAR(24) NOT NULL DEFAULT 'proveedor_tour'"
+            ))
+        # Normaliza cualquier valor fuera del enum actual: una build intermedia
+        # llegó a escribir 'proveedor'/'hotel' antes de que se definieran las dos
+        # líneas de proveedores, y una fila con un valor desconocido rompe la
+        # validación al leerla.
         await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_tours_servicios_hotel_id ON tours_servicios (hotel_id)"
+            "UPDATE agencias SET tipo = 'proveedor_tour' "
+            "WHERE tipo IS NULL OR tipo NOT IN ('proveedor_tour', 'proveedor_transporte')"
         ))
 
 

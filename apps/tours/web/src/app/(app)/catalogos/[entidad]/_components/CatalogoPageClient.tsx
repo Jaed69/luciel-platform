@@ -91,12 +91,12 @@ export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; enti
             key: "tipo",
             header: "Tipo",
             render: (r: Row) =>
-              r.tipo === "hotel" ? (
+              r.tipo === "proveedor_transporte" ? (
                 <span className="inline-block rounded-md px-3 py-1 text-[13px] font-semibold border border-gold bg-gold/10">
-                  Hotel
+                  Transporte
                 </span>
               ) : (
-                <span className="inline-block rounded-md px-3 py-1 text-[13px] border border-gold/40">Proveedor</span>
+                <span className="inline-block rounded-md px-3 py-1 text-[13px] border border-gold/40">Tours</span>
               ),
           } as Column<Row>,
           {
@@ -112,7 +112,8 @@ export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; enti
                   Sin tours vinculados
                 </span>
               ) : (
-                // Un hotel no vende tours: el estado operativo por convenios no aplica.
+                // El estado operativo mide convenios por tour: a un proveedor de
+                // transporte no le aplica.
                 <span className="text-text-espresso-soft text-[13px]">—</span>
               ),
           } as Column<Row>,

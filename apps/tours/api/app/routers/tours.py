@@ -44,7 +44,6 @@ from app.schemas.tours import (
     VentaRow,
 )
 from app.services.accounting import (
-    calcular_comision_hotel,
     post_reversion_asiento,
     post_venta_tour,
     post_venta_traslado,
@@ -88,6 +87,10 @@ async def create_venta(
     agencia = (await session.execute(select(Agencias).where(Agencias.id == body.agencia_id))).scalar_one_or_none()
     if agencia is None or not agencia.activo:
         raise HTTPException(status_code=422, detail="Agencia no existe o está inactiva")
+    # D-34 — las dos listas de proveedores no se mezclan: quien hace traslados
+    # no opera tours.
+    if agencia.tipo != TipoAgencia.proveedor_tour:
+        raise HTTPException(status_code=422, detail=f"'{agencia.nombre}' no es una agencia de tours")
     forma = (await session.execute(select(FormasPago).where(FormasPago.id == body.forma_pago_id))).scalar_one_or_none()
     if forma is None or not forma.activo:
         raise HTTPException(status_code=422, detail="Forma de pago no existe o está inactiva")
@@ -188,8 +191,7 @@ async def list_ventas(
                 liquidacion_estado=(liq.estado.value if liq is not None else None),
                 liquidacion_codigo=(liq.codigo if liq is not None else None),
                 tipo_servicio=str(ts.tipo_servicio.value if hasattr(ts.tipo_servicio, "value") else ts.tipo_servicio),
-                hotel_id=ts.hotel_id,
-                comision_hotel=float(ts.comision_hotel) if ts.comision_hotel is not None else None,
+                fecha_servicio=ts.fecha_servicio,
                 destino=ts.destino,
                 nombre_huesped=ts.nombre_huesped,
                 numero_habitacion=ts.numero_habitacion,
@@ -209,10 +211,11 @@ async def create_traslado(
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> VentaOut:
-    """Registra un traslado: mismo circuito que una venta de tour, más el hotel.
+    """Registra un traslado: mismo circuito que una venta de tour, con su propio
+    proveedor de transporte y sus cuentas propias (D-34).
 
-    La comisión del hotel no viene en el body — se deriva de monto − costo
-    (D-34) y se acredita como deuda con el hotel en el mismo asiento.
+    El margen queda para la casa — el hotel somos nosotros —, así que no hay
+    ningún tercero al que acreditárselo.
     """
     if user["role"] == "vendedor" and body.vendedor_id != user["vendedor_id"]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No puedes registrar traslados para otro vendedor")
@@ -220,11 +223,11 @@ async def create_traslado(
     proveedor = (await session.execute(select(Agencias).where(Agencias.id == body.agencia_id))).scalar_one_or_none()
     if proveedor is None or not proveedor.activo:
         raise HTTPException(status_code=422, detail="Proveedor no existe o está inactivo")
-    hotel = (await session.execute(select(Agencias).where(Agencias.id == body.hotel_id))).scalar_one_or_none()
-    if hotel is None or not hotel.activo:
-        raise HTTPException(status_code=422, detail="Hotel no existe o está inactivo")
-    if hotel.tipo != TipoAgencia.hotel:
-        raise HTTPException(status_code=422, detail=f"'{hotel.nombre}' no está registrada como hotel")
+    if proveedor.tipo != TipoAgencia.proveedor_transporte:
+        raise HTTPException(
+            status_code=422,
+            detail=f"'{proveedor.nombre}' no es un proveedor de transporte",
+        )
     forma = (await session.execute(select(FormasPago).where(FormasPago.id == body.forma_pago_id))).scalar_one_or_none()
     if forma is None or not forma.activo:
         raise HTTPException(status_code=422, detail="Forma de pago no existe o está inactiva")
@@ -249,12 +252,12 @@ async def create_traslado(
             tour_id=catalogo.id,
             vendedor_id=body.vendedor_id,
             agencia_id=body.agencia_id,
-            hotel_id=body.hotel_id,
             forma_pago_id=body.forma_pago_id,
             moneda=body.moneda,
             monto=body.monto,
             costo=body.costo,
             fecha=body.fecha,
+            fecha_servicio=body.fecha_servicio or body.fecha,
             destino=body.destino.strip(),
             nombre_huesped=body.nombre_huesped.strip(),
             numero_habitacion=body.numero_habitacion.strip(),
@@ -651,12 +654,6 @@ async def update_tour_servicio(
                 costo=float(ts.costo) if ts.costo is not None else None,
                 tipo_servicio=tipo,
             )
-            # D-34 — la comisión del hotel es derivada: al reajustar el asiento
-            # hay que reajustar también lo que la fila dice que se le debe.
-            if tipo == "traslado":
-                ts.comision_hotel = calcular_comision_hotel(
-                    float(ts.monto), float(ts.costo) if ts.costo is not None else None
-                )
         except ValueError as exc:
             await session.rollback()
             raise HTTPException(status_code=422, detail=str(exc))

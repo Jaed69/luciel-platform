@@ -121,18 +121,21 @@ class VentaIn(BaseModel):
 class TrasladoIn(BaseModel):
     """POST /traslados — D-34.
 
-    No lleva `tour_id` (lo resuelve el backend contra la fila de catálogo
-    SRV-TRASLADO) ni `comision_hotel` (es derivada: monto − costo). `agencia_id`
-    es el proveedor de transporte; `hotel_id`, el hotel que refirió al huésped.
+    No lleva `tour_id`: lo resuelve el backend contra la fila de catálogo
+    SRV-TRASLADO. `agencia_id` es el proveedor de transporte.
+
+    Dos fechas distintas y ambas explícitas: `fecha` es cuándo se cobra (la que
+    fecha el asiento) y `fecha_servicio` cuándo se hace el traslado. Si no se
+    manda la segunda se asume que coinciden, que es el caso habitual.
     """
     vendedor_id: int
     agencia_id: int
-    hotel_id: int
     forma_pago_id: int
     moneda: str  # PEN | USD
     monto: float  # precio cobrado al huésped
-    costo: float | None = 0  # costo del proveedor
-    fecha: date
+    costo: float | None = 0  # costo del proveedor de transporte
+    fecha: date  # fecha de cobro — fecha contable
+    fecha_servicio: date | None = None  # fecha en que se realiza el traslado
     hora: str
     destino: str
     nombre_huesped: str
@@ -181,8 +184,7 @@ class VentaRow(BaseModel):
     liquidacion_codigo: str | None = None
     # D-34 — campos de traslado; None en las filas de tipo tour.
     tipo_servicio: str = "tour"
-    hotel_id: int | None = None
-    comision_hotel: float | None = None
+    fecha_servicio: date | None = None
     destino: str | None = None
     nombre_huesped: str | None = None
     numero_habitacion: str | None = None

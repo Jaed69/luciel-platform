@@ -41,19 +41,24 @@ class TipoServicio(_Enum):
     """Qué se vendió en una fila de `tours_servicios` (D-34).
 
     `traslado` comparte toda la maquinaria contable del tour (asiento
-    balanceado, edición, borrado con reversión) pero suma un tercero — el hotel
-    que refirió al huésped — y no entra en las liquidaciones de comisión.
+    balanceado, edición, borrado con reversión). Se diferencia en que lo presta
+    un proveedor de transporte, lleva los datos operativos del huésped y no
+    entra en las liquidaciones de comisión.
     """
     tour = "tour"
     traslado = "traslado"
 
 
 class TipoAgencia(_Enum):
-    """Un hotel es un tercero con saldo igual que una agencia proveedora (D-34),
-    así que vive en la misma tabla y reusa /agencia-pagos y /agencias/{id}/saldo.
-    Lo que cambia es de qué lado nace la deuda: costo del servicio vs comisión."""
-    proveedor = "proveedor"
-    hotel = "hotel"
+    """Con qué línea de negocio trabaja el proveedor (D-34).
+
+    Son listas que no se mezclan: quien opera un tour no es quien hace un
+    traslado, y el formulario de cada uno sólo ofrece los suyos. El hotel no es
+    una entidad acá — el hotel somos nosotros, y el margen del traslado es
+    nuestro, no una deuda con un tercero.
+    """
+    proveedor_tour = "proveedor_tour"
+    proveedor_transporte = "proveedor_transporte"
 
 
 class TipoSolicitud(_Enum):
@@ -86,10 +91,9 @@ class Agencias(Base, Auditable):
     codigo: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     nombre: Mapped[str] = mapped_column(String(128), nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
-    # D-34 — proveedor (le compramos el servicio) vs hotel (nos refiere huéspedes
-    # y le pagamos comisión). Las filas previas a traslados son todas proveedor.
+    # D-34 — las filas previas a traslados son todas agencias de tour.
     tipo: Mapped[TipoAgencia] = mapped_column(
-        Enum(TipoAgencia), nullable=False, default=TipoAgencia.proveedor, server_default="proveedor"
+        Enum(TipoAgencia), nullable=False, default=TipoAgencia.proveedor_tour, server_default="proveedor_tour"
     )
 
 
@@ -233,11 +237,11 @@ class ToursServicios(Base, Auditable):
     tipo_servicio: Mapped[TipoServicio] = mapped_column(
         Enum(TipoServicio), nullable=False, default=TipoServicio.tour, server_default="tour"
     )
-    hotel_id: Mapped[int | None] = mapped_column(ForeignKey("agencias.id"), nullable=True)
-    # Derivada de monto - costo al registrar (D-34): se persiste para que la
-    # fila refleje exactamente lo que se acreditó al hotel en el asiento, aunque
-    # la regla de cálculo cambie más adelante.
-    comision_hotel: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    # Cuándo se presta el servicio, que no es cuándo se cobra (D-34): `fecha` es
+    # la fecha contable — el día que entra la plata y que fecha el asiento— y
+    # ésta es la operativa, el día del traslado. Suelen coincidir, por eso el
+    # formulario la arrastra por defecto, pero no siempre.
+    fecha_servicio: Mapped[date | None] = mapped_column(Date, nullable=True)
     destino: Mapped[str | None] = mapped_column(String(128), nullable=True)
     nombre_huesped: Mapped[str | None] = mapped_column(String(128), nullable=True)
     numero_habitacion: Mapped[str | None] = mapped_column(String(16), nullable=True)
