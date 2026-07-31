@@ -37,6 +37,25 @@ class EstadoLiquidacion(_Enum):
     revertida = "revertida"
 
 
+class TipoServicio(_Enum):
+    """Qué se vendió en una fila de `tours_servicios` (D-34).
+
+    `traslado` comparte toda la maquinaria contable del tour (asiento
+    balanceado, edición, borrado con reversión) pero suma un tercero — el hotel
+    que refirió al huésped — y no entra en las liquidaciones de comisión.
+    """
+    tour = "tour"
+    traslado = "traslado"
+
+
+class TipoAgencia(_Enum):
+    """Un hotel es un tercero con saldo igual que una agencia proveedora (D-34),
+    así que vive en la misma tabla y reusa /agencia-pagos y /agencias/{id}/saldo.
+    Lo que cambia es de qué lado nace la deuda: costo del servicio vs comisión."""
+    proveedor = "proveedor"
+    hotel = "hotel"
+
+
 class TipoSolicitud(_Enum):
     bug = "bug"
     mejora = "mejora"
@@ -67,6 +86,11 @@ class Agencias(Base, Auditable):
     codigo: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
     nombre: Mapped[str] = mapped_column(String(128), nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # D-34 — proveedor (le compramos el servicio) vs hotel (nos refiere huéspedes
+    # y le pagamos comisión). Las filas previas a traslados son todas proveedor.
+    tipo: Mapped[TipoAgencia] = mapped_column(
+        Enum(TipoAgencia), nullable=False, default=TipoAgencia.proveedor, server_default="proveedor"
+    )
 
 
 class Vendedores(Base, Auditable):
@@ -198,6 +222,27 @@ class ToursServicios(Base, Auditable):
     creado_en: Mapped[datetime] = mapped_column(
         DateTime, default=func.now(), server_default=func.now(), nullable=False
     )
+
+    # ----------------------------------------------------------------- #
+    # D-34 — traslados. Todas nullable: son campos operativos que sólo
+    # aplican cuando tipo_servicio == 'traslado'; TrasladoIn los exige a
+    # nivel API. `tour_id` sigue apuntando a la fila de catálogo genérica
+    # SRV-TRASLADO (el destino real es texto libre acá) — así no hay que
+    # reconstruir tours_servicios para relajar su NOT NULL.
+    # ----------------------------------------------------------------- #
+    tipo_servicio: Mapped[TipoServicio] = mapped_column(
+        Enum(TipoServicio), nullable=False, default=TipoServicio.tour, server_default="tour"
+    )
+    hotel_id: Mapped[int | None] = mapped_column(ForeignKey("agencias.id"), nullable=True)
+    # Derivada de monto - costo al registrar (D-34): se persiste para que la
+    # fila refleje exactamente lo que se acreditó al hotel en el asiento, aunque
+    # la regla de cálculo cambie más adelante.
+    comision_hotel: Mapped[float | None] = mapped_column(Numeric(12, 2), nullable=True)
+    destino: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    nombre_huesped: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    numero_habitacion: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    hora: Mapped[str | None] = mapped_column(String(5), nullable=True)  # HH:MM
+    observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Solicitudes(Base, Auditable):

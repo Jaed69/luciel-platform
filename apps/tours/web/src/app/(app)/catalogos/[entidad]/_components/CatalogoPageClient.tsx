@@ -9,6 +9,7 @@ type Row = {
   id: number;
   codigo?: string;
   nombre: string;
+  tipo?: string | null;
   activo: boolean;
   estado?: string | null;
   usuario_activo?: boolean | null;
@@ -87,6 +88,18 @@ export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; enti
     ...(entidad === "agencias"
       ? [
           {
+            key: "tipo",
+            header: "Tipo",
+            render: (r: Row) =>
+              r.tipo === "hotel" ? (
+                <span className="inline-block rounded-md px-3 py-1 text-[13px] font-semibold border border-gold bg-gold/10">
+                  Hotel
+                </span>
+              ) : (
+                <span className="inline-block rounded-md px-3 py-1 text-[13px] border border-gold/40">Proveedor</span>
+              ),
+          } as Column<Row>,
+          {
             key: "estado_operativo",
             header: "Estado operativo",
             render: (r: Row) =>
@@ -98,7 +111,10 @@ export function CatalogoPageClient({ data, entidad, label }: { data: Row[]; enti
                 <span className="inline-block rounded-md px-3 py-1 text-[13px] font-semibold border bg-amber-warning/20 text-amber-warning border-amber-warning">
                   Sin tours vinculados
                 </span>
-              ) : null,
+              ) : (
+                // Un hotel no vende tours: el estado operativo por convenios no aplica.
+                <span className="text-text-espresso-soft text-[13px]">—</span>
+              ),
           } as Column<Row>,
         ]
       : []),

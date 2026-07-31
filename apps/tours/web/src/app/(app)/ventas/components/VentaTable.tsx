@@ -20,6 +20,15 @@ type Venta = {
   liquidacion_id: number | null;
   liquidacion_estado?: "abierta" | "cerrada" | "revertida" | null;
   liquidacion_codigo?: string | null;
+  // D-34 — presentes sólo en filas de tipo traslado.
+  tipo_servicio?: "tour" | "traslado";
+  hotel_id?: number | null;
+  comision_hotel?: number | null;
+  destino?: string | null;
+  nombre_huesped?: string | null;
+  numero_habitacion?: string | null;
+  hora?: string | null;
+  observaciones?: string | null;
 };
 
 // D-14 bloquea sólo la liquidación *cerrada*. Una `abierta` es todavía un
@@ -49,9 +58,46 @@ export function VentaTable({ ventas }: { ventas: Venta[] }) {
 
   const columns: Column<Venta>[] = [
     { key: "fecha", header: "Fecha", render: (r) => new Date(r.fecha).toLocaleDateString("es-PE") },
-    { key: "tour_id", header: "Tour", render: (r) => `T-${r.tour_id}` },
+    {
+      key: "tipo_servicio",
+      header: "Tipo",
+      render: (r) =>
+        r.tipo_servicio === "traslado" ? (
+          <span className="text-[12px] font-nunito rounded-full px-2 py-0.5 border border-gold bg-gold/10">Traslado</span>
+        ) : (
+          <span className="text-[12px] font-nunito rounded-full px-2 py-0.5 border border-gold/40">Tour</span>
+        ),
+    },
+    {
+      key: "detalle",
+      header: "Detalle",
+      // Un traslado se identifica por a dónde va y quién viaja; un tour, por
+      // su fila de catálogo.
+      render: (r) =>
+        r.tipo_servicio === "traslado" ? (
+          <span className="text-[13px]">
+            {r.destino}
+            <span className="text-text-espresso-soft">
+              {" · "}{r.nombre_huesped}{r.numero_habitacion ? ` (hab. ${r.numero_habitacion})` : ""}
+              {r.hora ? ` · ${r.hora}` : ""}
+            </span>
+          </span>
+        ) : (
+          `T-${r.tour_id}`
+        ),
+    },
     { key: "vendedor_id", header: "Vendedor", render: (r) => `V-${r.vendedor_id}` },
-    { key: "agencia_id", header: "Agencia", render: (r) => `AG-${r.agencia_id}` },
+    { key: "agencia_id", header: "Proveedor", render: (r) => `AG-${r.agencia_id}` },
+    {
+      key: "comision_hotel",
+      header: "Comisión hotel",
+      render: (r) =>
+        r.tipo_servicio === "traslado" && r.comision_hotel != null ? (
+          <span className="tabular-nums">{formatCurrency(r.comision_hotel, r.moneda)}</span>
+        ) : (
+          <span className="text-text-espresso-soft">—</span>
+        ),
+    },
     { key: "forma_pago_id", header: "Forma de pago", render: (r) => `FP-${r.forma_pago_id}` },
     { key: "moneda", header: "Moneda", render: (r) => r.moneda },
     {

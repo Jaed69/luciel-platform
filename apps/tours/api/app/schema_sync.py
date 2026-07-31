@@ -14,7 +14,7 @@ import logging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from app.seed import AGENCIAS, CHART, TIPOS_TOUR
+from app.seed import AGENCIAS, CATALOGO_TRASLADO, CHART, TIPOS_TOUR
 
 logger = logging.getLogger("tours-api")
 
@@ -115,6 +115,36 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
             logger.info("schema_sync: renaming agencia_tour_precios.precio_usd -> costo_usd")
             await conn.execute(text("ALTER TABLE agencia_tour_precios RENAME COLUMN precio_usd TO costo_usd"))
 
+        # 8. D-34 traslados — columnas operativas + tipo de servicio en
+        # tours_servicios, y tipo en agencias (proveedor vs hotel). Todas
+        # nullable salvo los discriminadores, que llevan un DEFAULT constante
+        # (lo único que SQLite acepta en ADD COLUMN) para que las filas
+        # existentes queden clasificadas como tour/proveedor sin backfill.
+        ts_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(tours_servicios)"))).all()]
+        for col, ddl in (
+            ("tipo_servicio", "VARCHAR(16) NOT NULL DEFAULT 'tour'"),
+            ("hotel_id", "INTEGER REFERENCES agencias(id)"),
+            ("comision_hotel", "NUMERIC(12, 2)"),
+            ("destino", "VARCHAR(128)"),
+            ("nombre_huesped", "VARCHAR(128)"),
+            ("numero_habitacion", "VARCHAR(16)"),
+            ("hora", "VARCHAR(5)"),
+            ("observaciones", "TEXT"),
+        ):
+            if col not in ts_cols:
+                logger.info("schema_sync: adding tours_servicios.%s", col)
+                await conn.execute(text(f"ALTER TABLE tours_servicios ADD COLUMN {col} {ddl}"))
+
+        ag_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(agencias)"))).all()]
+        if "tipo" not in ag_cols:
+            logger.info("schema_sync: adding agencias.tipo")
+            await conn.execute(text("ALTER TABLE agencias ADD COLUMN tipo VARCHAR(16) NOT NULL DEFAULT 'proveedor'"))
+
+        # Índice para el saldo por hotel (suma comision_hotel por hotel_id).
+        await conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_tours_servicios_hotel_id ON tours_servicios (hotel_id)"
+        ))
+
 
 async def ensure_reference_data(engine: AsyncEngine) -> None:
     """Data drift (migs 004/005): insert-if-missing by codigo. MUST run after
@@ -140,7 +170,10 @@ async def ensure_reference_data(engine: AsyncEngine) -> None:
                 )
 
         existing_tours = {row[0] for row in (await conn.execute(text("SELECT codigo FROM tours_catalogo"))).all()}
-        for codigo, nombre in TIPOS_TOUR:
+        # D-34 — la fila genérica que respalda a los traslados va junto a los
+        # tipos de tour: tours_servicios.tour_id es NOT NULL y todos los
+        # traslados la referencian.
+        for codigo, nombre in [*TIPOS_TOUR, CATALOGO_TRASLADO]:
             if codigo not in existing_tours:
                 logger.info("schema_sync: inserting tipo de tour %s", codigo)
                 await conn.execute(

@@ -21,7 +21,7 @@ from app.models.core import (
     Cuentas,
     Usuarios,
 )
-from app.models.tours import Agencias, FormasPago, Monedas, Vendedores
+from app.models.tours import Agencias, FormasPago, Monedas, TipoAgencia, Vendedores
 from app.schemas.core import (
     AsientoIn,
     AsientoLineaOut,
@@ -45,7 +45,12 @@ async def _agencias_out(session: AsyncSession, rows: list[Agencias]) -> list[Cat
     out: list[CatalogoOut] = []
     for row in rows:
         item = CatalogoOut.model_validate(row)
-        item.estado = "operativa" if row.id in active_agencia_ids else "sin_tours_vinculados"
+        item.tipo = row.tipo.value if hasattr(row.tipo, "value") else str(row.tipo)
+        # Un hotel no vende tours: medirlo por "tours vinculados" no aplica.
+        if item.tipo == "hotel":
+            item.estado = "hotel"
+        else:
+            item.estado = "operativa" if row.id in active_agencia_ids else "sin_tours_vinculados"
         out.append(item)
     return out
 
@@ -185,6 +190,12 @@ async def create_catalog(
     if entidad == "vendedores":
         raise HTTPException(status_code=409, detail="Los vendedores se gestionan desde Usuarios (rol vendedor)")
     row = model(codigo=body.codigo, nombre=body.nombre)
+    # D-34 — una agencia puede ser proveedor u hotel; el resto de los catálogos
+    # no tiene esta dimensión y el campo se ignora.
+    if entidad == "agencias" and body.tipo is not None:
+        if body.tipo not in ("proveedor", "hotel"):
+            raise HTTPException(status_code=422, detail="tipo debe ser 'proveedor' u 'hotel'")
+        row.tipo = TipoAgencia(body.tipo)
     session.add(row)
     await session.commit()
     await session.refresh(row)
@@ -210,6 +221,10 @@ async def update_catalog(
         raise HTTPException(status_code=404, detail="Registro no encontrado")
     row.codigo = body.codigo
     row.nombre = body.nombre
+    if entidad == "agencias" and body.tipo is not None:
+        if body.tipo not in ("proveedor", "hotel"):
+            raise HTTPException(status_code=422, detail="tipo debe ser 'proveedor' u 'hotel'")
+        row.tipo = TipoAgencia(body.tipo)
     # Do NOT touch row.activo — D-03.
     await session.commit()
     await session.refresh(row)

@@ -87,6 +87,8 @@ class CatalogoOut(BaseModel):
     # agencia, else "sin_tours_vinculados". None for every other catalog.
     estado: str | None = None
     # computed at query time via LEFT JOIN Vendedores.usuario_id -> Usuarios.id,
+    # D-34 — proveedor | hotel, sólo para entidad=agencias.
+    tipo: str | None = None
     # only populated for entidad=vendedores. None for every other catalog and
     # for legacy vendedores with no linked usuario.
     usuario_activo: bool | None = None
@@ -95,6 +97,10 @@ class CatalogoOut(BaseModel):
 class CatalogoIn(BaseModel):
     codigo: str | None = None
     nombre: str
+    # D-34 — sólo para entidad=agencias: "proveedor" (le compramos el servicio)
+    # o "hotel" (nos refiere huéspedes y le pagamos comisión). Se ignora en el
+    # resto de los catálogos.
+    tipo: str | None = None
 
 
 # --------------------------------------------------------------------------- #

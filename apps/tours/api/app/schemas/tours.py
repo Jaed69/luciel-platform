@@ -118,6 +118,43 @@ class VentaIn(BaseModel):
     motivo_monto: MotivoEdicion | None = None
 
 
+class TrasladoIn(BaseModel):
+    """POST /traslados — D-34.
+
+    No lleva `tour_id` (lo resuelve el backend contra la fila de catálogo
+    SRV-TRASLADO) ni `comision_hotel` (es derivada: monto − costo). `agencia_id`
+    es el proveedor de transporte; `hotel_id`, el hotel que refirió al huésped.
+    """
+    vendedor_id: int
+    agencia_id: int
+    hotel_id: int
+    forma_pago_id: int
+    moneda: str  # PEN | USD
+    monto: float  # precio cobrado al huésped
+    costo: float | None = 0  # costo del proveedor
+    fecha: date
+    hora: str
+    destino: str
+    nombre_huesped: str
+    numero_habitacion: str
+    observaciones: str | None = None
+    metadata: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def _campos_operativos(self) -> "TrasladoIn":
+        for campo in ("destino", "nombre_huesped", "numero_habitacion", "hora"):
+            if not (getattr(self, campo) or "").strip():
+                raise ValueError(f"{campo} es obligatorio en un traslado")
+        # HH:MM — el input type=time del formulario ya lo entrega así; validarlo
+        # acá evita que un cliente distinto meta basura en la columna.
+        partes = self.hora.split(":")
+        if len(partes) != 2 or not all(p.isdigit() for p in partes):
+            raise ValueError("hora debe tener formato HH:MM")
+        if not (0 <= int(partes[0]) <= 23 and 0 <= int(partes[1]) <= 59):
+            raise ValueError("hora fuera de rango")
+        return self
+
+
 class VentaOut(BaseModel):
     asiento_id: int
     tour_servicio_id: int
@@ -142,6 +179,15 @@ class VentaRow(BaseModel):
     # alcanza para decidirlo.
     liquidacion_estado: str | None = None
     liquidacion_codigo: str | None = None
+    # D-34 — campos de traslado; None en las filas de tipo tour.
+    tipo_servicio: str = "tour"
+    hotel_id: int | None = None
+    comision_hotel: float | None = None
+    destino: str | None = None
+    nombre_huesped: str | None = None
+    numero_habitacion: str | None = None
+    hora: str | None = None
+    observaciones: str | None = None
 
 
 class AgenciaCandidatoOut(BaseModel):

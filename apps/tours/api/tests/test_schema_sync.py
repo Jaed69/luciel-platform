@@ -10,6 +10,8 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.seed import CODIGO_CATALOGO_TRASLADO, TIPOS_TOUR
+
 pytestmark = pytest.mark.asyncio
 
 # Old prod chart — pre-D-30, no 202 accounts.
@@ -87,7 +89,10 @@ async def test_ensure_schema_heals_stale_prod_db(async_engine):
         assert "AG-001" in agencias  # old row untouched
 
         tours = {row[0] for row in (await conn.execute(text("SELECT codigo FROM tours_catalogo"))).all()}
-        assert "T-7LAGUNAS" in tours and "T-MACHUPICCHU" in tours and len(tours) == 10  # 9 + old demo
+        assert "T-7LAGUNAS" in tours and "T-MACHUPICCHU" in tours
+        # D-34 — la fila genérica que respalda a los traslados también se cura.
+        assert CODIGO_CATALOGO_TRASLADO in tours
+        assert len(tours) == len(TIPOS_TOUR) + 2  # tipos de tour + SRV-TRASLADO + old demo
 
         indexes = [row[1] for row in (await conn.execute(text("PRAGMA index_list(usuarios)"))).all()]
         assert "uq_usuarios_username" in indexes
@@ -121,7 +126,7 @@ async def test_ensure_schema_is_idempotent(async_engine):
 
     async with async_engine.begin() as conn:
         n_tours = (await conn.execute(text("SELECT COUNT(*) FROM tours_catalogo"))).scalar_one()
-        assert n_tours == 10
+        assert n_tours == len(TIPOS_TOUR) + 2  # tipos de tour + SRV-TRASLADO + old demo
         n_202 = (await conn.execute(text("SELECT COUNT(*) FROM cuentas WHERE codigo LIKE '202%'"))).scalar_one()
         assert n_202 == 2
         n_precios = (await conn.execute(text("SELECT COUNT(*) FROM agencia_tour_precios"))).scalar_one()
