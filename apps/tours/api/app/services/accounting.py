@@ -81,23 +81,19 @@ async def post_asiento(
     return asiento
 
 
-async def post_venta_tour(
+async def build_venta_lineas(
     session: AsyncSession,
     *,
-    tour_id: int,
-    vendedor_id: int,
-    agencia_id: int,
-    forma_pago_id: int,
     moneda: str,
     monto: float,
     costo: float | None,
-    fecha: date,
-    metadata: dict[str, Any] | None = None,
-    creacion_usuario_id: int | None = None,
-) -> tuple[Asientos, "ToursServicios"]:
-    """Build the asiento for a tour venta and insert tours_servicios in the same tx (D-15)."""
-    from app.models.tours import ToursServicios
+) -> list[dict[str, Any]]:
+    """Resolve the chart accounts for a tour venta and return its asiento lineas.
 
+    Shared by `post_venta_tour` (initial posting) and `resync_venta_asiento`
+    (PUT /tours_servicios/{id}) so an edited venta lands on exactly the same
+    account layout it was originally booked with.
+    """
     codigo_caja = f"101-CAJA-{moneda}"
     codigo_ingreso = f"401-INGRESOS-TOURS-{moneda}"
     codigo_costo = f"501-COSTOS-TOURS-{moneda}"
@@ -128,6 +124,110 @@ async def post_venta_tour(
             raise ValueError(f"Cuenta {codigo_agencias_por_pagar} no encontrada")
         lineas.append({"cuenta_id": costo_cta.id, "debe": costo_val, "haber": 0})
         lineas.append({"cuenta_id": agencias_por_pagar.id, "debe": 0, "haber": costo_val})
+
+    return lineas
+
+
+async def resync_venta_asiento(
+    session: AsyncSession,
+    *,
+    asiento_id: int,
+    moneda: str,
+    monto: float,
+    costo: float | None,
+) -> None:
+    """Rewrite an existing venta asiento's lineas from the venta's current values.
+
+    PUT /tours_servicios/{id} can change monto/costo; without this the ledger
+    would keep the amounts the venta was first booked with and the dashboard
+    saldos would drift away from the ventas table. Balance + single-moneda are
+    revalidated on the new set, so an invalid edit raises before anything is
+    committed.
+    """
+    lineas = await build_venta_lineas(session, moneda=moneda, monto=monto, costo=costo)
+
+    # ORM delete (not Core) so the audit before_flush hook sees the removals (D-23).
+    existing = (await session.execute(
+        select(AsientoLineas).where(AsientoLineas.asiento_id == asiento_id)
+    )).scalars().all()
+    for linea in existing:
+        await session.delete(linea)
+    await session.flush()
+
+    total_debe_cents = 0
+    total_haber_cents = 0
+    monedas_seen: set[str] = set()
+    for linea in lineas:
+        total_debe_cents += _to_cents(linea.get("debe", 0))
+        total_haber_cents += _to_cents(linea.get("haber", 0))
+        cuenta = (await session.execute(select(Cuentas).where(Cuentas.id == linea["cuenta_id"]))).scalar_one()
+        monedas_seen.add(cuenta.moneda.value if hasattr(cuenta.moneda, "value") else str(cuenta.moneda))
+        session.add(AsientoLineas(
+            asiento_id=asiento_id,
+            cuenta_id=linea["cuenta_id"],
+            debe=linea.get("debe", 0) or 0,
+            haber=linea.get("haber", 0) or 0,
+        ))
+
+    if total_debe_cents != total_haber_cents:
+        raise ValueError(f"Asiento no cuadra: debe={total_debe_cents / 100:.2f} haber={total_haber_cents / 100:.2f}")
+    if len(monedas_seen) > 1:
+        raise ValueError(f"Asiento mezcla monedas: {sorted(monedas_seen)} — use una sola moneda por asiento (D-08)")
+
+    await session.flush()
+
+
+async def post_reversion_asiento(
+    session: AsyncSession,
+    *,
+    asiento_id: int,
+    fecha: date,
+    concepto: str,
+    metadata: dict[str, Any] | None = None,
+    creacion_usuario_id: int | None = None,
+) -> Asientos:
+    """Post the mirror image (debe↔haber swapped) of an existing asiento.
+
+    Used when a venta already consolidated in the books is removed: the original
+    asiento stays for audit and this one nets it to zero, instead of leaving the
+    ledger carrying a venta that no longer exists.
+    """
+    orig_lineas = (await session.execute(
+        select(AsientoLineas).where(AsientoLineas.asiento_id == asiento_id)
+    )).scalars().all()
+    reverse = [
+        {"cuenta_id": ln.cuenta_id, "debe": float(ln.haber), "haber": float(ln.debe)}
+        for ln in orig_lineas
+    ]
+    return await post_asiento(
+        session,
+        fecha=fecha,
+        concepto=concepto,
+        lineas=reverse,
+        metadata=metadata,
+        creacion_usuario_id=creacion_usuario_id,
+    )
+
+
+async def post_venta_tour(
+    session: AsyncSession,
+    *,
+    tour_id: int,
+    vendedor_id: int,
+    agencia_id: int,
+    forma_pago_id: int,
+    moneda: str,
+    monto: float,
+    costo: float | None,
+    fecha: date,
+    metadata: dict[str, Any] | None = None,
+    creacion_usuario_id: int | None = None,
+) -> tuple[Asientos, "ToursServicios"]:
+    """Build the asiento for a tour venta and insert tours_servicios in the same tx (D-15)."""
+    from app.models.tours import ToursServicios
+
+    lineas = await build_venta_lineas(session, moneda=moneda, monto=monto, costo=costo)
+    costo_val = costo or 0
 
     asiento = await post_asiento(
         session,

@@ -39,9 +39,14 @@ from app.schemas.tours import (
     VentaOut,
     VentaRow,
 )
-from app.services.accounting import post_venta_tour
+from app.services.accounting import post_reversion_asiento, post_venta_tour, resync_venta_asiento
 from app.services.commission import resolve_comision, simular_comision
-from app.services.liquidaciones import LiquidacionPrecheckError as _LiquidacionPrecheckError, close_liquidacion, reopen_liquidacion
+from app.services.liquidaciones import (
+    LiquidacionPrecheckError as _LiquidacionPrecheckError,
+    cancel_liquidacion,
+    close_liquidacion,
+    reopen_liquidacion,
+)
 from app.services.venta_resolver import tour_search as _resolve_tour_search
 
 router = APIRouter(tags=["tours"])
@@ -122,7 +127,7 @@ async def list_ventas(
     moneda: str | None = Query(None),
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
-) -> list[ToursServicios]:
+) -> list[VentaRow]:
     stmt = select(ToursServicios).order_by(ToursServicios.fecha.desc())
     # Vendedor solo ve propias (T-02.1-08, D-32).
     if user["role"] == "vendedor":
@@ -139,7 +144,39 @@ async def list_ventas(
         stmt = stmt.where(ToursServicios.tour_id == tour_id)
     if moneda is not None:
         stmt = stmt.where(ToursServicios.moneda == moneda)
-    return list((await session.execute(stmt)).scalars().all())
+    rows = list((await session.execute(stmt)).scalars().all())
+
+    # Resolve the containing liquidación's estado in one extra query so the UI can
+    # tell "en liquidación abierta" (still editable) from "cerrada" (locked, D-14).
+    liq_ids = {ts.liquidacion_id for ts in rows if ts.liquidacion_id is not None}
+    liqs: dict[int, Liquidaciones] = {}
+    if liq_ids:
+        liqs = {
+            liq.id: liq
+            for liq in (await session.execute(select(Liquidaciones).where(Liquidaciones.id.in_(liq_ids)))).scalars().all()
+        }
+
+    out: list[VentaRow] = []
+    for ts in rows:
+        liq = liqs.get(ts.liquidacion_id) if ts.liquidacion_id is not None else None
+        out.append(
+            VentaRow(
+                id=ts.id,
+                tour_id=ts.tour_id,
+                vendedor_id=ts.vendedor_id,
+                agencia_id=ts.agencia_id,
+                forma_pago_id=ts.forma_pago_id,
+                moneda=str(ts.moneda.value if hasattr(ts.moneda, "value") else ts.moneda),
+                monto=float(ts.monto),
+                costo=float(ts.costo) if ts.costo is not None else None,
+                fecha=ts.fecha,
+                asiento_id=ts.asiento_id,
+                liquidacion_id=ts.liquidacion_id,
+                liquidacion_estado=(liq.estado.value if liq is not None else None),
+                liquidacion_codigo=(liq.codigo if liq is not None else None),
+            )
+        )
+    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -390,6 +427,30 @@ async def get_liquidacion(
     return liq
 
 
+@router.delete("/liquidaciones/{liquidacion_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_liquidacion_endpoint(
+    liquidacion_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: dict = Depends(require_role("admin", "contabilidad")),
+) -> None:
+    """Anula una liquidación `abierta`: libera sus tours y borra la fila.
+
+    Es la salida para una liquidación creada por error o de prueba — sin esto una
+    `abierta` queda atrapada para siempre, porque `reopen` sólo acepta `cerrada` y
+    cerrar exige que el pre-check pase. Una `cerrada` ya movió los libros, así que
+    se rechaza acá y debe pasar por `/reopen`.
+    """
+    try:
+        await cancel_liquidacion(session, liquidacion_id)
+        await session.commit()
+    except ValueError as exc:
+        await session.rollback()
+        msg = str(exc)
+        if msg == "Liquidación no encontrada":
+            raise HTTPException(status_code=404, detail=msg)
+        raise HTTPException(status_code=409, detail=msg)
+
+
 # --------------------------------------------------------------------------- #
 # /liquidaciones/{id}/close | /reopen | /precheck — Plan 02 (RED stub)
 # --------------------------------------------------------------------------- #
@@ -476,6 +537,26 @@ async def update_tour_servicio(
         ts.agencia_id = body["agencia_id"]
     if "forma_pago_id" in body:
         ts.forma_pago_id = body["forma_pago_id"]
+
+    # Keep the books in step with the edit — otherwise the asiento keeps the
+    # amounts the venta was first booked with and /dashboard/saldos drifts away
+    # from the ventas table (D-05: the ledger is the source of truth).
+    if "monto" in body or "costo" in body:
+        if ts.monto is None or float(ts.monto) <= 0:
+            await session.rollback()
+            raise HTTPException(status_code=422, detail="Monto debe ser positivo")
+        try:
+            await resync_venta_asiento(
+                session,
+                asiento_id=ts.asiento_id,
+                moneda=str(ts.moneda.value if hasattr(ts.moneda, "value") else ts.moneda),
+                monto=float(ts.monto),
+                costo=float(ts.costo) if ts.costo is not None else None,
+            )
+        except ValueError as exc:
+            await session.rollback()
+            raise HTTPException(status_code=422, detail=str(exc))
+
     await session.commit()
     return {"ok": True, "tour_servicio_id": ts.id}
 
@@ -498,8 +579,22 @@ async def delete_tour_servicio(
             raise HTTPException(status_code=409, detail="Tour en liquidación cerrada, reabre primero")
     # Soft-delete via activo=0 on tours_servicios is not applicable (no `activo` column here).
     # Hard delete — Plan 02 simplification: only allowed when liquidacion_id IS NULL or `abierta`.
-    # NOTE: asiento_id FK ondelete=RESTRICT prevents real cascade — we leave the asiento intact (it remains for audit),
-    # simply remove the tours_servicios row. Future plan would emit a reversal asiento.
+    # asiento_id FK ondelete=RESTRICT prevents a cascade, and the original asiento
+    # stays for audit — so we post its mirror image first, otherwise the caja /
+    # ingresos saldos would keep counting a venta that no longer exists.
+    asiento_id = ts.asiento_id
+    try:
+        await post_reversion_asiento(
+            session,
+            asiento_id=asiento_id,
+            fecha=date.today(),
+            concepto=f"Reversión venta {tour_servicio_id}",
+            metadata={"tipo": "reversion_venta", "tour_servicio_id": tour_servicio_id, "asiento_original_id": asiento_id},
+            creacion_usuario_id=user["id"],
+        )
+    except ValueError as exc:
+        await session.rollback()
+        raise HTTPException(status_code=422, detail=str(exc))
     await session.delete(ts)
     await session.commit()
     return {"ok": True, "tour_servicio_id": tour_servicio_id}
@@ -524,8 +619,11 @@ async def dashboard_saldos(
     so they cannot read another vendedor's data via direct curl `?vendedor_id=99`.
     Contabilidad is treated same as admin for READ-only on dashboard — SC#2 only restricts audit_log.
     """
+    # D-32 — force the JWT's vendedor_id claim, not usuarios.id: they are
+    # different sequences, and using the user id here filtered the dashboard by
+    # someone else's vendedor (or by nobody at all).
     if user["role"] == "vendedor":
-        vendedor_id = int(user["id"])
+        vendedor_id = user["vendedor_id"]
 
     from app.models.core import AsientoLineas, Asientos, Cuentas
 
@@ -579,10 +677,10 @@ async def dashboard_tours_pendientes(
     """Tours_servicios with liquidacion_id IS NULL ordered by fecha asc.
     Field `dias_desde_venta` = (today - fecha).days (D-20).
 
-    RBAC role-forcing (T-02.1-14): non-admin vendedor forced to `vendedor_id = user.id`.
+    RBAC role-forcing (T-02.1-14): non-admin vendedor forced to their own vendedor_id claim (D-32).
     """
     if user["role"] == "vendedor":
-        vendedor_id = int(user["id"])
+        vendedor_id = user["vendedor_id"]
 
     stmt = (
         select(ToursServicios)

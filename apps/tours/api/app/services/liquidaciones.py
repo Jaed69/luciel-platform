@@ -20,6 +20,12 @@ Liquidaciones state machine (D-11/D-13/D-16/D-17/D-19):
        Creates `LiquidacionAsientos` pivots (tipo='reversion').
     2. `liquidacion.estado='reverted'`, `reopen_count += 1`.
     3. `tours_servicios.liquidacion_id = NULL` (D-19 desbloqueo).
+
+- `cancel_liquidacion(session, liquidacion_id)`:
+    Only valid while `abierta` — nothing has been posted to the books yet, so the
+    row is released (`tours_servicios.liquidacion_id = NULL`) and deleted outright.
+    Once `cerrada` there are asientos to undo and `reopen_liquidacion` is the only
+    way out; a `revertida` liquidación is history and stays.
 """
 from __future__ import annotations
 
@@ -168,6 +174,33 @@ async def close_liquidacion(session: AsyncSession, liquidacion_id: int, current_
 
     await session.flush()
     return liq
+
+
+async def cancel_liquidacion(session: AsyncSession, liquidacion_id: int) -> None:
+    """Discard an `abierta` liquidación: release its tours and delete the row.
+
+    An open liquidación has posted nothing to the books (asientos are only
+    generated on close), so there is nothing to reverse — it is a grouping that
+    can simply be undone. Anything already `cerrada` must go through
+    `reopen_liquidacion` instead, which leaves the reversal trail behind.
+    """
+    liq = await _get_liquidacion_or_raise(session, liquidacion_id)
+    if liq.estado.value != "abierta":
+        raise ValueError(
+            f"Solo se puede anular una liquidación abierta — estado actual: {liq.estado.value}."
+            + (" Usa 'Reabrir' para revertir una liquidación cerrada." if liq.estado.value == "cerrada" else "")
+        )
+
+    tours = list(
+        (await session.execute(select(ToursServicios).where(ToursServicios.liquidacion_id == liq.id))).scalars().all()
+    )
+    for ts in tours:
+        ts.liquidacion_id = None
+    await session.flush()  # release the FK references before the row goes
+
+    # ORM delete so the audit before_flush hook records it (D-23).
+    await session.delete(liq)
+    await session.flush()
 
 
 async def reopen_liquidacion(session: AsyncSession, liquidacion_id: int, current_user: dict) -> Liquidaciones:

@@ -27,21 +27,29 @@ function diasClass(d: number): string {
   return "text-text-espresso";
 }
 
-export default async function AppHome({ searchParams }: { searchParams: Record<string, string | undefined> }) {
+export default async function AppHome({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | undefined>>;
+}) {
   const session = await getServerSession(authOptions);
   const role = (session?.user as any)?.role;
   if (role === "vendedor") redirect("/ventas");
 
+  // Next 16 — searchParams es una Promise; sin await todos los campos salían
+  // undefined y el formulario de filtros no tenía ningún efecto.
+  const filtros = await searchParams;
+
   // Default range: 30 days back to today.
   const today = new Date();
   const back30 = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
-  const fecha_desde = searchParams.fecha_desde || back30.toISOString().slice(0, 10);
-  const fecha_hasta = searchParams.fecha_hasta || today.toISOString().slice(0, 10);
+  const fecha_desde = filtros.fecha_desde || back30.toISOString().slice(0, 10);
+  const fecha_hasta = filtros.fecha_hasta || today.toISOString().slice(0, 10);
 
   const qs = new URLSearchParams({ fecha_desde, fecha_hasta });
-  if (searchParams.agencia) qs.set("agencia_id", searchParams.agencia);
-  if (searchParams.vendedor) qs.set("vendedor_id", searchParams.vendedor);
-  if (searchParams.moneda) qs.set("moneda", searchParams.moneda);
+  if (filtros.agencia) qs.set("agencia_id", filtros.agencia);
+  if (filtros.vendedor) qs.set("vendedor_id", filtros.vendedor);
+  if (filtros.moneda) qs.set("moneda", filtros.moneda);
 
   const [saldos, pendientes] = await Promise.all([
     apiFetchJson<SaldosRow[]>(`/dashboard/saldos?${qs.toString()}`).catch(() => []),
@@ -106,19 +114,19 @@ export default async function AppHome({ searchParams }: { searchParams: Record<s
         </div>
         <div className="flex flex-col">
           <label htmlFor="agencia" className="text-sm font-nunito font-semibold text-text-espresso-soft mb-1">Agencia</label>
-          <select id="agencia" name="agencia" defaultValue={searchParams.agencia ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
+          <select id="agencia" name="agencia" defaultValue={filtros.agencia ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
             <option value="">Todas</option>
           </select>
         </div>
         <div className="flex flex-col">
           <label htmlFor="vendedor" className="text-sm font-nunito font-semibold text-text-espresso-soft mb-1">Vendedor</label>
-          <select id="vendedor" name="vendedor" defaultValue={searchParams.vendedor ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
+          <select id="vendedor" name="vendedor" defaultValue={filtros.vendedor ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
             <option value="">Todos</option>
           </select>
         </div>
         <div className="flex flex-col">
           <label htmlFor="moneda" className="text-sm font-nunito font-semibold text-text-espresso-soft mb-1">Moneda</label>
-          <select id="moneda" name="moneda" defaultValue={searchParams.moneda ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
+          <select id="moneda" name="moneda" defaultValue={filtros.moneda ?? ""} className="border border-gold/40 rounded px-2 py-1.5 text-sm font-nunito">
             <option value="">Ambas</option>
             <option value="PEN">PEN</option>
             <option value="USD">USD</option>

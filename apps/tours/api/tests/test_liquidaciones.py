@@ -237,3 +237,92 @@ async def test_tour_en_cerrada_no_editable(client):
     r = await client.delete(f"/tours_servicios/{ts_id}", headers={"Authorization": f"Bearer {_token()}"})
     assert r.status_code == 409
     assert r.json()["detail"] == "Tour en liquidación cerrada, reabre primero"
+
+async def test_anular_liquidacion_abierta(client, async_engine):
+    """DELETE /liquidaciones/{id} en estado abierta → borra la fila y libera sus tours.
+
+    Sin esta salida una liquidación creada por error queda atrapada: `reopen`
+    sólo acepta `cerrada` y `close` exige que el pre-check pase.
+    """
+    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+
+    r = await client.post(
+        "/liquidaciones",
+        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
+        headers={"Authorization": f"Bearer {_token()}"},
+    )
+    liq_id = r.json()["id"]
+
+    ventas = (await client.get("/ventas", headers={"Authorization": f"Bearer {_token()}"})).json()
+    assert ventas[0]["liquidacion_id"] == liq_id
+    assert ventas[0]["liquidacion_estado"] == "abierta"
+
+    r = await client.delete(f"/liquidaciones/{liq_id}", headers={"Authorization": f"Bearer {_token()}"})
+    assert r.status_code == 204, r.text
+
+    r = await client.get(f"/liquidaciones/{liq_id}", headers={"Authorization": f"Bearer {_token()}"})
+    assert r.status_code == 404
+
+    ventas = (await client.get("/ventas", headers={"Authorization": f"Bearer {_token()}"})).json()
+    assert ventas[0]["liquidacion_id"] is None
+    assert ventas[0]["liquidacion_estado"] is None
+
+
+async def test_anular_liquidacion_cerrada_rechazada(client):
+    """Una liquidación cerrada ya movió los libros → 409, debe pasar por /reopen."""
+    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    r = await client.post(
+        "/liquidaciones",
+        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
+        headers={"Authorization": f"Bearer {_token()}"},
+    )
+    liq_id = r.json()["id"]
+    assert (await client.post(f"/liquidaciones/{liq_id}/close", headers={"Authorization": f"Bearer {_token()}"})).status_code == 200
+
+    r = await client.delete(f"/liquidaciones/{liq_id}", headers={"Authorization": f"Bearer {_token()}"})
+    assert r.status_code == 409, r.text
+    assert "Reabrir" in r.json()["detail"]
+
+
+async def test_anular_liquidacion_requiere_rol(client):
+    """Un vendedor no puede anular liquidaciones (mismo guard que close/reopen)."""
+    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    r = await client.post(
+        "/liquidaciones",
+        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
+        headers={"Authorization": f"Bearer {_token()}"},
+    )
+    liq_id = r.json()["id"]
+
+    r = await client.delete(f"/liquidaciones/{liq_id}", headers={"Authorization": f"Bearer {_token('vendedor')}"})
+    assert r.status_code == 403
+
+
+async def test_venta_en_liquidacion_abierta_sigue_editable(client):
+    """D-14 bloquea sólo la liquidación cerrada — con una abierta se puede editar/eliminar.
+
+    Es el caso que dejaba trabada la corrección de un costo faltante: el tour
+    entra a la liquidación, el pre-check falla por costo=0 y no había forma de
+    cargarlo.
+    """
+    await _registrar_venta(client, vendedor_id=1, monto=100, costo=0, fecha="2026-07-04")
+    r = await client.post(
+        "/liquidaciones",
+        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
+        headers={"Authorization": f"Bearer {_token()}"},
+    )
+    liq_id = r.json()["id"]
+
+    ventas = (await client.get("/ventas", headers={"Authorization": f"Bearer {_token()}"})).json()
+    ts_id = ventas[0]["id"]
+    assert ventas[0]["liquidacion_estado"] == "abierta"
+
+    # Cargar el costo que faltaba — el pre-check debe quedar limpio y poder cerrar.
+    r = await client.put(f"/tours_servicios/{ts_id}", json={"costo": 60}, headers={"Authorization": f"Bearer {_token()}"})
+    assert r.status_code == 200, r.text
+
+    r = await client.get(f"/liquidaciones/{liq_id}/precheck", headers={"Authorization": f"Bearer {_token()}"})
+    assert r.json()["fails"] == []
+
+    r = await client.post(f"/liquidaciones/{liq_id}/close", headers={"Authorization": f"Bearer {_token()}"})
+    assert r.status_code == 200, r.text

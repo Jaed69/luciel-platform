@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Modal } from "@/components/Modal";
 import { Button } from "@/components/Button";
-import { apiFetch } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
 
 type Liquidacion = {
   id: number;
@@ -25,15 +25,17 @@ export function ReopenModal({ liquidacion }: { liquidacion: Liquidacion }) {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await apiFetch(`/liquidaciones/${liquidacion.id}/reopen`, { method: "POST" });
+      // Route Handler, not the FastAPI URL directly: this runs in the browser,
+      // where the api/ proxy is what attaches the bearer token.
+      const res = await fetch(`/api/liquidaciones/${liquidacion.id}/reopen`, { method: "POST" });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        setError(body?.detail ?? `Error ${res.status}`);
+        setError(await errorMessage(res, "No se pudo reabrir la liquidación"));
         setSubmitting(false);
         return;
       }
+      setOpen(false);
+      setSubmitting(false);
       router.refresh();
-      router.push("/liquidaciones");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error desconocido");
       setSubmitting(false);

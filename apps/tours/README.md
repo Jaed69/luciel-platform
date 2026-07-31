@@ -131,6 +131,7 @@ openssl s_client -connect tours.luciel.dev:443 -servername tours.luciel.dev < /d
 | GET | `/liquidaciones[/{id}]` | Lista / detalle | admin/contabilidad; vendedor solo propias |
 | POST | `/liquidaciones/{id}/close` | Cierra + genera asientos de comisión (501 dr / 201 cr) + LIQ-AAAA-NNN codigo | admin/contabilidad |
 | POST | `/liquidaciones/{id}/reopen` | Reabre + genera asientos de reversión + estado=revertida | admin/contabilidad |
+| DELETE | `/liquidaciones/{id}` | Anula una liquidación **abierta**: libera sus tours (`liquidacion_id = NULL`) y borra la fila. 409 si ya está cerrada (esa sale por `/reopen`) | admin/contabilidad |
 | GET | `/liquidaciones/{id}/precheck` | Pre-check failures list para UI strip | admin/contabilidad/vendedor (propias) |
 | GET | `/dashboard/saldos` | Saldos por cuenta con filtros — RBAC role-forcing (T-02.1-14) | cualquier autenticado |
 | GET | `/dashboard/tours_pendientes` | Tours con `liquidacion_id IS NULL` ordenados por fecha asc + `dias_desde_venta` | cualquier autenticado |
