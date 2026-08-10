@@ -113,6 +113,11 @@ class VentaIn(BaseModel):
     fecha: date
     metadata: dict[str, Any] | None = None
     observaciones: str | None = None
+    # D-35 — precio_default/costo del tour son por pasajero; monto/costo de
+    # arriba ya vienen multiplicados por cantidad_pasajeros (el frontend hace
+    # la cuenta, el backend solo persiste).
+    cantidad_pasajeros: int = Field(default=1, ge=1)
+    nombre_pasajero: str | None = None
     # D-33 — required only when the vendedor overrides costo/monto away from
     # the agencia's list price; Pydantic 422s on any value outside MotivoEdicion.
     motivo_costo: MotivoEdicion | None = None
@@ -191,6 +196,9 @@ class VentaRow(BaseModel):
     numero_habitacion: str | None = None
     hora: str | None = None
     observaciones: str | None = None
+    # D-35 — presentes en filas de tipo tour; 1/None por defecto en traslados.
+    cantidad_pasajeros: int = 1
+    nombre_pasajero: str | None = None
 
 
 class AgenciaCandidatoOut(BaseModel):

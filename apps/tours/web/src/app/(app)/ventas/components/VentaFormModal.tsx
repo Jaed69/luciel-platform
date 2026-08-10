@@ -39,10 +39,14 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
   const [costo, setCosto] = useState("");
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [notas, setNotas] = useState("");
+  const [nombrePasajero, setNombrePasajero] = useState("");
+  const [cantidadPasajeros, setCantidadPasajeros] = useState("1");
 
-  // D-33 — auto-resolved baselines (from tour-search precio) vs. manual edits.
-  const [costoAuto, setCostoAuto] = useState<number | null>(null);
-  const [montoAuto, setMontoAuto] = useState<number | null>(null);
+  // D-33/D-35 — precio_venta/costo resueltos por tour-search son POR
+  // PASAJERO; costoAuto/montoAuto (las baselines contra las que se compara
+  // "dirty" para exigir motivo) son unitario × cantidad, derivadas más abajo.
+  const [costoUnitarioAuto, setCostoUnitarioAuto] = useState<number | null>(null);
+  const [precioUnitarioAuto, setPrecioUnitarioAuto] = useState<number | null>(null);
   const [costoEditing, setCostoEditing] = useState(false);
   const [montoEditing, setMontoEditing] = useState(false);
   const [motivoCosto, setMotivoCosto] = useState<Motivo | "">("");
@@ -102,13 +106,15 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
     setAlternateAgencias([]);
     setMonto("");
     setCosto("");
-    setCostoAuto(null);
-    setMontoAuto(null);
+    setCostoUnitarioAuto(null);
+    setPrecioUnitarioAuto(null);
     setCostoEditing(false);
     setMontoEditing(false);
     setMotivoCosto("");
     setMotivoMonto("");
     setNotas("");
+    setNombrePasajero("");
+    setCantidadPasajeros("1");
     setFecha(new Date().toISOString().slice(0, 10));
     setDuplicadoWarning(null);
   }
@@ -121,23 +127,24 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
     // reusar uno para el otro.
     const costo = moneda === "USD" ? row.costo_usd : row.costo;
     const precioVenta = moneda === "USD" ? row.precio_venta_usd : row.precio_venta;
+    const cantidad = parseInt(cantidadPasajeros) || 1;
     if (row.agencia_id != null) {
       setAgenciaId(String(row.agencia_id));
     }
     if (costo != null) {
-      setCostoAuto(costo);
-      setCosto(fmtNum(costo));
+      setCostoUnitarioAuto(costo);
+      setCosto(fmtNum(costo * cantidad));
     } else {
-      setCostoAuto(null);
+      setCostoUnitarioAuto(null);
       setCosto("");
     }
     if (precioVenta != null) {
-      setMontoAuto(precioVenta);
-      setMonto(fmtNum(precioVenta));
+      setPrecioUnitarioAuto(precioVenta);
+      setMonto(fmtNum(precioVenta * cantidad));
     } else {
       // Tour sin precio de venta configurado — nada que confirmar, se abre
       // directo en modo edición para carga manual.
-      setMontoAuto(null);
+      setPrecioUnitarioAuto(null);
       setMonto("");
     }
     setCostoEditing(costo == null);
@@ -155,6 +162,21 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
       setAlternateAgencias([]);
     }
   }
+
+  // D-35 — precio_venta/costo resueltos son por pasajero; recalcula el total
+  // cada vez que cambia la cantidad, pero solo mientras el campo no esté en
+  // modo edición manual (lápiz abierto) — así no se pisa un valor que el
+  // vendedor ya escribió a mano.
+  useEffect(() => {
+    const cantidad = parseInt(cantidadPasajeros) || 1;
+    if (!montoEditing && precioUnitarioAuto != null) {
+      setMonto(fmtNum(precioUnitarioAuto * cantidad));
+    }
+    if (!costoEditing && costoUnitarioAuto != null) {
+      setCosto(fmtNum(costoUnitarioAuto * cantidad));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cantidadPasajeros, precioUnitarioAuto, costoUnitarioAuto]);
 
   async function doSubmit(createAnother: boolean, skipDupeCheck = false) {
     if (submitting) return;
@@ -212,6 +234,8 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
       costo: costo ? parseFloat(costo) : 0,
       fecha,
       observaciones: notas.trim() || null,
+      cantidad_pasajeros: parseInt(cantidadPasajeros) || 1,
+      nombre_pasajero: nombrePasajero.trim() || null,
     };
     if (costoDirty && motivoCosto) body.motivo_costo = motivoCosto;
     if (montoDirty && motivoMonto) body.motivo_monto = motivoMonto;
@@ -260,11 +284,15 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
     await doSubmit(true);
   }
 
-  // D-33 — dirty is a pure value comparison against the auto-resolved
-  // baseline, independent of the pencil edit-mode toggle: an emptied field
-  // must still count as dirty (parseFloat("") -> NaN -> "0" fallback -> 0,
-  // which differs from any real auto price), and closing the pencil after
-  // editing must not make a real change look clean again.
+  // D-33/D-35 — baseline es unitario × cantidad, no el unitario a secas.
+  // dirty sigue siendo una comparación pura de valor, independiente del
+  // toggle del lápiz: un campo vaciado debe seguir contando como dirty
+  // (parseFloat("") -> NaN -> fallback "0" -> 0, que difiere de cualquier
+  // precio auto real), y cerrar el lápiz después de editar no debe hacer que
+  // un cambio real se vea limpio de nuevo.
+  const cantidad = parseInt(cantidadPasajeros) || 1;
+  const costoAuto = costoUnitarioAuto != null ? costoUnitarioAuto * cantidad : null;
+  const montoAuto = precioUnitarioAuto != null ? precioUnitarioAuto * cantidad : null;
   const costoDirty = costoAuto != null && parseFloat(costo || "0") !== costoAuto;
   const montoDirty = montoAuto != null && parseFloat(monto || "0") !== montoAuto;
 
@@ -389,9 +417,26 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
             <span className="text-sm font-nunito text-text-espresso-soft">Fecha</span>
             <input required tabIndex={4} type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" />
           </label>
+          <label className="block">
+            <span className="text-sm font-nunito text-text-espresso-soft">Nombre del pasajero</span>
+            <input tabIndex={6} type="text" value={nombrePasajero} onChange={(e) => setNombrePasajero(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" />
+          </label>
+          <label className="block">
+            <span className="text-sm font-nunito text-text-espresso-soft">Cantidad de pasajeros</span>
+            <input
+              required
+              tabIndex={7}
+              type="number"
+              min={1}
+              step={1}
+              value={cantidadPasajeros}
+              onChange={(e) => setCantidadPasajeros(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas tabular-nums"
+            />
+          </label>
           <label className="block lg:col-span-2">
             <span className="text-sm font-nunito text-text-espresso-soft">Notas internas</span>
-            <textarea tabIndex={5} value={notas} onChange={(e) => setNotas(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" rows={2} />
+            <textarea tabIndex={8} value={notas} onChange={(e) => setNotas(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas" rows={2} />
           </label>
 
           {duplicadoWarning && (

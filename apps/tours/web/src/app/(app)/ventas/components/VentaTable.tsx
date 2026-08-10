@@ -28,6 +28,9 @@ type Venta = {
   numero_habitacion?: string | null;
   hora?: string | null;
   observaciones?: string | null;
+  // D-35 — presentes sólo en filas de tipo tour.
+  cantidad_pasajeros?: number;
+  nombre_pasajero?: string | null;
 };
 
 type Catalogo = { id: number; nombre: string };
@@ -111,7 +114,16 @@ export function VentaTable({
             </span>
           </span>
         ) : (
-          tourNombre(r.tour_id)
+          <span className="text-[13px]">
+            {tourNombre(r.tour_id)}
+            {(r.nombre_pasajero || (r.cantidad_pasajeros ?? 1) > 1) && (
+              <span className="text-text-espresso-soft">
+                {" · "}
+                {r.nombre_pasajero ?? "—"}
+                {(r.cantidad_pasajeros ?? 1) > 1 ? ` (x${r.cantidad_pasajeros})` : ""}
+              </span>
+            )}
+          </span>
         ),
     },
     { key: "vendedor_id", header: "Vendedor", render: (r) => vendedorNombre(r.vendedor_id) },

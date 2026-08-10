@@ -248,6 +248,12 @@ class ToursServicios(Base, Auditable):
     hora: Mapped[str | None] = mapped_column(String(5), nullable=True)  # HH:MM
     observaciones: Mapped[str | None] = mapped_column(Text, nullable=True)
 
+    # D-35 — precio_default/costo de un tour son por pasajero, no un monto
+    # plano por reserva; monto/costo de la venta = unitario × cantidad
+    # (calculado en el frontend, el backend solo persiste lo que llega).
+    cantidad_pasajeros: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    nombre_pasajero: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
 
 class Solicitudes(Base, Auditable):
     """Tickets de feedback/mejora/bug reportados desde el panel (D-28)."""

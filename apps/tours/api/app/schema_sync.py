@@ -130,6 +130,8 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
             ("numero_habitacion", "VARCHAR(16)"),
             ("hora", "VARCHAR(5)"),
             ("observaciones", "TEXT"),
+            ("cantidad_pasajeros", "INTEGER NOT NULL DEFAULT 1"),
+            ("nombre_pasajero", "VARCHAR(128)"),
         ):
             if col not in ts_cols:
                 logger.info("schema_sync: adding tours_servicios.%s", col)

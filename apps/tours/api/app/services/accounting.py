@@ -277,6 +277,8 @@ async def post_venta_tour(
     fecha: date,
     metadata: dict[str, Any] | None = None,
     observaciones: str | None = None,
+    cantidad_pasajeros: int = 1,
+    nombre_pasajero: str | None = None,
     creacion_usuario_id: int | None = None,
 ) -> tuple[Asientos, "ToursServicios"]:
     """Build the asiento for a tour venta and insert tours_servicios in the same tx (D-15)."""
@@ -308,6 +310,8 @@ async def post_venta_tour(
         liquidacion_id=None,
         metadata_=None,
         observaciones=observaciones,
+        cantidad_pasajeros=cantidad_pasajeros,
+        nombre_pasajero=nombre_pasajero,
     )
     session.add(tour_servicio)
     await session.flush()

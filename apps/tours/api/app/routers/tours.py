@@ -112,6 +112,8 @@ async def create_venta(
             fecha=body.fecha,
             metadata=body.metadata,
             observaciones=(body.observaciones or "").strip() or None,
+            cantidad_pasajeros=body.cantidad_pasajeros,
+            nombre_pasajero=(body.nombre_pasajero or "").strip() or None,
             creacion_usuario_id=user["id"],
         )
         # D-33 — motivo_costo/motivo_monto (edit-exception reasons) merge into
@@ -202,6 +204,8 @@ async def list_ventas(
                 numero_habitacion=ts.numero_habitacion,
                 hora=ts.hora,
                 observaciones=ts.observaciones,
+                cantidad_pasajeros=ts.cantidad_pasajeros,
+                nombre_pasajero=ts.nombre_pasajero,
             )
         )
     return out
