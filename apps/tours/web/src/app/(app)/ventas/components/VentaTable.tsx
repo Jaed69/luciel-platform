@@ -30,6 +30,8 @@ type Venta = {
   observaciones?: string | null;
 };
 
+type Catalogo = { id: number; nombre: string };
+
 // D-14 bloquea sólo la liquidación *cerrada*. Una `abierta` es todavía un
 // agrupamiento editable (y es justamente donde hay que poder corregir un costo
 // faltante para que el pre-check pase), y una `revertida` ya liberó sus tours.
@@ -37,8 +39,21 @@ function estaBloqueada(v: Venta): boolean {
   return v.liquidacion_id != null && v.liquidacion_estado === "cerrada";
 }
 
-export function VentaTable({ ventas }: { ventas: Venta[] }) {
+export function VentaTable({
+  ventas,
+  tours = [],
+  vendedores = [],
+  agencias = [],
+}: {
+  ventas: Venta[];
+  tours?: Catalogo[];
+  vendedores?: Catalogo[];
+  agencias?: Catalogo[];
+}) {
   const [editTarget, setEditTarget] = useState<Venta | null>(null);
+  const tourNombre = (id: number) => tours.find((t) => t.id === id)?.nombre ?? `T-${id}`;
+  const vendedorNombre = (id: number) => vendedores.find((v) => v.id === id)?.nombre ?? `V-${id}`;
+  const agenciaNombre = (id: number) => agencias.find((a) => a.id === id)?.nombre ?? `AG-${id}`;
 
   async function handleDelete(v: Venta) {
     const enLiquidacion =
@@ -96,11 +111,11 @@ export function VentaTable({ ventas }: { ventas: Venta[] }) {
             </span>
           </span>
         ) : (
-          `T-${r.tour_id}`
+          tourNombre(r.tour_id)
         ),
     },
-    { key: "vendedor_id", header: "Vendedor", render: (r) => `V-${r.vendedor_id}` },
-    { key: "agencia_id", header: "Proveedor", render: (r) => `AG-${r.agencia_id}` },
+    { key: "vendedor_id", header: "Vendedor", render: (r) => vendedorNombre(r.vendedor_id) },
+    { key: "agencia_id", header: "Proveedor", render: (r) => agenciaNombre(r.agencia_id) },
     { key: "forma_pago_id", header: "Forma de pago", render: (r) => `FP-${r.forma_pago_id}` },
     { key: "moneda", header: "Moneda", render: (r) => r.moneda },
     {
@@ -109,6 +124,11 @@ export function VentaTable({ ventas }: { ventas: Venta[] }) {
       render: (r) => <span className="tabular-nums">{formatCurrency(r.monto, r.moneda)}</span>,
     },
     { key: "comision", header: "Comisión estimada", render: () => <span className="text-text-espresso-soft">—</span> },
+    {
+      key: "observaciones",
+      header: "Notas",
+      render: (r) => (r.observaciones ? <span className="text-[13px] text-text-espresso-soft">{r.observaciones}</span> : <span className="text-text-espresso-soft">—</span>),
+    },
     {
       key: "liquidacion",
       header: "Liquidación",

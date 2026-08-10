@@ -211,7 +211,7 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
       monto: parseFloat(monto),
       costo: costo ? parseFloat(costo) : 0,
       fecha,
-      metadata: notas ? { notas } : null,
+      observaciones: notas.trim() || null,
     };
     if (costoDirty && motivoCosto) body.motivo_costo = motivoCosto;
     if (montoDirty && motivoMonto) body.motivo_monto = motivoMonto;

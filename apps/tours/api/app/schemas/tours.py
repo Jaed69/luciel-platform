@@ -2,7 +2,7 @@
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.tours import EstadoSolicitud, MetodoPagoAgencia, PrioridadSolicitud, TipoSolicitud
 
@@ -112,6 +112,7 @@ class VentaIn(BaseModel):
     costo: float | None = 0
     fecha: date
     metadata: dict[str, Any] | None = None
+    observaciones: str | None = None
     # D-33 — required only when the vendedor overrides costo/monto away from
     # the agencia's list price; Pydantic 422s on any value outside MotivoEdicion.
     motivo_costo: MotivoEdicion | None = None
@@ -265,6 +266,10 @@ class LiquidacionIn(BaseModel):
     fecha_hasta: date
     vendedor_id: int | None = None
     agencia_id: int | None = None
+    # Selección manual (D-35) — el usuario revisa el detalle del depósito y
+    # elige qué ventas liquida; el rango de fechas queda como filtro/metadata
+    # descriptiva, no como criterio de auto-asignación.
+    tour_servicio_ids: list[int] = Field(min_length=1)
 
 
 class LiquidacionOut(BaseModel):

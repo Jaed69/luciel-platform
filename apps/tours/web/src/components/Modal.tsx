@@ -10,7 +10,7 @@ export function Modal({
   open: boolean;
   onClose: () => void;
   children: ReactNode;
-  maxW?: "sm" | "md" | "lg";
+  maxW?: "sm" | "md" | "lg" | "xl";
 }) {
   useEffect(() => {
     if (!open) return;
@@ -20,7 +20,8 @@ export function Modal({
   }, [open, onClose]);
 
   if (!open) return null;
-  const max = maxW === "sm" ? "max-w-[480px]" : maxW === "lg" ? "max-w-[768px]" : "max-w-[640px]";
+  const max =
+    maxW === "sm" ? "max-w-[480px]" : maxW === "lg" ? "max-w-[768px]" : maxW === "xl" ? "max-w-[960px]" : "max-w-[640px]";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-espresso-wine/50" onClick={onClose}>

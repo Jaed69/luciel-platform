@@ -200,8 +200,9 @@ async def test_saldo_transportista_acumula_costo_y_se_cancela_con_pago(client):
 async def test_traslados_no_entran_en_liquidaciones(client):
     """No comisionan al vendedor, así que la liquidación sólo debe tomar tours."""
     agencia_id = await _crear_transportista(client)
-    await client.post("/traslados", json=_payload(agencia_id), headers=_headers())
-    await client.post(
+    r_traslado = await client.post("/traslados", json=_payload(agencia_id), headers=_headers())
+    traslado_ts_id = r_traslado.json()["tour_servicio_id"]
+    r_tour = await client.post(
         "/ventas",
         json={
             "tour_id": 1, "vendedor_id": 1, "agencia_id": 1, "forma_pago_id": 1,
@@ -209,12 +210,22 @@ async def test_traslados_no_entran_en_liquidaciones(client):
         },
         headers=_headers(),
     )
+    tour_ts_id = r_tour.json()["tour_servicio_id"]
+
+    # D-35 — selección manual: mandar el id del traslado se rechaza explícitamente.
+    r_rechazado = await client.post(
+        "/liquidaciones",
+        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31", "tour_servicio_ids": [traslado_ts_id]},
+        headers=_headers(),
+    )
+    assert r_rechazado.status_code == 422, r_rechazado.text
 
     r = await client.post(
         "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
+        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31", "tour_servicio_ids": [tour_ts_id]},
         headers=_headers(),
     )
+    assert r.status_code == 201, r.text
     liq_id = r.json()["id"]
 
     ventas = (await client.get("/ventas", headers=_headers())).json()

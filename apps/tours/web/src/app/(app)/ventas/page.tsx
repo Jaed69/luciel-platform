@@ -13,7 +13,12 @@ export default async function VentasPage() {
   let ventasUrl = "/ventas";
   if (role === "vendedor") ventasUrl += `?vendedor_id=${vendedorId}`;
 
-  const ventas = await apiFetchJson<any[]>(ventasUrl).catch(() => []);
+  const [ventas, tours, vendedores, agencias] = await Promise.all([
+    apiFetchJson<any[]>(ventasUrl).catch(() => []),
+    apiFetchJson<any[]>("/tours").catch(() => []),
+    apiFetchJson<any[]>("/vendedores").catch(() => []),
+    apiFetchJson<any[]>("/agencias").catch(() => []),
+  ]);
 
   return (
     <div>
@@ -24,7 +29,7 @@ export default async function VentasPage() {
           <VentaFormModal role={role} vendedorId={vendedorId} />
         </div>
       </div>
-      <VentaTable ventas={ventas} />
+      <VentaTable ventas={ventas} tours={tours} vendedores={vendedores} agencias={agencias} />
     </div>
   );
 }

@@ -111,6 +111,7 @@ async def create_venta(
             costo=body.costo,
             fecha=body.fecha,
             metadata=body.metadata,
+            observaciones=(body.observaciones or "").strip() or None,
             creacion_usuario_id=user["id"],
         )
         # D-33 — motivo_costo/motivo_monto (edit-exception reasons) merge into
@@ -139,6 +140,7 @@ async def list_ventas(
     tour_id: int | None = Query(None),
     moneda: str | None = Query(None),
     tipo_servicio: str | None = Query(None),
+    solo_no_liquidadas: bool = Query(False),
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> list[VentaRow]:
@@ -160,6 +162,9 @@ async def list_ventas(
         stmt = stmt.where(ToursServicios.moneda == moneda)
     if tipo_servicio is not None:
         stmt = stmt.where(ToursServicios.tipo_servicio == tipo_servicio)
+    # D-35 — picker de "Nueva liquidación": solo candidatas sin asignar.
+    if solo_no_liquidadas:
+        stmt = stmt.where(ToursServicios.liquidacion_id.is_(None))
     rows = list((await session.execute(stmt)).scalars().all())
 
     # Resolve the containing liquidación's estado in one extra query so the UI can
@@ -452,9 +457,36 @@ async def create_liquidacion(
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> Liquidaciones:
-    """Create an `abierta` liquidación and auto-assign all tours_servicios in range with liquidacion_id IS NULL."""
+    """Create an `abierta` liquidación with the tours_servicios the user picked by hand (D-35).
+
+    `fecha_desde`/`fecha_hasta`/`vendedor_id`/`agencia_id` stay as descriptive
+    metadata of the batch (and as the filter the picker UI used) — they no
+    longer drive auto-assignment. Assignment is exactly `tour_servicio_ids`.
+    """
     if body.fecha_hasta < body.fecha_desde:
         raise HTTPException(status_code=422, detail="fecha_hasta debe ser posterior a fecha_desde")
+
+    ids = set(body.tour_servicio_ids)
+    stmt = select(ToursServicios).where(ToursServicios.id.in_(ids))
+    tours = list((await session.execute(stmt)).scalars().all())
+    found_ids = {ts.id for ts in tours}
+    missing = ids - found_ids
+    if missing:
+        raise HTTPException(status_code=422, detail=f"Ventas no encontradas: {sorted(missing)}")
+
+    # D-34 — los traslados quedan fuera: no pagan comisión al vendedor, así que
+    # incluirlos sólo los bloquearía por D-14 sin generar ningún asiento. La deuda
+    # con el hotel se salda por /agencia-pagos, no por acá.
+    for ts in tours:
+        if ts.tipo_servicio != TipoServicio.tour:
+            raise HTTPException(status_code=422, detail=f"Venta #{ts.id} no es un tour — los traslados no se liquidan acá")
+        if ts.liquidacion_id is not None:
+            raise HTTPException(status_code=422, detail=f"Venta #{ts.id} ya está asignada a otra liquidación")
+        if not (body.fecha_desde <= ts.fecha <= body.fecha_hasta):
+            raise HTTPException(status_code=422, detail=f"Venta #{ts.id} tiene fecha fuera del rango declarado")
+        if user["role"] == "vendedor" and ts.vendedor_id != user["vendedor_id"]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No puedes liquidar la venta #{ts.id} de otro vendedor")
+
     liq = Liquidaciones(
         fecha_desde=body.fecha_desde,
         fecha_hasta=body.fecha_hasta,
@@ -464,22 +496,6 @@ async def create_liquidacion(
     session.add(liq)
     await session.flush()  # populate liq.id
 
-    # Auto-assign tours_servicios with liquidacion_id IS NULL within range (Plan 02).
-    # D-34 — los traslados quedan fuera: no pagan comisión al vendedor, así que
-    # incluirlos sólo los bloquearía por D-14 sin generar ningún asiento. La deuda
-    # con el hotel se salda por /agencia-pagos, no por acá.
-    stmt = select(ToursServicios).where(
-        ToursServicios.fecha >= body.fecha_desde,
-        ToursServicios.fecha <= body.fecha_hasta,
-        ToursServicios.liquidacion_id.is_(None),
-        ToursServicios.tipo_servicio == TipoServicio.tour,
-    )
-    if body.vendedor_id is not None:
-        stmt = stmt.where(ToursServicios.vendedor_id == body.vendedor_id)
-    if body.agencia_id is not None:
-        stmt = stmt.where(ToursServicios.agencia_id == body.agencia_id)
-
-    tours = list((await session.execute(stmt)).scalars().all())
     for ts in tours:
         ts.liquidacion_id = liq.id
 

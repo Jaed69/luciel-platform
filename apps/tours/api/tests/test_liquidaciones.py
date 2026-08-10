@@ -48,23 +48,34 @@ async def _registrar_venta(client, *, vendedor_id: int = 1, monto: float = 100, 
     return r.json()
 
 
+async def _crear_liquidacion(
+    client,
+    tour_servicio_ids: list[int],
+    *,
+    fecha_desde: str = "2026-07-01",
+    fecha_hasta: str = "2026-07-31",
+    role: str = "admin",
+):
+    return await client.post(
+        "/liquidaciones",
+        json={"fecha_desde": fecha_desde, "fecha_hasta": fecha_hasta, "tour_servicio_ids": tour_servicio_ids},
+        headers={"Authorization": f"Bearer {_token(role)}"},
+    )
+
+
 async def test_close_genera_asientos(client, async_engine):
     """Close → asientos de comisión (débito 501-COSTOS-COMISIONES + crédito 201-COMISIONES-POR-PAGAR), codigo LIQ-AAAA-NNN, estado=cerrada."""
     # Two ventas for vendedor 1, both with costos.
-    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
-    await _registrar_venta(client, vendedor_id=1, monto=200, costo=120, fecha="2026-07-05")
+    v1 = await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    v2 = await _registrar_venta(client, vendedor_id=1, monto=200, costo=120, fecha="2026-07-05")
 
-    # Create the liquidación covering both.
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    # Create the liquidación covering both — manual selection (D-35).
+    r = await _crear_liquidacion(client, [v1["tour_servicio_id"], v2["tour_servicio_id"]])
     assert r.status_code == 201, r.text
     liq = r.json()
     liq_id = liq["id"]
 
-    # All tours in range should now be assigned automatically (POST /liquidaciones auto-assign).
+    # Both selected tours should now be assigned.
     from app.models.tours import ToursServicios
     factory = async_sessionmaker(async_engine, expire_on_commit=False)
     async with factory() as session:
@@ -109,13 +120,9 @@ async def test_close_genera_asientos(client, async_engine):
 async def test_close_precheck_aborts(client):
     """Close con tour sin costo → 422 con lista de problemas y liquidación sigue abierta."""
     # One venta WITHOUT costo (costo=None).
-    await _registrar_venta(client, vendedor_id=1, monto=100, costo=None, fecha="2026-07-10")
+    v = await _registrar_venta(client, vendedor_id=1, monto=100, costo=None, fecha="2026-07-10")
 
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    r = await _crear_liquidacion(client, [v["tour_servicio_id"]])
     liq_id = r.json()["id"]
 
     r = await client.post(f"/liquidaciones/{liq_id}/close", headers={"Authorization": f"Bearer {_token()}"})
@@ -129,13 +136,9 @@ async def test_close_precheck_aborts(client):
 
 async def test_reopen_reverts(client, async_engine):
     """Reopen → asientos de reversión swap debe/haber; estado=reverted; tours desbloqueados."""
-    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    v = await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
 
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    r = await _crear_liquidacion(client, [v["tour_servicio_id"]])
     liq_id = r.json()["id"]
 
     r = await client.post(f"/liquidaciones/{liq_id}/close", headers={"Authorization": f"Bearer {_token()}"})
@@ -173,13 +176,9 @@ async def test_reopen_reverts(client, async_engine):
 
 async def test_reopen_then_reclose_generates_codigo_incrementado(client):
     """Reopen LIQ-2026-001 → nueva liquidación al recerrar recibe LIQ-2026-002 (D-16)."""
-    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    v = await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
 
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    r = await _crear_liquidacion(client, [v["tour_servicio_id"]])
     liq1_id = r.json()["id"]
 
     r = await client.post(f"/liquidaciones/{liq1_id}/close", headers={"Authorization": f"Bearer {_token()}"})
@@ -191,12 +190,8 @@ async def test_reopen_then_reclose_generates_codigo_incrementado(client):
     r = await client.post(f"/liquidaciones/{liq1_id}/reopen", headers={"Authorization": f"Bearer {_token()}"})
     assert r.status_code == 200
 
-    # New liquidación over the same range (tours should be unassigned now).
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    # New liquidación reusing the same venta (it's unassigned again after reopen).
+    r = await _crear_liquidacion(client, [v["tour_servicio_id"]])
     assert r.status_code == 201, r.text
     liq2_id = r.json()["id"]
 
@@ -208,18 +203,11 @@ async def test_reopen_then_reclose_generates_codigo_incrementado(client):
 
 async def test_tour_en_cerrada_no_editable(client):
     """PUT /tours_servicios/{id} con liquidación cerrada → 409 (D-14)."""
-    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    v = await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    ts_id = v["tour_servicio_id"]
 
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    r = await _crear_liquidacion(client, [ts_id])
     liq_id = r.json()["id"]
-
-    # Look up the tour_servicio id via GET /ventas.
-    r = await client.get("/ventas", headers={"Authorization": f"Bearer {_token()}"})
-    ts_id = r.json()[0]["id"]
 
     r = await client.post(f"/liquidaciones/{liq_id}/close", headers={"Authorization": f"Bearer {_token()}"})
     assert r.status_code == 200
@@ -244,13 +232,9 @@ async def test_anular_liquidacion_abierta(client, async_engine):
     Sin esta salida una liquidación creada por error queda atrapada: `reopen`
     sólo acepta `cerrada` y `close` exige que el pre-check pase.
     """
-    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    v = await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
 
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    r = await _crear_liquidacion(client, [v["tour_servicio_id"]])
     liq_id = r.json()["id"]
 
     ventas = (await client.get("/ventas", headers={"Authorization": f"Bearer {_token()}"})).json()
@@ -270,12 +254,8 @@ async def test_anular_liquidacion_abierta(client, async_engine):
 
 async def test_anular_liquidacion_cerrada_rechazada(client):
     """Una liquidación cerrada ya movió los libros → 409, debe pasar por /reopen."""
-    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    v = await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    r = await _crear_liquidacion(client, [v["tour_servicio_id"]])
     liq_id = r.json()["id"]
     assert (await client.post(f"/liquidaciones/{liq_id}/close", headers={"Authorization": f"Bearer {_token()}"})).status_code == 200
 
@@ -286,12 +266,8 @@ async def test_anular_liquidacion_cerrada_rechazada(client):
 
 async def test_anular_liquidacion_requiere_rol(client):
     """Un vendedor no puede anular liquidaciones (mismo guard que close/reopen)."""
-    await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    v = await _registrar_venta(client, vendedor_id=1, monto=100, costo=60, fecha="2026-07-04")
+    r = await _crear_liquidacion(client, [v["tour_servicio_id"]])
     liq_id = r.json()["id"]
 
     r = await client.delete(f"/liquidaciones/{liq_id}", headers={"Authorization": f"Bearer {_token('vendedor')}"})
@@ -305,16 +281,12 @@ async def test_venta_en_liquidacion_abierta_sigue_editable(client):
     entra a la liquidación, el pre-check falla por costo=0 y no había forma de
     cargarlo.
     """
-    await _registrar_venta(client, vendedor_id=1, monto=100, costo=0, fecha="2026-07-04")
-    r = await client.post(
-        "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31"},
-        headers={"Authorization": f"Bearer {_token()}"},
-    )
+    v = await _registrar_venta(client, vendedor_id=1, monto=100, costo=0, fecha="2026-07-04")
+    ts_id = v["tour_servicio_id"]
+    r = await _crear_liquidacion(client, [ts_id])
     liq_id = r.json()["id"]
 
     ventas = (await client.get("/ventas", headers={"Authorization": f"Bearer {_token()}"})).json()
-    ts_id = ventas[0]["id"]
     assert ventas[0]["liquidacion_estado"] == "abierta"
 
     # Cargar el costo que faltaba — el pre-check debe quedar limpio y poder cerrar.

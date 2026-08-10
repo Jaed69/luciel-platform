@@ -34,7 +34,10 @@ type TourRow = {
   costo: number | null;
   fecha: string;
   liquidacion_id: number | null;
+  observaciones?: string | null;
 };
+
+type Catalogo = { id: number; nombre: string };
 
 export default async function LiquidacionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -42,10 +45,12 @@ export default async function LiquidacionDetailPage({ params }: { params: Promis
 
   const { id } = await params;
   const liqId = Number(id);
-  const [liq, precheck, tours] = await Promise.all([
+  const [liq, precheck, tourRows, catalogoTours, vendedores] = await Promise.all([
     apiFetchJson<Liquidacion>(`/liquidaciones/${liqId}`).catch(() => null),
     apiFetchJson<Precheck>(`/liquidaciones/${liqId}/precheck`).catch(() => null as Precheck | null),
     apiFetchJson<TourRow[]>(`/ventas?`).then((rows) => rows.filter((r) => r.liquidacion_id === liqId)).catch(() => []),
+    apiFetchJson<Catalogo[]>(`/tours`).catch(() => []),
+    apiFetchJson<Catalogo[]>(`/vendedores`).catch(() => []),
   ]);
 
   if (!liq) {
@@ -55,10 +60,13 @@ export default async function LiquidacionDetailPage({ params }: { params: Promis
   const canManage = role === "admin" || role === "contabilidad";
   const hasBlockers = !!(precheck && precheck.fails.length > 0);
 
+  const tourNombre = (tid: number) => catalogoTours.find((t) => t.id === tid)?.nombre ?? `T-${tid}`;
+  const vendedorNombre = (vid: number) => vendedores.find((v) => v.id === vid)?.nombre ?? `V-${vid}`;
+
   const tourColumns: Column<TourRow>[] = [
     { key: "fecha", header: "Fecha", render: (r) => new Date(r.fecha).toLocaleDateString("es-PE") },
-    { key: "tour_id", header: "Tour", render: (r) => `T-${r.tour_id}` },
-    { key: "vendedor_id", header: "Vendedor", render: (r) => `V-${r.vendedor_id}` },
+    { key: "tour_id", header: "Tour", render: (r) => tourNombre(r.tour_id) },
+    { key: "vendedor_id", header: "Vendedor", render: (r) => vendedorNombre(r.vendedor_id) },
     {
       key: "monto",
       header: "Monto",
@@ -72,6 +80,11 @@ export default async function LiquidacionDetailPage({ params }: { params: Promis
           {r.costo == null ? "faltante" : r.costo.toFixed(2)}
         </span>
       ),
+    },
+    {
+      key: "observaciones",
+      header: "Notas",
+      render: (r) => (r.observaciones ? <span className="text-text-espresso-soft">{r.observaciones}</span> : <span className="text-text-espresso-soft">—</span>),
     },
   ];
 
@@ -107,7 +120,7 @@ export default async function LiquidacionDetailPage({ params }: { params: Promis
 
       <section>
         <h2 className="font-playfair text-primary text-[20px] font-semibold mb-2">Tours en esta liquidación</h2>
-        <DataTable columns={tourColumns} data={tours} emptyState="Sin tours asignados a esta liquidación." />
+        <DataTable columns={tourColumns} data={tourRows} emptyState="Sin tours asignados a esta liquidación." />
       </section>
 
       {canManage && (
