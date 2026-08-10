@@ -14,7 +14,13 @@ type Liquidacion = {
   estado: "abierta" | "cerrada" | "revertida";
 };
 
-export function ReopenModal({ liquidacion }: { liquidacion: Liquidacion }) {
+export function ReopenModal({
+  liquidacion,
+  tipoServicio = "tour",
+}: {
+  liquidacion: Liquidacion;
+  tipoServicio?: "tour" | "traslado";
+}) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,8 +56,17 @@ export function ReopenModal({ liquidacion }: { liquidacion: Liquidacion }) {
       <Modal open={open} onClose={() => setOpen(false)} maxW="md">
         <h2 className="font-playfair text-primary text-[24px] font-semibold mb-3">Reabrir {codigo}</h2>
         <p className="text-[14px] font-nunito text-text-espresso-soft mb-4">
-          Reabrir genera asientos de reversión que cancelan el cierre original. La liquidación original queda con estado <strong>revertida</strong>,
-          los tours se desbloquean (pueden editarse nuevamente) y se conservan todos los asientos para auditoría.
+          {tipoServicio === "traslado" ? (
+            <>
+              Reabrir libera los traslados para que puedan incluirse en otra liquidación. No hay asientos que revertir,
+              porque el cierre no generó ninguno — la liquidación original queda con estado <strong>revertida</strong> igual, para auditoría.
+            </>
+          ) : (
+            <>
+              Reabrir genera asientos de reversión que cancelan el cierre original. La liquidación original queda con estado <strong>revertida</strong>,
+              los tours se desbloquean (pueden editarse nuevamente) y se conservan todos los asientos para auditoría.
+            </>
+          )}
         </p>
         <div className="bg-stone-wall/40 border border-wine-muted/30 rounded p-md mb-4 text-text-espresso-soft text-[13px] font-nunito">
           ⓘ Una nueva liquidación sobre el mismo rango recibirá un código incremental (LIQ-AAAA-002 si la original fue LIQ-AAAA-001).

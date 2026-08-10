@@ -152,6 +152,16 @@ async def ensure_schema_structure(engine: AsyncEngine) -> None:
             "WHERE tipo IS NULL OR tipo NOT IN ('proveedor_tour', 'proveedor_transporte')"
         ))
 
+        # 9. D-36 — liquidaciones.tipo_servicio: inferido de las ventas al
+        # crear, permite una liquidación de traslados (solo seguimiento, sin
+        # asientos) separada de la de tours.
+        liq_cols = [row[1] for row in (await conn.execute(text("PRAGMA table_info(liquidaciones)"))).all()]
+        if "tipo_servicio" not in liq_cols:
+            logger.info("schema_sync: adding liquidaciones.tipo_servicio")
+            await conn.execute(text(
+                "ALTER TABLE liquidaciones ADD COLUMN tipo_servicio VARCHAR(16) NOT NULL DEFAULT 'tour'"
+            ))
+
 
 async def ensure_reference_data(engine: AsyncEngine) -> None:
     """Data drift (migs 004/005): insert-if-missing by codigo. MUST run after

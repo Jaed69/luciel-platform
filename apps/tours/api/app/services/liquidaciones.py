@@ -42,6 +42,7 @@ from app.models.tours import (
     EstadoLiquidacion,
     LiquidacionAsientos,
     Liquidaciones,
+    TipoServicio,
     ToursServicios,
 )
 from app.services.accounting import post_asiento
@@ -111,48 +112,52 @@ async def close_liquidacion(session: AsyncSession, liquidacion_id: int, current_
     if precheck["fails"]:
         raise LiquidacionPrecheckError(precheck["fails"])
 
-    # Cuentas.
-    comision_cta = (await session.execute(select(Cuentas).where(Cuentas.codigo == "501-COSTOS-COMISIONES"))).scalar_one()
-    pagar_cta = (await session.execute(select(Cuentas).where(Cuentas.codigo == "201-COMISIONES-POR-PAGAR"))).scalar_one()
+    # D-36 — un traslado no comisiona al vendedor (D-34), así que cerrar su
+    # liquidación es puro seguimiento: no hay nada que postear, se salta
+    # directo a la generación de código.
+    if liq.tipo_servicio == TipoServicio.tour:
+        # Cuentas.
+        comision_cta = (await session.execute(select(Cuentas).where(Cuentas.codigo == "501-COSTOS-COMISIONES"))).scalar_one()
+        pagar_cta = (await session.execute(select(Cuentas).where(Cuentas.codigo == "201-COMISIONES-POR-PAGAR"))).scalar_one()
 
-    # --- Per-vendedor grouping, per-tour comisión ---
-    # Group by vendedor_id.
-    by_vendedor: dict[int, list[ToursServicios]] = {}
-    for ts in tours:
-        by_vendedor.setdefault(ts.vendedor_id, []).append(ts)
+        # --- Per-vendedor grouping, per-tour comisión ---
+        # Group by vendedor_id.
+        by_vendedor: dict[int, list[ToursServicios]] = {}
+        for ts in tours:
+            by_vendedor.setdefault(ts.vendedor_id, []).append(ts)
 
-    closing_asientos: list[Asientos] = []
-    for vendedor_id, ts_list in by_vendedor.items():
-        # Iterate each tour_servicio: comision_tour = margen_tour * (porcentaje/100).
-        comision_total_vendedor = Decimal("0")
-        tour_ids = []
-        for ts in ts_list:
-            margen_tour = Decimal(str(ts.monto)) - Decimal(str(ts.costo or 0))
-            porcentaje = await resolve_comision(session, vendedor_id, ts.tour_id)
-            comision_tour = (margen_tour * Decimal(str(porcentaje)) / Decimal("100"))
-            comision_total_vendedor += comision_tour
-            tour_ids.append(ts.id)
+        closing_asientos: list[Asientos] = []
+        for vendedor_id, ts_list in by_vendedor.items():
+            # Iterate each tour_servicio: comision_tour = margen_tour * (porcentaje/100).
+            comision_total_vendedor = Decimal("0")
+            tour_ids = []
+            for ts in ts_list:
+                margen_tour = Decimal(str(ts.monto)) - Decimal(str(ts.costo or 0))
+                porcentaje = await resolve_comision(session, vendedor_id, ts.tour_id)
+                comision_tour = (margen_tour * Decimal(str(porcentaje)) / Decimal("100"))
+                comision_total_vendedor += comision_tour
+                tour_ids.append(ts.id)
 
-        lineas = [
-            {"cuenta_id": comision_cta.id, "debe": float(comision_total_vendedor), "haber": 0},
-            {"cuenta_id": pagar_cta.id, "debe": 0, "haber": float(comision_total_vendedor)},
-        ]
-        asiento = await post_asiento(
-            session,
-            fecha=liq.fecha_hasta,
-            concepto=f"Cierre liquidación {liq.id} - vendedor {vendedor_id}",
-            lineas=lineas,
-            metadata={
-                "liquidacion_id": liq.id,
-                "tipo": "cierre",
-                "vendedor_id": vendedor_id,
-                "tours_ids": tour_ids,
-            },
-            creacion_usuario_id=current_user["id"],
-        )
-        closing_asientos.append(asiento)
-        # Persist pivot.
-        session.add(LiquidacionAsientos(liquidacion_id=liq.id, asiento_id=asiento.id, tipo="cierre"))
+            lineas = [
+                {"cuenta_id": comision_cta.id, "debe": float(comision_total_vendedor), "haber": 0},
+                {"cuenta_id": pagar_cta.id, "debe": 0, "haber": float(comision_total_vendedor)},
+            ]
+            asiento = await post_asiento(
+                session,
+                fecha=liq.fecha_hasta,
+                concepto=f"Cierre liquidación {liq.id} - vendedor {vendedor_id}",
+                lineas=lineas,
+                metadata={
+                    "liquidacion_id": liq.id,
+                    "tipo": "cierre",
+                    "vendedor_id": vendedor_id,
+                    "tours_ids": tour_ids,
+                },
+                creacion_usuario_id=current_user["id"],
+            )
+            closing_asientos.append(asiento)
+            # Persist pivot.
+            session.add(LiquidacionAsientos(liquidacion_id=liq.id, asiento_id=asiento.id, tipo="cierre"))
 
     # --- Generate LIQ-AAAA-NNN codigo (D-16) ---
     year = liq.fecha_hasta.year
@@ -209,38 +214,42 @@ async def reopen_liquidacion(session: AsyncSession, liquidacion_id: int, current
     if liq.estado.value != "cerrada":
         raise ValueError(f"Liquidación no está cerrada — estado actual: {liq.estado.value}")
 
-    closing_pivots = list(
-        (await session.execute(
-            select(LiquidacionAsientos)
-            .where(LiquidacionAsientos.liquidacion_id == liq.id, LiquidacionAsientos.tipo == "cierre")
-        )).scalars().all()
-    )
-    if not closing_pivots:
-        raise ValueError("Liquidación no tiene asientos de cierre registrados (datos corruptos)")
+    # D-36 — una liquidación de traslados nunca posteó nada al cerrar (D-34,
+    # no comisionan), así que no hay pivots de cierre que exigir ni asientos
+    # que revertir — reabrir es simplemente desbloquear.
+    if liq.tipo_servicio == TipoServicio.tour:
+        closing_pivots = list(
+            (await session.execute(
+                select(LiquidacionAsientos)
+                .where(LiquidacionAsientos.liquidacion_id == liq.id, LiquidacionAsientos.tipo == "cierre")
+            )).scalars().all()
+        )
+        if not closing_pivots:
+            raise ValueError("Liquidación no tiene asientos de cierre registrados (datos corruptos)")
 
-    today = date.today()
-    for pivot in closing_pivots:
-        orig_id = pivot.asiento_id
-        orig_lineas = list(
-            (await session.execute(select(AsientoLineas).where(AsientoLineas.asiento_id == orig_id))).scalars().all()
-        )
-        reverse = [
-            {"cuenta_id": ln.cuenta_id, "debe": float(ln.haber), "haber": float(ln.debe)}
-            for ln in orig_lineas
-        ]
-        asiento = await post_asiento(
-            session,
-            fecha=today,
-            concepto=f"Reversión liquidación {liq.codigo}",
-            lineas=reverse,
-            metadata={
-                "liquidacion_id": liq.id,
-                "tipo": "reversion",
-                "asiento_original_id": orig_id,
-            },
-            creacion_usuario_id=current_user["id"],
-        )
-        session.add(LiquidacionAsientos(liquidacion_id=liq.id, asiento_id=asiento.id, tipo="reversion"))
+        today = date.today()
+        for pivot in closing_pivots:
+            orig_id = pivot.asiento_id
+            orig_lineas = list(
+                (await session.execute(select(AsientoLineas).where(AsientoLineas.asiento_id == orig_id))).scalars().all()
+            )
+            reverse = [
+                {"cuenta_id": ln.cuenta_id, "debe": float(ln.haber), "haber": float(ln.debe)}
+                for ln in orig_lineas
+            ]
+            asiento = await post_asiento(
+                session,
+                fecha=today,
+                concepto=f"Reversión liquidación {liq.codigo}",
+                lineas=reverse,
+                metadata={
+                    "liquidacion_id": liq.id,
+                    "tipo": "reversion",
+                    "asiento_original_id": orig_id,
+                },
+                creacion_usuario_id=current_user["id"],
+            )
+            session.add(LiquidacionAsientos(liquidacion_id=liq.id, asiento_id=asiento.id, tipo="reversion"))
 
     liq.estado = EstadoLiquidacion.revertida
     liq.reopen_count = (liq.reopen_count or 0) + 1

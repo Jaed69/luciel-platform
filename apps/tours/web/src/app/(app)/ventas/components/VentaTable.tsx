@@ -91,16 +91,6 @@ export function VentaTable({
         ),
     },
     {
-      key: "tipo_servicio",
-      header: "Tipo",
-      render: (r) =>
-        r.tipo_servicio === "traslado" ? (
-          <span className="text-[12px] font-nunito rounded-full px-2 py-0.5 border border-gold bg-gold/10">Traslado</span>
-        ) : (
-          <span className="text-[12px] font-nunito rounded-full px-2 py-0.5 border border-gold/40">Tour</span>
-        ),
-    },
-    {
       key: "detalle",
       header: "Detalle",
       // Un traslado se identifica por a dónde va y quién viaja; un tour, por
@@ -180,7 +170,7 @@ export function VentaTable({
       <DataTable
         columns={columns}
         data={ventas}
-        emptyState="No hay nada registrado todavía. Usa Registrar tour o Registrar traslado para empezar."
+        emptyState="No hay nada registrado todavía en esta pestaña."
       />
       <VentaEditModal
         venta={editTarget}

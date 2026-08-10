@@ -20,6 +20,7 @@ type Liquidacion = {
   vendedor_id: number | null;
   agencia_id: number | null;
   cerrada_en: string | null;
+  tipo_servicio: "tour" | "traslado";
 };
 
 type Precheck = { fails: { tour_id: number; problema: string }[]; warnings: { tour_id: number; problema: string }[] };
@@ -35,6 +36,9 @@ type TourRow = {
   fecha: string;
   liquidacion_id: number | null;
   observaciones?: string | null;
+  // D-36 — presentes sólo en filas de tipo traslado.
+  destino?: string | null;
+  nombre_huesped?: string | null;
 };
 
 type Catalogo = { id: number; nombre: string };
@@ -63,30 +67,40 @@ export default async function LiquidacionDetailPage({ params }: { params: Promis
   const tourNombre = (tid: number) => catalogoTours.find((t) => t.id === tid)?.nombre ?? `T-${tid}`;
   const vendedorNombre = (vid: number) => vendedores.find((v) => v.id === vid)?.nombre ?? `V-${vid}`;
 
-  const tourColumns: Column<TourRow>[] = [
-    { key: "fecha", header: "Fecha", render: (r) => new Date(r.fecha).toLocaleDateString("es-PE") },
-    { key: "tour_id", header: "Tour", render: (r) => tourNombre(r.tour_id) },
-    { key: "vendedor_id", header: "Vendedor", render: (r) => vendedorNombre(r.vendedor_id) },
-    {
-      key: "monto",
-      header: "Monto",
-      render: (r) => <span className="tabular-nums">{r.monto.toFixed(2)} {r.moneda}</span>,
-    },
-    {
-      key: "costo",
-      header: "Costo",
-      render: (r) => (
-        <span className={`tabular-nums ${r.costo == null ? "text-chili-red" : ""}`}>
-          {r.costo == null ? "faltante" : r.costo.toFixed(2)}
-        </span>
-      ),
-    },
-    {
-      key: "observaciones",
-      header: "Notas",
-      render: (r) => (r.observaciones ? <span className="text-text-espresso-soft">{r.observaciones}</span> : <span className="text-text-espresso-soft">—</span>),
-    },
-  ];
+  const fechaColumn: Column<TourRow> = { key: "fecha", header: "Fecha", render: (r) => new Date(r.fecha).toLocaleDateString("es-PE") };
+  const vendedorColumn: Column<TourRow> = { key: "vendedor_id", header: "Vendedor", render: (r) => vendedorNombre(r.vendedor_id) };
+  const montoColumn: Column<TourRow> = {
+    key: "monto",
+    header: "Monto",
+    render: (r) => <span className="tabular-nums">{r.monto.toFixed(2)} {r.moneda}</span>,
+  };
+  const costoColumn: Column<TourRow> = {
+    key: "costo",
+    header: "Costo",
+    render: (r) => (
+      <span className={`tabular-nums ${r.costo == null ? "text-chili-red" : ""}`}>
+        {r.costo == null ? "faltante" : r.costo.toFixed(2)}
+      </span>
+    ),
+  };
+  const notasColumn: Column<TourRow> = {
+    key: "observaciones",
+    header: "Notas",
+    render: (r) => (r.observaciones ? <span className="text-text-espresso-soft">{r.observaciones}</span> : <span className="text-text-espresso-soft">—</span>),
+  };
+
+  const tourColumns: Column<TourRow>[] =
+    liq.tipo_servicio === "traslado"
+      ? [
+          fechaColumn,
+          { key: "destino", header: "Destino", render: (r) => r.destino ?? "—" },
+          { key: "huesped", header: "Huésped", render: (r) => r.nombre_huesped ?? "—" },
+          vendedorColumn,
+          montoColumn,
+          costoColumn,
+          notasColumn,
+        ]
+      : [fechaColumn, { key: "tour_id", header: "Tour", render: (r) => tourNombre(r.tour_id) }, vendedorColumn, montoColumn, costoColumn, notasColumn];
 
   return (
     <div className="space-y-5">
@@ -119,22 +133,28 @@ export default async function LiquidacionDetailPage({ params }: { params: Promis
       )}
 
       <section>
-        <h2 className="font-playfair text-primary text-[20px] font-semibold mb-2">Tours en esta liquidación</h2>
-        <DataTable columns={tourColumns} data={tourRows} emptyState="Sin tours asignados a esta liquidación." />
+        <h2 className="font-playfair text-primary text-[20px] font-semibold mb-2">
+          {liq.tipo_servicio === "traslado" ? "Traslados en esta liquidación" : "Tours en esta liquidación"}
+        </h2>
+        <DataTable
+          columns={tourColumns}
+          data={tourRows}
+          emptyState={liq.tipo_servicio === "traslado" ? "Sin traslados asignados a esta liquidación." : "Sin tours asignados a esta liquidación."}
+        />
       </section>
 
       {canManage && (
         <section className="flex flex-wrap gap-3 pt-3">
           {liq.estado === "abierta" && (
             <>
-              <CloseModal liquidacion={liq} disabled={hasBlockers} />
+              <CloseModal liquidacion={liq} tipoServicio={liq.tipo_servicio} disabled={hasBlockers} />
               <CancelModal liquidacion={liq} />
             </>
           )}
-          {liq.estado === "cerrada" && <ReopenModal liquidacion={liq} />}
+          {liq.estado === "cerrada" && <ReopenModal liquidacion={liq} tipoServicio={liq.tipo_servicio} />}
           {liq.estado === "revertida" && (
             <p className="text-[13px] font-nunito text-text-espresso-soft">
-              Liquidación revertida — sus tours volvieron a quedar sin liquidar y pueden incluirse en una nueva liquidación.
+              Liquidación revertida — {liq.tipo_servicio === "traslado" ? "sus traslados" : "sus tours"} volvieron a quedar sin liquidar y pueden incluirse en una nueva liquidación.
             </p>
           )}
         </section>

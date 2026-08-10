@@ -149,7 +149,6 @@ describe("VentaTable con traslados", () => {
 
   it("muestra destino, huésped y habitación", () => {
     render(<VentaTable ventas={[traslado]} />);
-    expect(screen.getByText("Traslado")).toBeTruthy();
     expect(screen.getByText(/Aeropuerto/)).toBeTruthy();
     expect(screen.getByText(/Ana Pérez/)).toBeTruthy();
     expect(screen.getByText(/hab\. 204/)).toBeTruthy();
@@ -166,7 +165,6 @@ describe("VentaTable con traslados", () => {
 
   it("un tour no tiene fecha de servicio propia", () => {
     render(<VentaTable ventas={[{ ...traslado, tipo_servicio: "tour", fecha_servicio: null, destino: null }]} />);
-    expect(screen.getByText("Tour")).toBeTruthy();
     expect(screen.getByText("T-9")).toBeTruthy();
   });
 });

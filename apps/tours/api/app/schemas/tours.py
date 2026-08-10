@@ -290,6 +290,7 @@ class LiquidacionOut(BaseModel):
     vendedor_id: int | None
     agencia_id: int | None
     cerrada_en: Any | None = None
+    tipo_servicio: str = "tour"
 
 
 class SolicitudCreateIn(BaseModel):

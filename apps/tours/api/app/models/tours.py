@@ -204,6 +204,12 @@ class Liquidaciones(Base, Auditable):
     creado_en: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
     cerrada_en: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reopen_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # D-36 — inferido de las ventas seleccionadas al crear (nunca mezcla
+    # tours y traslados); cerrar/reabrir una de traslados no postea asientos
+    # (no comisionan, D-34), close_liquidacion/reopen_liquidacion se bifurcan.
+    tipo_servicio: Mapped[TipoServicio] = mapped_column(
+        Enum(TipoServicio), nullable=False, default=TipoServicio.tour, server_default="tour"
+    )
 
 
 class ToursServicios(Base, Auditable):

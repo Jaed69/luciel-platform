@@ -16,7 +16,15 @@ type Liquidacion = {
   estado: "abierta" | "cerrada" | "revertida";
 };
 
-export function CloseModal({ liquidacion, disabled = false }: { liquidacion: Liquidacion; disabled?: boolean }) {
+export function CloseModal({
+  liquidacion,
+  tipoServicio = "tour",
+  disabled = false,
+}: {
+  liquidacion: Liquidacion;
+  tipoServicio?: "tour" | "traslado";
+  disabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +60,9 @@ export function CloseModal({ liquidacion, disabled = false }: { liquidacion: Liq
       <Modal open={open} onClose={() => setOpen(false)} maxW="md">
         <h2 className="font-playfair text-primary text-[24px] font-semibold mb-3">Cerrar liquidación {codigo}</h2>
         <p className="text-[14px] font-nunito text-text-espresso-soft mb-4">
-          El cierre generará asientos de comisión automáticamente: débito 501-COSTOS-COMISIONES + crédito 201-COMISIONES-POR-PAGAR por cada vendedor en el rango.
+          {tipoServicio === "traslado"
+            ? "Este cierre no genera asientos — cada traslado ya quedó contabilizado al momento de la venta (D-34, no comisionan). Cerrar la liquidación solo la marca como saldada, para llevar el seguimiento."
+            : "El cierre generará asientos de comisión automáticamente: débito 501-COSTOS-COMISIONES + crédito 201-COMISIONES-POR-PAGAR por cada vendedor en el rango."}
         </p>
         <div className="bg-amber-warning/10 border border-amber-warning/40 rounded p-md mb-4 text-chili-red text-[13px] font-nunito">
           ⚠️ Esta acción no se puede deshacer directamente. Para ajustar, usa &quot;Reabrir&quot; (genera asientos de reversión).

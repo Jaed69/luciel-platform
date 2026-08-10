@@ -197,8 +197,10 @@ async def test_saldo_transportista_acumula_costo_y_se_cancela_con_pago(client):
     assert saldos.get("202-AGENCIAS-POR-PAGAR-PEN", 0) == 0
 
 
-async def test_traslados_no_entran_en_liquidaciones(client):
-    """No comisionan al vendedor, así que la liquidación sólo debe tomar tours."""
+async def test_liquidacion_de_traslados_es_independiente_y_no_mezcla_tipos(client):
+    """D-36 — un traslado arma su propia liquidación (tipo_servicio=traslado,
+    solo seguimiento); mezclar un tour y un traslado en el mismo pedido se
+    rechaza porque una liquidación es de un solo tipo."""
     agencia_id = await _crear_transportista(client)
     r_traslado = await client.post("/traslados", json=_payload(agencia_id), headers=_headers())
     traslado_ts_id = r_traslado.json()["tour_servicio_id"]
@@ -212,26 +214,41 @@ async def test_traslados_no_entran_en_liquidaciones(client):
     )
     tour_ts_id = r_tour.json()["tour_servicio_id"]
 
-    # D-35 — selección manual: mandar el id del traslado se rechaza explícitamente.
-    r_rechazado = await client.post(
+    r_mezcla = await client.post(
         "/liquidaciones",
-        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31", "tour_servicio_ids": [traslado_ts_id]},
+        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31", "tour_servicio_ids": [traslado_ts_id, tour_ts_id]},
         headers=_headers(),
     )
-    assert r_rechazado.status_code == 422, r_rechazado.text
+    assert r_mezcla.status_code == 422, r_mezcla.text
 
-    r = await client.post(
+    r_tour_liq = await client.post(
         "/liquidaciones",
         json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31", "tour_servicio_ids": [tour_ts_id]},
         headers=_headers(),
     )
-    assert r.status_code == 201, r.text
-    liq_id = r.json()["id"]
+    assert r_tour_liq.status_code == 201, r_tour_liq.text
+    tour_liq_id = r_tour_liq.json()["id"]
+    assert r_tour_liq.json()["tipo_servicio"] == "tour"
+
+    r_traslado_liq = await client.post(
+        "/liquidaciones",
+        json={"fecha_desde": "2026-07-01", "fecha_hasta": "2026-07-31", "tour_servicio_ids": [traslado_ts_id]},
+        headers=_headers(),
+    )
+    assert r_traslado_liq.status_code == 201, r_traslado_liq.text
+    traslado_liq_id = r_traslado_liq.json()["id"]
+    assert r_traslado_liq.json()["tipo_servicio"] == "traslado"
 
     ventas = (await client.get("/ventas", headers=_headers())).json()
     por_tipo = {v["tipo_servicio"]: v for v in ventas}
-    assert por_tipo["tour"]["liquidacion_id"] == liq_id
-    assert por_tipo["traslado"]["liquidacion_id"] is None, "el traslado no debe quedar bloqueado por la liquidación"
+    assert por_tipo["tour"]["liquidacion_id"] == tour_liq_id
+    assert por_tipo["traslado"]["liquidacion_id"] == traslado_liq_id
+
+    # Cerrar la liquidación de traslados es puro seguimiento: no postea
+    # asientos de comisión (D-34, no comisionan).
+    r_close = await client.post(f"/liquidaciones/{traslado_liq_id}/close", headers=_headers())
+    assert r_close.status_code == 200, r_close.text
+    assert r_close.json()["estado"] == "cerrada"
 
 
 async def test_editar_traslado_reajusta_su_asiento(client):

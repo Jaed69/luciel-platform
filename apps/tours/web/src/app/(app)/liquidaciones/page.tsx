@@ -18,6 +18,29 @@ type LiquidacionRow = {
   cerrada_en: string | null;
 };
 
+// D-36 — mismo patrón de pestañas por query param que /ventas: /liquidaciones/[id]
+// ya usa [id] como segmento dinámico, así que una ruta hermana /liquidaciones/traslados
+// colisionaría con eso.
+function SubNavTabs({ tipo }: { tipo: "tour" | "traslado" }) {
+  const tabs: { value: "tour" | "traslado"; label: string }[] = [
+    { value: "tour", label: "Tours" },
+    { value: "traslado", label: "Traslados" },
+  ];
+  return (
+    <nav className="flex flex-wrap gap-2 mb-4" aria-label="Liquidaciones sub-nav">
+      {tabs.map((t) => (
+        <a
+          key={t.value}
+          href={`/liquidaciones?tipo=${t.value}`}
+          className={`px-3 py-1.5 rounded-full text-sm font-nunito font-semibold ${t.value === tipo ? "bg-primary text-on-primary" : "text-primary border border-gold/30"}`}
+        >
+          {t.label}
+        </a>
+      ))}
+    </nav>
+  );
+}
+
 export default async function LiquidacionesPage({
   searchParams,
 }: {
@@ -29,7 +52,8 @@ export default async function LiquidacionesPage({
   // Next 16 — searchParams es una Promise; leerla sin await devolvía undefined
   // en cada campo y descartaba todos los filtros en silencio.
   const filtros = await searchParams;
-  const qs = new URLSearchParams();
+  const tipo: "tour" | "traslado" = filtros.tipo === "traslado" ? "traslado" : "tour";
+  const qs = new URLSearchParams({ tipo_servicio: tipo });
   if (filtros.estado) qs.set("estado", filtros.estado);
   if (filtros.fecha_desde) qs.set("fecha_desde", filtros.fecha_desde);
   if (filtros.fecha_hasta) qs.set("fecha_hasta", filtros.fecha_hasta);
@@ -37,7 +61,7 @@ export default async function LiquidacionesPage({
 
   let liquidaciones: LiquidacionRow[] = [];
   try {
-    liquidaciones = await apiFetchJson<LiquidacionRow[]>(`/liquidaciones${qs.toString() ? `?${qs.toString()}` : ""}`);
+    liquidaciones = await apiFetchJson<LiquidacionRow[]>(`/liquidaciones?${qs.toString()}`);
   } catch {}
 
   const canManage = role === "admin" || role === "contabilidad";
@@ -87,9 +111,14 @@ export default async function LiquidacionesPage({
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-playfair text-primary text-[38px] font-semibold">Liquidaciones</h1>
-        {canManage && <NewLiquidacionButton />}
+        {canManage && <NewLiquidacionButton tipoServicio={tipo} />}
       </div>
-      <DataTable columns={columns} data={liquidaciones} emptyState="No hay liquidaciones registradas." />
+      <SubNavTabs tipo={tipo} />
+      <DataTable
+        columns={columns}
+        data={liquidaciones}
+        emptyState={tipo === "traslado" ? "No hay liquidaciones de traslados registradas." : "No hay liquidaciones registradas."}
+      />
     </div>
   );
 }

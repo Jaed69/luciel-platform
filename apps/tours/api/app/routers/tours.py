@@ -478,12 +478,10 @@ async def create_liquidacion(
     if missing:
         raise HTTPException(status_code=422, detail=f"Ventas no encontradas: {sorted(missing)}")
 
-    # D-34 — los traslados quedan fuera: no pagan comisión al vendedor, así que
-    # incluirlos sólo los bloquearía por D-14 sin generar ningún asiento. La deuda
-    # con el hotel se salda por /agencia-pagos, no por acá.
+    # D-36 — el tipo de la liquidación se infiere de lo seleccionado, no se
+    # manda aparte: una liquidación de traslados es solo seguimiento (no
+    # comisionan, D-34), close_liquidacion la bifurca para no postear nada.
     for ts in tours:
-        if ts.tipo_servicio != TipoServicio.tour:
-            raise HTTPException(status_code=422, detail=f"Venta #{ts.id} no es un tour — los traslados no se liquidan acá")
         if ts.liquidacion_id is not None:
             raise HTTPException(status_code=422, detail=f"Venta #{ts.id} ya está asignada a otra liquidación")
         if not (body.fecha_desde <= ts.fecha <= body.fecha_hasta):
@@ -491,11 +489,17 @@ async def create_liquidacion(
         if user["role"] == "vendedor" and ts.vendedor_id != user["vendedor_id"]:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"No puedes liquidar la venta #{ts.id} de otro vendedor")
 
+    tipos = {ts.tipo_servicio for ts in tours}
+    if len(tipos) > 1:
+        raise HTTPException(status_code=422, detail="No se puede mezclar tours y traslados en la misma liquidación")
+    tipo_servicio = tipos.pop() if tipos else TipoServicio.tour
+
     liq = Liquidaciones(
         fecha_desde=body.fecha_desde,
         fecha_hasta=body.fecha_hasta,
         vendedor_id=body.vendedor_id,
         agencia_id=body.agencia_id,
+        tipo_servicio=tipo_servicio,
     )
     session.add(liq)
     await session.flush()  # populate liq.id
@@ -514,6 +518,7 @@ async def list_liquidaciones(
     vendedor_id: int | None = Query(None),
     fecha_desde: date | None = Query(None),
     fecha_hasta: date | None = Query(None),
+    tipo_servicio: str | None = Query(None),
     session: AsyncSession = Depends(get_session),
     user: dict = Depends(get_current_user),
 ) -> list[Liquidaciones]:
@@ -529,6 +534,8 @@ async def list_liquidaciones(
         stmt = stmt.where(Liquidaciones.fecha_desde >= fecha_desde)
     if fecha_hasta is not None:
         stmt = stmt.where(Liquidaciones.fecha_hasta <= fecha_hasta)
+    if tipo_servicio is not None:
+        stmt = stmt.where(Liquidaciones.tipo_servicio == tipo_servicio)
     return list((await session.execute(stmt)).scalars().all())
 
 
