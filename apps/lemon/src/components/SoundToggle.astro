@@ -1,12 +1,31 @@
-<button class="lemon-sound-btn" id="lemon-sound-btn" type="button">
-  <span class="lemon-sound-dot" id="lemon-sound-dot"></span>
-  <span id="lemon-sound-label">sonido: apagado</span>
-</button>
-<div class="lemon-music-panel" id="lemon-music-panel" hidden>
-  <span class="lemon-music-track" id="lemon-music-track"></span>
-  <button class="lemon-music-next" id="lemon-music-next" type="button" aria-label="Siguiente canción">›</button>
+<div class="lemon-player" id="lemon-player">
+  <div class="lemon-player-track" id="lemon-player-track">—</div>
+
+  <div class="lemon-player-seek-row">
+    <span class="lemon-player-time" id="lemon-player-time-current">0:00</span>
+    <input class="lemon-player-seek" id="lemon-player-seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Progreso de la canción" />
+    <span class="lemon-player-time" id="lemon-player-time-total">0:00</span>
+  </div>
+
+  <div class="lemon-player-controls">
+    <button class="lemon-player-btn" id="lemon-shuffle" type="button" aria-label="Aleatorio" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+    </button>
+    <button class="lemon-player-btn" id="lemon-prev" type="button" aria-label="Canción anterior">
+      <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+    </button>
+    <button class="lemon-player-btn lemon-player-play" id="lemon-play" type="button" aria-label="Reproducir / pausar">
+      <svg id="lemon-play-icon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+    </button>
+    <button class="lemon-player-btn" id="lemon-next" type="button" aria-label="Siguiente canción">
+      <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+    </button>
+    <button class="lemon-player-btn" id="lemon-repeat" type="button" aria-label="Repetir" aria-pressed="true">
+      <svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
+    </button>
+  </div>
 </div>
-<audio id="lemon-bg-audio" preload="none"></audio>
+<audio id="lemon-bg-audio" preload="metadata"></audio>
 
 <script>
   import { playlist } from '../data/music';
@@ -14,15 +33,32 @@
   const SOUND_KEY = 'lemon.sound';
 
   const audio = document.getElementById('lemon-bg-audio') as HTMLAudioElement | null;
-  const btn = document.getElementById('lemon-sound-btn');
-  const dot = document.getElementById('lemon-sound-dot');
-  const label = document.getElementById('lemon-sound-label');
-  const panel = document.getElementById('lemon-music-panel');
-  const trackLabel = document.getElementById('lemon-music-track');
-  const nextBtn = document.getElementById('lemon-music-next');
+  const trackLabel = document.getElementById('lemon-player-track');
+  const seek = document.getElementById('lemon-player-seek') as HTMLInputElement | null;
+  const timeCurrent = document.getElementById('lemon-player-time-current');
+  const timeTotal = document.getElementById('lemon-player-time-total');
+  const playBtn = document.getElementById('lemon-play');
+  const playIcon = document.getElementById('lemon-play-icon');
+  const prevBtn = document.getElementById('lemon-prev');
+  const nextBtn = document.getElementById('lemon-next');
+  const shuffleBtn = document.getElementById('lemon-shuffle');
+  const repeatBtn = document.getElementById('lemon-repeat');
 
-  let isSoundOn = false;
+  const PLAY_PATH = 'M8 5v14l11-7z';
+  const PAUSE_PATH = 'M6 5h4v14H6zM14 5h4v14h-4z';
+
+  let isPlaying = false;
   let trackIndex = 0;
+  let shuffle = false;
+  let repeatOne = false;
+  let seeking = false;
+
+  function formatTime(sec: number) {
+    if (!Number.isFinite(sec)) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
 
   function loadTrack(i: number) {
     if (!audio || !playlist.length) return;
@@ -30,72 +66,120 @@
     const track = playlist[trackIndex];
     audio.src = track.src;
     if (trackLabel) trackLabel.textContent = `${track.title} — ${track.artist}`;
+    if (seek) seek.value = '0';
+    if (timeCurrent) timeCurrent.textContent = '0:00';
+    if (timeTotal) timeTotal.textContent = '0:00';
   }
 
-  function playCurrent() {
+  function setPlaying(playing: boolean) {
+    isPlaying = playing;
+    if (playIcon) playIcon.setAttribute('d', playing ? PAUSE_PATH : PLAY_PATH);
+    playBtn?.classList.toggle('is-playing', playing);
+  }
+
+  function play() {
     if (!audio) return;
-    audio.play().catch(() => {}); // el navegador puede seguir bloqueando sin gesto — se reintenta en la siguiente interacción
+    if (!audio.src) loadTrack(trackIndex);
+    audio
+      .play()
+      .then(() => setPlaying(true))
+      .catch(() => {}); // el navegador puede seguir bloqueando sin gesto — se reintenta en la siguiente interacción
   }
 
-  function setSound(on: boolean, persist = true) {
-    isSoundOn = on;
-    if (on) {
-      if (!audio?.src) loadTrack(trackIndex);
-      playCurrent();
-      dot?.classList.add('is-on');
-      if (label) label.textContent = 'sonido: activado';
-      if (panel) panel.hidden = false;
-    } else {
-      audio?.pause();
-      dot?.classList.remove('is-on');
-      if (label) label.textContent = 'sonido: apagado';
-      if (panel) panel.hidden = true;
-    }
-    if (persist) {
-      try {
-        localStorage.setItem(SOUND_KEY, on ? 'on' : 'off');
-      } catch {}
-    }
+  function pause() {
+    audio?.pause();
+    setPlaying(false);
   }
 
+  function nextIndex() {
+    return shuffle ? Math.floor(Math.random() * playlist.length) : trackIndex + 1;
+  }
+
+  function goToNext(autoplay: boolean) {
+    loadTrack(nextIndex());
+    if (autoplay) play();
+  }
+
+  function goToPrev() {
+    loadTrack(trackIndex - 1);
+    if (isPlaying) play();
+  }
+
+  audio?.addEventListener('timeupdate', () => {
+    if (!audio || seeking) return;
+    if (timeCurrent) timeCurrent.textContent = formatTime(audio.currentTime);
+    if (audio.duration && seek) seek.value = String((audio.currentTime / audio.duration) * 1000);
+  });
+  audio?.addEventListener('loadedmetadata', () => {
+    if (audio && timeTotal) timeTotal.textContent = formatTime(audio.duration);
+  });
   audio?.addEventListener('ended', () => {
-    loadTrack(trackIndex + 1);
-    playCurrent();
+    if (repeatOne) {
+      loadTrack(trackIndex);
+      play();
+    } else {
+      goToNext(true);
+    }
   });
 
-  nextBtn?.addEventListener('click', () => {
-    loadTrack(trackIndex + 1);
-    if (isSoundOn) playCurrent();
+  seek?.addEventListener('input', () => {
+    seeking = true;
+    if (audio?.duration && timeCurrent) {
+      timeCurrent.textContent = formatTime((Number(seek.value) / 1000) * audio.duration);
+    }
+  });
+  seek?.addEventListener('change', () => {
+    if (audio?.duration) audio.currentTime = (Number(seek.value) / 1000) * audio.duration;
+    seeking = false;
   });
 
-  btn?.addEventListener('click', () => setSound(!isSoundOn));
+  playBtn?.addEventListener('click', () => {
+    const wantsPlay = !isPlaying;
+    if (wantsPlay) play();
+    else pause();
+    try {
+      localStorage.setItem(SOUND_KEY, wantsPlay ? 'on' : 'off');
+    } catch {}
+  });
+  prevBtn?.addEventListener('click', goToPrev);
+  nextBtn?.addEventListener('click', () => goToNext(isPlaying));
+
+  shuffleBtn?.addEventListener('click', () => {
+    shuffle = !shuffle;
+    shuffleBtn.classList.toggle('is-active', shuffle);
+    shuffleBtn.setAttribute('aria-pressed', String(shuffle));
+  });
+  repeatBtn?.addEventListener('click', () => {
+    repeatOne = !repeatOne;
+    repeatBtn.classList.toggle('is-one', repeatOne);
+    repeatBtn.setAttribute('aria-pressed', 'true');
+    repeatBtn.setAttribute('aria-label', repeatOne ? 'Repetir esta canción' : 'Repetir playlist');
+  });
 
   loadTrack(0);
 
-  // Preferencia recordada: por defecto suena solo al abrir el libro (gesto de
-  // clic), salvo que el visitante lo haya apagado antes explícitamente.
+  // Por defecto suena apenas hay un primer gesto en la página (los
+  // navegadores bloquean audio con sonido sin interacción previa), salvo que
+  // el visitante lo haya pausado antes explícitamente.
   let storedPref: string | null = null;
   try {
     storedPref = localStorage.getItem(SOUND_KEY);
   } catch {}
   const wantsSound = storedPref !== 'off';
 
-  function tryAutoplay() {
-    if (!wantsSound || isSoundOn) return;
-    setSound(true, false);
-  }
-
-  // El libro puede abrirse por clic (portada nueva) o ya venir abierto en una
-  // página guardada (visita repetida) — sin gesto, el navegador bloquea el
-  // audio hasta la primera interacción.
-  document.addEventListener('click', (e) => {
-    const target = (e.target as HTMLElement)?.closest('#open-cover, #reopen-cover');
-    if (target) tryAutoplay();
+  playBtn?.addEventListener('click', () => {
+    try {
+      localStorage.setItem(SOUND_KEY, isPlaying ? 'on' : 'off');
+    } catch {}
   });
 
-  const book = document.getElementById('book');
-  if (wantsSound && book && !book.hidden) {
-    if (label) label.textContent = 'sonido: toca para activar';
-    document.addEventListener('pointerdown', tryAutoplay, { once: true });
+  if (wantsSound) {
+    document.addEventListener(
+      'pointerdown',
+      () => {
+        if (!isPlaying) play();
+      },
+      { once: true },
+    );
   }
 </script>

@@ -906,10 +906,11 @@
 .lemon-guest-status.is-error { color: oklch(0.75 0.18 25); }
 .lemon-guest-status.is-success { color: oklch(0.85 0.14 150); }
 
-/* ---------- controles fijos (sonido / fullscreen) ---------- */
-.lemon-sound-btn, .lemon-fullscreen-btn {
+/* ---------- controles fijos (fullscreen) ---------- */
+.lemon-fullscreen-btn {
   position: fixed;
   top: 16px;
+  left: 16px;
   font-family: 'Courier New', monospace;
   font-size: 12px;
   background: oklch(0.22 0.05 20 / 0.85);
@@ -924,44 +925,82 @@
   gap: 8px;
   z-index: 100;
 }
-.lemon-sound-btn { right: 16px; }
-.lemon-fullscreen-btn { left: 16px; }
-.lemon-sound-btn:hover, .lemon-fullscreen-btn:hover { border-color: var(--lemon-gold); }
-.lemon-sound-dot { width: 8px; height: 8px; border-radius: 50%; background: #777; }
-.lemon-sound-dot.is-on { background: oklch(0.8 0.18 150); box-shadow: 0 0 8px oklch(0.8 0.18 150); }
+.lemon-fullscreen-btn:hover { border-color: var(--lemon-gold); }
 
-.lemon-music-panel {
+/* ---------- reproductor de música de fondo ---------- */
+.lemon-player {
   position: fixed;
-  top: 54px;
+  top: 16px;
   right: 16px;
   z-index: 100;
+  width: 230px;
+  background: oklch(0.2 0.05 20 / 0.9);
+  color: var(--lemon-cream);
+  border: 1px solid oklch(0.75 0.13 85 / 0.4);
+  border-radius: 16px;
+  padding: 12px 14px 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  font-family: 'Courier New', monospace;
+}
+.lemon-player-track {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 8px;
+  color: var(--lemon-gold);
+}
+.lemon-player-seek-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.lemon-player-time { font-size: 9px; color: oklch(0.85 0.02 90 / 0.8); flex-shrink: 0; }
+.lemon-player-seek {
+  flex: 1;
+  appearance: none;
+  height: 3px;
+  border-radius: 999px;
+  background: oklch(0.75 0.13 85 / 0.25);
+  cursor: pointer;
+}
+.lemon-player-seek::-webkit-slider-thumb {
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--lemon-gold);
+  box-shadow: 0 0 6px oklch(0.75 0.13 85 / 0.6);
+}
+.lemon-player-seek::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: none;
+  border-radius: 50%;
+  background: var(--lemon-gold);
+}
+.lemon-player-controls { display: flex; align-items: center; justify-content: space-between; }
+.lemon-player-btn {
+  background: none;
+  border: none;
+  color: var(--lemon-cream);
+  opacity: 0.75;
+  cursor: pointer;
+  padding: 4px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  max-width: 220px;
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  background: oklch(0.22 0.05 20 / 0.85);
-  color: var(--lemon-cream);
-  border: 1px solid oklch(0.75 0.13 85 / 0.4);
-  border-radius: 999px;
-  padding: 6px 8px 6px 14px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  justify-content: center;
+  transition: opacity 0.15s, transform 0.15s;
 }
-.lemon-music-track { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lemon-music-next {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
+.lemon-player-btn svg { width: 18px; height: 18px; fill: currentColor; }
+.lemon-player-btn:hover { opacity: 1; transform: scale(1.1); }
+.lemon-player-btn.is-active, .lemon-player-btn.is-one { opacity: 1; color: var(--lemon-gold); }
+.lemon-player-play {
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  border: 1px solid oklch(0.75 0.13 85 / 0.4);
-  background: transparent;
-  color: var(--lemon-cream);
-  cursor: pointer;
-  line-height: 1;
-  font-size: 13px;
+  background: var(--lemon-gold);
+  opacity: 1;
 }
-.lemon-music-next:hover { border-color: var(--lemon-gold); color: var(--lemon-gold); }
+.lemon-player-play svg { fill: oklch(0.2 0.05 30); width: 20px; height: 20px; }
+.lemon-player-play:hover { background: var(--lemon-gold-bright); transform: scale(1.06); }
 
 /* ---------- fin (contraportada cerrada) ---------- */
 .lemon-end-note { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; animation: lemonPopIn 0.5s 0.4s both; }
@@ -979,10 +1018,11 @@
   .lemon-orn--cross { left: -14px; }
   .lemon-sticker-note--cat { left: -10px; }
   .lemon-moon { right: -10px; width: 72px; height: 72px; }
-  .lemon-sound-btn, .lemon-fullscreen-btn { top: auto; bottom: 12px; }
-  .lemon-sound-btn { right: 12px; }
-  .lemon-fullscreen-btn { left: 12px; }
-  .lemon-music-panel { top: auto; bottom: 50px; right: 12px; max-width: 160px; }
+  .lemon-fullscreen-btn { top: auto; bottom: 12px; left: 12px; }
+  .lemon-player { top: 10px; right: 10px; width: 176px; padding: 9px 10px 8px; }
+  .lemon-player-btn svg { width: 15px; height: 15px; }
+  .lemon-player-play { width: 30px; height: 30px; }
+  .lemon-player-play svg { width: 16px; height: 16px; }
 }
 
 /* ---------- rendimiento / accesibilidad ----------
