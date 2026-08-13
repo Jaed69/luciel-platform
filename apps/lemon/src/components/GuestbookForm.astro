@@ -7,11 +7,10 @@ interface Props {
 }
 const { approvedMessages } = Astro.props;
 
-const FORM_ENDPOINT = 'https://formspree.io/f/xrenqgel';
-
 // Emblemas del "canal": mismo set de avatares que las fichas de perfil del
 // capítulo II (data/avatars.ts). El elegido tiñe el formulario y viaja con el
-// mensaje (campo emblem, con la ruta del avatar) para reproducirlo al aprobar.
+// mensaje hacia Supabase (avatar_src + hue), así capítulo II y capítulo IV
+// muestran siempre el mismo ícono y color para un mensaje dado.
 const emblems = avatars;
 
 const hueFor = (i: number) => emblems[i % emblems.length].hue;
@@ -37,7 +36,7 @@ const cards = approvedMessages.map((m, i) => ({
     ))}
   </div>
 
-  <form class="lemon-guest-form" action={FORM_ENDPOINT} method="POST" id="guestbook-form">
+  <form class="lemon-guest-form" id="guestbook-form">
     <div class="lemon-guest-form-kicker">NUEVO PERFIL</div>
     <div class="lemon-emblems" id="emblems">
       {emblems.map((e, i) => (
@@ -54,88 +53,156 @@ const cards = approvedMessages.map((m, i) => ({
         </button>
       ))}
     </div>
-    <input type="hidden" name="emblem" id="gb-emblem" value={emblems[0].src} />
-    <input id="gb-name" name="name" placeholder="tu nombre" required autocomplete="name" />
-    <textarea id="gb-message" name="message" placeholder="tu deseo para Lemondrea" rows="4" required></textarea>
+    <input type="hidden" name="emblem" id="gb-emblem" value={emblems[0].src} data-hue={emblems[0].hue} />
+    <input id="gb-name" name="name" placeholder="tu nombre" required autocomplete="name" maxlength="60" />
+    <textarea id="gb-message" name="message" placeholder="tu deseo para Lemondrea" rows="4" required maxlength="500"></textarea>
     <button class="lemon-guest-submit" type="submit">ENVIAR SEÑAL <span id="gb-submit-glyph" class="lemon-submit-avatar"><img src={emblems[0].src} alt="" /></span></button>
     <div id="guestbook-status" class="lemon-guest-status" role="status"></div>
-    <div class="lemon-guest-note">Tu mensaje llega por correo al dueño del sitio y se publica tras revisarlo.</div>
+    <div class="lemon-guest-note">Tu mensaje se publica al instante acá y en el capítulo de mensajes.</div>
   </form>
 </div>
 
 <script>
-  interface EchoMessage {
+  import { GUESTBOOK_REST_URL, SUPABASE_ANON_KEY } from '../data/supabase';
+
+  interface GuestbookRow {
+    id: number;
     name: string;
-    text: string;
-    avatarSrc: string;
+    message: string;
+    avatar_src: string;
     hue: number;
-    submittedAt: number;
+    created_at: string;
   }
 
-  const LS_KEY = 'lemon-guestbook-echo';
-  const MAX_ECHOES = 20;
+  const supabaseHeaders = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  };
 
-  function loadEchoes(): EchoMessage[] {
-    try {
-      const raw = localStorage.getItem(LS_KEY);
-      return raw ? (JSON.parse(raw) as EchoMessage[]) : [];
-    } catch {
-      return [];
-    }
+  function accentVars(hue: number) {
+    return {
+      accent: `oklch(0.82 0.14 ${hue})`,
+      glow: `oklch(0.82 0.14 ${hue} / .35)`,
+      soft: `oklch(0.82 0.14 ${hue} / .12)`,
+    };
   }
 
-  function saveEchoes(echoes: EchoMessage[]) {
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(echoes.slice(-MAX_ECHOES)));
-    } catch {
-      // localStorage no disponible — el echo se muestra en esta carga, solo no persiste
-    }
-  }
-
-  function renderEcho(notesEl: HTMLElement, m: EchoMessage) {
-    const hue = Number.isFinite(m.hue) ? m.hue : 200;
+  // ---------- capítulo IV: tarjeta del libro de visitas ----------
+  function renderGuestCard(notesEl: HTMLElement, row: GuestbookRow, prepend: boolean) {
+    const { accent, glow, soft } = accentVars(row.hue);
     const card = document.createElement('div');
     card.className = 'lemon-guest-card';
-    card.style.setProperty('--accent', `oklch(0.82 0.14 ${hue})`);
-    card.style.setProperty('--glow', `oklch(0.82 0.14 ${hue} / .3)`);
-    card.style.setProperty('--soft', `oklch(0.82 0.14 ${hue} / .12)`);
+    card.style.setProperty('--accent', accent);
+    card.style.setProperty('--glow', glow);
+    card.style.setProperty('--soft', soft);
 
     const glyph = document.createElement('div');
     glyph.className = 'lemon-guest-glyph';
     const avatarImg = document.createElement('img');
-    avatarImg.src = m.avatarSrc;
+    avatarImg.src = row.avatar_src;
     avatarImg.alt = '';
     avatarImg.loading = 'lazy';
     glyph.appendChild(avatarImg);
 
     const body = document.createElement('div');
     body.className = 'lemon-guest-body';
-    const row = document.createElement('div');
-    row.className = 'lemon-guest-name-row';
+    const nameRow = document.createElement('div');
+    nameRow.className = 'lemon-guest-name-row';
     const name = document.createElement('div');
     name.className = 'lemon-guest-name';
-    name.textContent = m.name;
-    const badge = document.createElement('div');
-    badge.className = 'lemon-pending-badge';
-    badge.textContent = 'en revisión';
-    row.append(name, badge);
+    name.textContent = row.name;
+    nameRow.append(name);
     const msg = document.createElement('div');
     msg.className = 'lemon-guest-msg';
-    msg.textContent = m.text;
-    body.append(row, msg);
+    msg.textContent = row.message;
+    body.append(nameRow, msg);
 
     card.append(glyph, body);
-    notesEl.prepend(card);
+    if (prepend) notesEl.prepend(card);
+    else notesEl.append(card);
+  }
+
+  // ---------- capítulo II: ficha de perfil ----------
+  function renderProfileCard(profilesEl: HTMLElement, row: GuestbookRow) {
+    const { accent, glow, soft } = accentVars(row.hue);
+    const cell = document.createElement('div');
+    cell.className = 'lemon-profile-cell';
+
+    const profile = document.createElement('div');
+    profile.className = 'lemon-profile';
+    profile.style.setProperty('--accent', accent);
+    profile.style.setProperty('--glow', glow);
+    profile.style.setProperty('--soft', soft);
+
+    const cornerTl = document.createElement('div');
+    cornerTl.className = 'corner tl';
+    const cornerBr = document.createElement('div');
+    cornerBr.className = 'corner br';
+
+    const kicker = document.createElement('div');
+    kicker.className = 'lemon-profile-kicker';
+    kicker.textContent = 'P R O F I L E';
+
+    const grid = document.createElement('div');
+    grid.className = 'lemon-profile-grid';
+    const avatar = document.createElement('div');
+    avatar.className = 'lemon-avatar';
+    const avatarImg = document.createElement('img');
+    avatarImg.src = row.avatar_src;
+    avatarImg.alt = `avatar de ${row.name}`;
+    avatarImg.loading = 'lazy';
+    avatar.appendChild(avatarImg);
+
+    const info = document.createElement('div');
+    const nameEl = document.createElement('div');
+    nameEl.className = 'lemon-profile-name';
+    nameEl.textContent = row.name;
+    const meta = document.createElement('div');
+    meta.className = 'lemon-profile-meta';
+    const idLine = document.createElement('div');
+    idLine.textContent = `id · #${String(row.id).padStart(4, '0')}`;
+    const roleLine = document.createElement('div');
+    roleLine.textContent = 'rol · invitade';
+    const stateLine = document.createElement('div');
+    stateLine.textContent = 'estado · en línea';
+    meta.append(idLine, roleLine, stateLine);
+    info.append(nameEl, meta);
+    grid.append(avatar, info);
+
+    const msg = document.createElement('div');
+    msg.className = 'lemon-profile-msg';
+    msg.textContent = row.message;
+
+    const foot = document.createElement('div');
+    foot.className = 'lemon-profile-foot';
+    const sigLabel = document.createElement('div');
+    sigLabel.className = 'lemon-profile-sig-label';
+    sigLabel.textContent = 'SIGNATURE';
+    const sig = document.createElement('div');
+    sig.className = 'lemon-profile-sig';
+    sig.textContent = row.name;
+    foot.append(sigLabel, sig);
+
+    profile.append(cornerTl, cornerBr, kicker, grid, msg, foot);
+    cell.appendChild(profile);
+    profilesEl.appendChild(cell);
+  }
+
+  function bumpProfileCount(by: number) {
+    const counter = document.getElementById('profile-count');
+    if (!counter) return;
+    const current = parseInt(counter.textContent ?? '0', 10) || 0;
+    counter.textContent = String(current + by).padStart(2, '0');
   }
 
   const notesEl = document.getElementById('guestbook-notes');
+  const profilesEl = document.getElementById('profiles');
   const form = document.getElementById('guestbook-form') as HTMLFormElement | null;
   const statusEl = document.getElementById('guestbook-status');
   const emblemInput = document.getElementById('gb-emblem') as HTMLInputElement | null;
   const submitGlyph = document.getElementById('gb-submit-glyph');
-  const endpoint = form?.action;
 
-  let selectedHue = 200;
+  let selectedHue = Number(emblemInput?.dataset.hue ?? 200);
 
   document.querySelectorAll<HTMLElement>('[data-emblem]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -143,8 +210,8 @@ const cards = approvedMessages.map((m, i) => ({
       const src = btn.dataset.src ?? '';
       selectedHue = Number(btn.dataset.hue ?? 200);
       if (emblemInput) emblemInput.value = src;
-      if (submitGlyph) submitGlyph.innerHTML = '';
       if (submitGlyph) {
+        submitGlyph.innerHTML = '';
         const img = document.createElement('img');
         img.src = src;
         img.alt = '';
@@ -155,13 +222,27 @@ const cards = approvedMessages.map((m, i) => ({
     });
   });
 
-  if (notesEl) {
-    loadEchoes().forEach((m) => renderEcho(notesEl, m));
-  }
+  // ---------- carga inicial: trae los mensajes que ya mandaron otros ----------
+  (async () => {
+    try {
+      const res = await fetch(`${GUESTBOOK_REST_URL}?select=*&order=created_at.asc`, {
+        headers: supabaseHeaders,
+      });
+      if (!res.ok) return;
+      const rows = (await res.json()) as GuestbookRow[];
+      rows.forEach((row) => {
+        if (notesEl) renderGuestCard(notesEl, row, false);
+        if (profilesEl) renderProfileCard(profilesEl, row);
+      });
+      if (rows.length) bumpProfileCount(rows.length);
+    } catch {
+      // sin conexión a Supabase — la página sigue mostrando lo curado a mano
+    }
+  })();
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!endpoint || !statusEl) return;
+    if (!statusEl) return;
 
     const submitBtn = form.querySelector<HTMLButtonElement>('.lemon-guest-submit');
     const nameInput = form.querySelector<HTMLInputElement>('#gb-name');
@@ -172,27 +253,34 @@ const cards = approvedMessages.map((m, i) => ({
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(GUESTBOOK_REST_URL, {
         method: 'POST',
-        body: new FormData(form),
-        headers: { Accept: 'application/json' },
+        headers: {
+          ...supabaseHeaders,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify({
+          name: nameInput?.value.trim() || 'Anónimo',
+          message: messageInput?.value.trim() || '',
+          avatar_src: emblemInput?.value || '/assets/avatars/avatar-01.png',
+          hue: selectedHue,
+        }),
       });
 
       if (!response.ok) throw new Error('submit failed');
 
-      const echo: EchoMessage = {
-        name: nameInput?.value.trim() || 'Anónimo',
-        text: messageInput?.value.trim() || '',
-        avatarSrc: emblemInput?.value || '/assets/avatars/avatar-01.png',
-        hue: selectedHue,
-        submittedAt: Date.now(),
-      };
-      if (notesEl) renderEcho(notesEl, echo);
-      saveEchoes([...loadEchoes(), echo]);
+      const [row] = (await response.json()) as GuestbookRow[];
+      if (row) {
+        if (notesEl) renderGuestCard(notesEl, row, true);
+        if (profilesEl) renderProfileCard(profilesEl, row);
+        bumpProfileCount(1);
+      }
 
+      const chosenAvatar = emblemInput?.value;
       form.reset();
-      if (emblemInput) emblemInput.value = echo.avatarSrc; // reset() borra el hidden; el avatar elegido se conserva
-      statusEl.textContent = 'Señal enviada. Tu mensaje quedará pendiente de revisión.';
+      if (emblemInput && chosenAvatar) emblemInput.value = chosenAvatar; // reset() borra el hidden; el avatar elegido se conserva
+      statusEl.textContent = 'Señal enviada — ya está publicada.';
       statusEl.classList.add('is-success');
     } catch {
       statusEl.textContent = 'No se pudo enviar tu señal. Probá de nuevo en un momento.';

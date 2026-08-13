@@ -132,10 +132,10 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
         <div class="lemon-sheet-gutter"></div>
         <div class="lemon-chapter-label">{chapters[1].chapterLabel}</div>
         <div class="lemon-chapter">
-          <div class="lemon-signal-kicker"><i></i>TRANSMISIÓN ENTRANTE · {String(wishes.length).padStart(2, '0')} PERFILES</div>
+          <div class="lemon-signal-kicker"><i></i>TRANSMISIÓN ENTRANTE · <span id="profile-count">{String(wishes.length).padStart(2, '0')}</span> PERFILES</div>
           <div class="lemon-signal-title">BIRTHDAY WISHES</div>
           <p class="lemon-signal-intro">Cada invitado subió su mensaje al escenario. Selecciona un perfil para leerlo.</p>
-          <div class="lemon-profiles">
+          <div class="lemon-profiles" id="profiles">
             {wishes.map((w) => (
               <div class="lemon-profile-cell" style={`animation-delay:${w.delay}s`}>
                 <div class="lemon-profile" style={`--accent:${w.accent}; --glow:${w.glow}; --soft:${w.soft}`}>
