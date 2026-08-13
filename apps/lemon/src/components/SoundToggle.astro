@@ -30,7 +30,10 @@
 <script>
   import { playlist, farewellTrack, type Track } from '../data/music';
 
-  const SOUND_KEY = 'lemon.sound';
+  // Clave nueva a propósito: 'lemon.sound' la usaba el botón sintetizado
+  // viejo (ambient de tonos) y podía haber quedado en "off" de pruebas
+  // anteriores, apagando este reproductor en silencio sin ningún aviso.
+  const SOUND_KEY = 'lemon.music';
 
   const audio = document.getElementById('lemon-bg-audio') as HTMLAudioElement | null;
   const trackLabel = document.getElementById('lemon-player-track');
@@ -212,12 +215,10 @@
   const wantsSound = storedPref !== 'off';
 
   if (wantsSound) {
-    document.addEventListener(
-      'pointerdown',
-      () => {
-        if (!isPlaying) play();
-      },
-      { once: true },
-    );
+    const startOnFirstGesture = () => {
+      if (!isPlaying) play();
+    };
+    document.addEventListener('pointerdown', startOnFirstGesture, { once: true });
+    document.addEventListener('keydown', startOnFirstGesture, { once: true });
   }
 </script>
