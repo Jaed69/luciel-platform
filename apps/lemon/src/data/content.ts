@@ -20,30 +20,11 @@ export interface Message {
   avatar?: string; // fuerza un avatar puntual (ruta bajo /assets/avatars/); si no se pone, se asigna por ciclo desde data/avatars.ts
 }
 
+// Para sumar una foto nueva al final de un álbum: agregar un objeto más al
+// final de su array `photos`, con `src` bajo /assets/photos/. Para un video:
+// agregar `video` (ruta bajo /assets/videos/) y usar `src` como poster —
+// ver el ejemplo del último elemento de 'momentos'.
 export const artAlbums: Album[] = [
-  {
-    key: 'bocetos',
-    label: 'Bocetos',
-    photos: [
-      { src: '/assets/photos/placeholder.jpg', caption: 'Boceto 1' },
-      { src: '/assets/photos/placeholder.jpg', caption: 'Boceto 2' },
-    ],
-  },
-  {
-    key: 'mural',
-    label: 'Mural',
-    photos: [
-      { src: '/assets/photos/placeholder.jpg', caption: 'Mural boceto' },
-      { src: '/assets/photos/placeholder.jpg', caption: 'Mural final' },
-    ],
-  },
-  {
-    key: 'proceso',
-    label: 'Proceso',
-    photos: [
-      { src: '/assets/photos/placeholder.jpg', caption: 'Trabajo en progreso' },
-    ],
-  },
   {
     key: 'momentos',
     label: 'Momentos',
