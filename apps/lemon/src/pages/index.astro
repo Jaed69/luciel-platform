@@ -100,6 +100,7 @@ const POSTER = '/assets/regalo-poster.png';
   });
 
   document.getElementById('play-btn')!.addEventListener('click', () => {
+    const isFirstVisit = !introSeen;
     show('loading');
     setTimeout(() => {
       // el chiste: el "video sorpresa" arranca de verdad
@@ -115,6 +116,11 @@ const POSTER = '/assets/regalo-poster.png';
       setTimeout(() => {
         frame.replaceChildren(); // corta el audio al pasar a la revelación
         show('reveal');
+        // solo en la primera visita: cierre musical de la función (el gesto
+        // del play sigue "vigente" para el navegador, así que suena con volumen)
+        if (isFirstVisit) {
+          new Audio('/assets/music/track-farewell.mp3').play().catch(() => {});
+        }
         try {
           localStorage.setItem(INTRO_KEY, '1');
         } catch {}

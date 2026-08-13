@@ -28,7 +28,7 @@
 <audio id="lemon-bg-audio" preload="metadata"></audio>
 
 <script>
-  import { playlist } from '../data/music';
+  import { playlist, farewellTrack, type Track } from '../data/music';
 
   const SOUND_KEY = 'lemon.sound';
 
@@ -48,10 +48,11 @@
   const PAUSE_PATH = 'M6 5h4v14H6zM14 5h4v14h-4z';
 
   let isPlaying = false;
-  let trackIndex = 0;
+  let normalIndex = 0;
   let shuffle = false;
   let repeatOne = false;
   let seeking = false;
+  let inFarewell = false;
 
   function formatTime(sec: number) {
     if (!Number.isFinite(sec)) return '0:00';
@@ -60,15 +61,19 @@
     return `${m}:${String(s).padStart(2, '0')}`;
   }
 
-  function loadTrack(i: number) {
-    if (!audio || !playlist.length) return;
-    trackIndex = ((i % playlist.length) + playlist.length) % playlist.length;
-    const track = playlist[trackIndex];
+  function applyTrack(track: Track) {
+    if (!audio) return;
     audio.src = track.src;
-    if (trackLabel) trackLabel.textContent = `${track.title} — ${track.artist}`;
+    if (trackLabel) trackLabel.textContent = track.artist ? `${track.title} — ${track.artist}` : track.title;
     if (seek) seek.value = '0';
     if (timeCurrent) timeCurrent.textContent = '0:00';
     if (timeTotal) timeTotal.textContent = '0:00';
+  }
+
+  function loadNormal(i: number) {
+    if (!playlist.length) return;
+    normalIndex = ((i % playlist.length) + playlist.length) % playlist.length;
+    applyTrack(playlist[normalIndex]);
   }
 
   function setPlaying(playing: boolean) {
@@ -79,7 +84,7 @@
 
   function play() {
     if (!audio) return;
-    if (!audio.src) loadTrack(trackIndex);
+    if (!audio.src) loadNormal(normalIndex);
     audio
       .play()
       .then(() => setPlaying(true))
@@ -91,17 +96,51 @@
     setPlaying(false);
   }
 
+  // ---------- despedida: pista única, fuera de la rotación normal ----------
+  function enterFarewell() {
+    if (inFarewell) return;
+    inFarewell = true;
+    applyTrack(farewellTrack);
+    if (isPlaying) play();
+  }
+
+  function exitFarewell() {
+    if (!inFarewell) return;
+    inFarewell = false;
+    loadNormal(normalIndex);
+    if (isPlaying) play();
+  }
+
+  // El libro muestra/oculta secciones [data-sheet] sin importar el método de
+  // navegación (tabs, flechas, swipe, teclado) — todas pasan por el mismo
+  // toggle de "hidden", así que basta observar ese atributo. La despedida es
+  // siempre la última sección.
+  const sheets = Array.from(document.querySelectorAll<HTMLElement>('[data-sheet]'));
+  if (sheets.length) {
+    const farewellSheetIndex = String(sheets.length - 1);
+    const observer = new MutationObserver(() => {
+      const visible = sheets.find((s) => !s.hidden);
+      if (!visible) return;
+      if (visible.dataset.sheet === farewellSheetIndex) enterFarewell();
+      else exitFarewell();
+    });
+    sheets.forEach((s) => observer.observe(s, { attributes: true, attributeFilter: ['hidden'] }));
+  }
+
+  // ---------- rotación normal ----------
   function nextIndex() {
-    return shuffle ? Math.floor(Math.random() * playlist.length) : trackIndex + 1;
+    return shuffle ? Math.floor(Math.random() * playlist.length) : normalIndex + 1;
   }
 
   function goToNext(autoplay: boolean) {
-    loadTrack(nextIndex());
+    if (inFarewell) return;
+    loadNormal(nextIndex());
     if (autoplay) play();
   }
 
   function goToPrev() {
-    loadTrack(trackIndex - 1);
+    if (inFarewell) return;
+    loadNormal(normalIndex - 1);
     if (isPlaying) play();
   }
 
@@ -114,8 +153,13 @@
     if (audio && timeTotal) timeTotal.textContent = formatTime(audio.duration);
   });
   audio?.addEventListener('ended', () => {
-    if (repeatOne) {
-      loadTrack(trackIndex);
+    if (inFarewell) {
+      // termina sola: pasa a la playlist normal sin quedar en loop
+      inFarewell = false;
+      loadNormal(normalIndex);
+      play();
+    } else if (repeatOne) {
+      loadNormal(normalIndex);
       play();
     } else {
       goToNext(true);
@@ -156,7 +200,7 @@
     repeatBtn.setAttribute('aria-label', repeatOne ? 'Repetir esta canción' : 'Repetir playlist');
   });
 
-  loadTrack(0);
+  loadNormal(0);
 
   // Por defecto suena apenas hay un primer gesto en la página (los
   // navegadores bloquean audio con sonido sin interacción previa), salvo que
@@ -166,12 +210,6 @@
     storedPref = localStorage.getItem(SOUND_KEY);
   } catch {}
   const wantsSound = storedPref !== 'off';
-
-  playBtn?.addEventListener('click', () => {
-    try {
-      localStorage.setItem(SOUND_KEY, isPlaying ? 'on' : 'off');
-    } catch {}
-  });
 
   if (wantsSound) {
     document.addEventListener(
