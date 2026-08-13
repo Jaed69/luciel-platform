@@ -116,7 +116,14 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
               <div class="lemon-frame-cell" style={`animation-delay:${(i * 0.08).toFixed(2)}s`}>
                 <div class="lemon-frame" style={`--rot:${rotations[i % 5]}deg; --tape:${tapes[i % 3]}`}>
                   <div class="lemon-frame-tape"></div>
-                  <div class="lemon-frame-img"><img src={p.src} alt={p.caption} loading="lazy" /></div>
+                  <div class="lemon-frame-img">
+                    <img src={p.src} alt={p.caption} loading="lazy" />
+                    {p.video && (
+                      <button class="lemon-screen-play" data-frame-video={p.video} type="button" aria-label="Reproducir video">
+                        <span class="tri"></span>
+                      </button>
+                    )}
+                  </div>
                   <div class="lemon-frame-lace"></div>
                   <div class="lemon-frame-caption">{p.caption}</div>
                 </div>
@@ -479,6 +486,21 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
     btn.addEventListener('click', () => {
       document.querySelectorAll('[data-clip]').forEach((b) => b.classList.toggle('is-active', b === btn));
       resetScreen(btn.dataset.youtubeId ?? '', btn.dataset.title ?? '', btn.dataset.note ?? '');
+    });
+  });
+
+  // ---------- capítulo I: marcos de video (poster + play inline) ----------
+  document.querySelectorAll<HTMLButtonElement>('[data-frame-video]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const frame = btn.closest('.lemon-frame-img');
+      const src = btn.dataset.frameVideo;
+      if (!frame || !src) return;
+      const video = document.createElement('video');
+      video.src = src;
+      video.controls = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      frame.replaceChildren(video);
     });
   });
 </script>
