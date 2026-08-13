@@ -1,13 +1,13 @@
 ---
 import Layout from '../layouts/Layout.astro';
 
-// El "video sorpresa" del primer acto: rickroll adaptado a medida.
-const RICKROLL_ID = 'sBCjx7KoqdM';
-const POSTER = `https://i.ytimg.com/vi/${RICKROLL_ID}/hqdefault.jpg`;
+// El "video sorpresa" del primer acto: autohospedado (YouTube lo bloqueaba por Content ID).
+const VIDEO_SRC = '/assets/videos/regalo.mp4';
+const POSTER = '/assets/regalo-poster.png';
 ---
 
 <Layout title="lemon.luciel.dev — el show de Lemondrea" description="Un regalo de cumpleaños.">
-  <div class="lemon-stage" id="stage" data-youtube-id={RICKROLL_ID}>
+  <div class="lemon-stage" id="stage" data-video-src={VIDEO_SRC}>
     <div class="lemon-stage-bulbs" id="bulbs" aria-hidden="true"></div>
 
     <div class="lemon-stage-inner">
@@ -104,12 +104,13 @@ const POSTER = `https://i.ytimg.com/vi/${RICKROLL_ID}/hqdefault.jpg`;
     setTimeout(() => {
       // el chiste: el "video sorpresa" arranca de verdad
       const frame = document.getElementById('rickroll-frame')!;
-      const youtubeId = stage.dataset.youtubeId;
-      const iframe = document.createElement('iframe');
-      iframe.src = `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1`;
-      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-      iframe.title = 'Tu regalo de cumpleaños';
-      frame.replaceChildren(iframe);
+      const videoSrc = stage.dataset.videoSrc!;
+      const video = document.createElement('video');
+      video.src = videoSrc;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.title = 'Tu regalo de cumpleaños';
+      frame.replaceChildren(video);
       show('rickroll');
       setTimeout(() => {
         frame.replaceChildren(); // corta el audio al pasar a la revelación

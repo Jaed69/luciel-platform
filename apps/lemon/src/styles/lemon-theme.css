@@ -147,7 +147,7 @@
   border: 3px solid var(--lemon-gold-bright);
   background: #111;
 }
-.lemon-poster img, .lemon-poster iframe { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
+.lemon-poster img, .lemon-poster iframe, .lemon-poster video { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; }
 .lemon-poster-play {
   position: absolute;
   right: 14px;
