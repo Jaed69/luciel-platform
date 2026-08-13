@@ -221,4 +221,22 @@
     document.addEventListener('pointerdown', startOnFirstGesture, { once: true });
     document.addEventListener('keydown', startOnFirstGesture, { once: true });
   }
+
+  // ---------- silenciar mientras se reproduce un video ----------
+  // Cualquier reproductor de video del libro (clips de cine, videos subidos a
+  // Momentos) dispara estos eventos globales — no hay acoplamiento directo
+  // entre componentes.
+  let duckedByVideo = false;
+  window.addEventListener('lemon:video-start', () => {
+    if (isPlaying) {
+      duckedByVideo = true;
+      pause();
+    }
+  });
+  window.addEventListener('lemon:video-end', () => {
+    if (duckedByVideo) {
+      duckedByVideo = false;
+      play();
+    }
+  });
 </script>

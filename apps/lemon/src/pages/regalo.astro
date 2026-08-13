@@ -308,6 +308,9 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
     sheets.forEach((s) => {
       const isCurrent = Number(s.dataset.sheet) === page;
       s.hidden = !isCurrent;
+      // al salir de una hoja, pausar cualquier video que haya quedado sonando
+      // (el 'pause' del video dispara la reanudación de la música de fondo)
+      if (!isCurrent) s.querySelectorAll('video').forEach((v) => { if (!v.paused) v.pause(); });
       if (isCurrent && dir) {
         const chapter = s.querySelector<HTMLElement>('.lemon-chapter');
         if (chapter) {
@@ -450,8 +453,30 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
   const screenNote = document.getElementById('screen-note');
   const screenPlay = document.getElementById('screen-play');
 
+  // API de YouTube (solo se carga la primera vez que alguien reproduce un clip)
+  // — permite detectar cuándo termina el video para reanudar la música.
+  let ytApiPromise: Promise<any> | null = null;
+  function loadYouTubeApi(): Promise<any> {
+    const w = window as any;
+    if (w.YT?.Player) return Promise.resolve(w.YT);
+    if (!ytApiPromise) {
+      ytApiPromise = new Promise((resolve) => {
+        const prev = w.onYouTubeIframeAPIReady;
+        w.onYouTubeIframeAPIReady = () => {
+          prev?.();
+          resolve(w.YT);
+        };
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+      });
+    }
+    return ytApiPromise;
+  }
+
   function resetScreen(youtubeId: string, title: string, note: string) {
     if (!screen) return;
+    if (screen.querySelector('iframe')) window.dispatchEvent(new CustomEvent('lemon:video-end'));
     screen.dataset.youtubeId = youtubeId;
     screen.replaceChildren();
     const img = document.createElement('img');
@@ -475,11 +500,21 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
     const youtubeId = screen.dataset.youtubeId;
     if (!youtubeId) return;
     const iframe = document.createElement('iframe');
-    iframe.src = `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1`;
+    iframe.src = `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&enablejsapi=1`;
     iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
     iframe.allowFullscreen = true;
     iframe.title = screenTitle?.textContent ?? 'clip';
     screen.replaceChildren(iframe);
+    window.dispatchEvent(new CustomEvent('lemon:video-start'));
+    loadYouTubeApi().then((YT) => {
+      new YT.Player(iframe, {
+        events: {
+          onStateChange: (e: any) => {
+            if (e.data === YT.PlayerState.ENDED) window.dispatchEvent(new CustomEvent('lemon:video-end'));
+          },
+        },
+      });
+    });
   }
 
   screenPlay?.addEventListener('click', playScreen);
@@ -505,6 +540,9 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
     video.controls = true;
     video.autoplay = true;
     video.playsInline = true;
+    video.addEventListener('play', () => window.dispatchEvent(new CustomEvent('lemon:video-start')));
+    video.addEventListener('pause', () => window.dispatchEvent(new CustomEvent('lemon:video-end')));
+    video.addEventListener('ended', () => window.dispatchEvent(new CustomEvent('lemon:video-end')));
     frame.replaceChildren(video);
   });
 </script>
