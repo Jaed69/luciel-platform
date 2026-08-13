@@ -16,7 +16,7 @@ export interface Message {
   text: string;
   approved: boolean; // solo se muestran approved:true en el sitio publicado
   role?: string; // capítulo II: "rol" de la ficha de perfil (ej. "coro / voz aguda")
-  avatar?: string; // capítulo II: ruta bajo /assets/avatars/ — sin foto se muestra la inicial
+  avatar?: string; // fuerza un avatar puntual (ruta bajo /assets/avatars/); si no se pone, se asigna por ciclo desde data/avatars.ts
 }
 
 export const artAlbums: Album[] = [

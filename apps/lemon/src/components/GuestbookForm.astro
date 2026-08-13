@@ -1,5 +1,6 @@
 ---
 import type { Message } from '../data/content';
+import { avatars } from '../data/avatars';
 
 interface Props {
   approvedMessages: Message[];
@@ -8,21 +9,15 @@ const { approvedMessages } = Astro.props;
 
 const FORM_ENDPOINT = 'https://formspree.io/f/xrenqgel';
 
-// Emblemas del "canal": glifo + tono de neón. El elegido tiñe el formulario
-// y viaja con el mensaje (campo emblem) para reproducirlo al aprobar.
-const emblems = [
-  { glyph: '★', hue: 200 },
-  { glyph: '♡', hue: 340 },
-  { glyph: '✦', hue: 280 },
-  { glyph: '☾', hue: 95 },
-  { glyph: '✿', hue: 150 },
-  { glyph: '☂', hue: 40 },
-];
+// Emblemas del "canal": mismo set de avatares que las fichas de perfil del
+// capítulo II (data/avatars.ts). El elegido tiñe el formulario y viaja con el
+// mensaje (campo emblem, con la ruta del avatar) para reproducirlo al aprobar.
+const emblems = avatars;
 
 const hueFor = (i: number) => emblems[i % emblems.length].hue;
 const cards = approvedMessages.map((m, i) => ({
   ...m,
-  glyph: emblems[i % emblems.length].glyph,
+  avatarSrc: m.avatar ?? emblems[i % emblems.length].src,
   accent: `oklch(0.82 0.14 ${hueFor(i)})`,
   glow: `oklch(0.82 0.14 ${hueFor(i)} / .3)`,
   soft: `oklch(0.82 0.14 ${hueFor(i)} / .12)`,
@@ -33,7 +28,7 @@ const cards = approvedMessages.map((m, i) => ({
   <div class="lemon-guest-list" id="guestbook-notes">
     {cards.map((m) => (
       <div class="lemon-guest-card" style={`--accent:${m.accent}; --glow:${m.glow}; --soft:${m.soft}`}>
-        <div class="lemon-guest-glyph">{m.glyph}</div>
+        <div class="lemon-guest-glyph"><img src={m.avatarSrc} alt="" loading="lazy" /></div>
         <div class="lemon-guest-body">
           <div class="lemon-guest-name-row"><div class="lemon-guest-name">{m.name}</div></div>
           <div class="lemon-guest-msg">{m.text}</div>
@@ -50,19 +45,19 @@ const cards = approvedMessages.map((m, i) => ({
           class={`lemon-emblem ${i === 0 ? 'is-active' : ''}`}
           type="button"
           data-emblem={i}
-          data-glyph={e.glyph}
+          data-src={e.src}
           data-hue={e.hue}
           style={`--c:oklch(0.82 0.14 ${e.hue}); --c-soft:oklch(0.82 0.14 ${e.hue} / .2); --c-glow:oklch(0.82 0.14 ${e.hue} / .5)`}
-          aria-label={`Emblema ${e.glyph}`}
+          aria-label={`Avatar ${i + 1}`}
         >
-          {e.glyph}
+          <img src={e.src} alt="" />
         </button>
       ))}
     </div>
-    <input type="hidden" name="emblem" id="gb-emblem" value={emblems[0].glyph} />
+    <input type="hidden" name="emblem" id="gb-emblem" value={emblems[0].src} />
     <input id="gb-name" name="name" placeholder="tu nombre" required autocomplete="name" />
     <textarea id="gb-message" name="message" placeholder="tu deseo para Lemondrea" rows="4" required></textarea>
-    <button class="lemon-guest-submit" type="submit">ENVIAR SEÑAL <span id="gb-submit-glyph">{emblems[0].glyph}</span></button>
+    <button class="lemon-guest-submit" type="submit">ENVIAR SEÑAL <span id="gb-submit-glyph" class="lemon-submit-avatar"><img src={emblems[0].src} alt="" /></span></button>
     <div id="guestbook-status" class="lemon-guest-status" role="status"></div>
     <div class="lemon-guest-note">Tu mensaje llega por correo al dueño del sitio y se publica tras revisarlo.</div>
   </form>
@@ -72,7 +67,7 @@ const cards = approvedMessages.map((m, i) => ({
   interface EchoMessage {
     name: string;
     text: string;
-    glyph: string;
+    avatarSrc: string;
     hue: number;
     submittedAt: number;
   }
@@ -107,7 +102,11 @@ const cards = approvedMessages.map((m, i) => ({
 
     const glyph = document.createElement('div');
     glyph.className = 'lemon-guest-glyph';
-    glyph.textContent = m.glyph || '★';
+    const avatarImg = document.createElement('img');
+    avatarImg.src = m.avatarSrc;
+    avatarImg.alt = '';
+    avatarImg.loading = 'lazy';
+    glyph.appendChild(avatarImg);
 
     const body = document.createElement('div');
     body.className = 'lemon-guest-body';
@@ -141,10 +140,16 @@ const cards = approvedMessages.map((m, i) => ({
   document.querySelectorAll<HTMLElement>('[data-emblem]').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('[data-emblem]').forEach((b) => b.classList.toggle('is-active', b === btn));
-      const glyph = btn.dataset.glyph ?? '★';
+      const src = btn.dataset.src ?? '';
       selectedHue = Number(btn.dataset.hue ?? 200);
-      if (emblemInput) emblemInput.value = glyph;
-      if (submitGlyph) submitGlyph.textContent = glyph;
+      if (emblemInput) emblemInput.value = src;
+      if (submitGlyph) submitGlyph.innerHTML = '';
+      if (submitGlyph) {
+        const img = document.createElement('img');
+        img.src = src;
+        img.alt = '';
+        submitGlyph.appendChild(img);
+      }
       // el color elegido tiñe el formulario entero
       form?.style.setProperty('--accent', `oklch(0.82 0.14 ${selectedHue})`);
     });
@@ -178,7 +183,7 @@ const cards = approvedMessages.map((m, i) => ({
       const echo: EchoMessage = {
         name: nameInput?.value.trim() || 'Anónimo',
         text: messageInput?.value.trim() || '',
-        glyph: emblemInput?.value || '★',
+        avatarSrc: emblemInput?.value || '/assets/avatars/avatar-01.png',
         hue: selectedHue,
         submittedAt: Date.now(),
       };
@@ -186,7 +191,7 @@ const cards = approvedMessages.map((m, i) => ({
       saveEchoes([...loadEchoes(), echo]);
 
       form.reset();
-      if (emblemInput) emblemInput.value = echo.glyph; // reset() borra el hidden; el emblema elegido se conserva
+      if (emblemInput) emblemInput.value = echo.avatarSrc; // reset() borra el hidden; el avatar elegido se conserva
       statusEl.textContent = 'Señal enviada. Tu mensaje quedará pendiente de revisión.';
       statusEl.classList.add('is-success');
     } catch {
