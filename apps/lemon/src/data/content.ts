@@ -53,9 +53,12 @@ export const guestbookMessages: Message[] = [];
 // BORRADOR — reemplaza el texto y la firma por los tuyos antes de enviar el regalo.
 export const dedication = {
   lines: [
-    'Este libro se hizo para guardar un año entero de tu arte, de tus ideas y de la gente que te quiere.',
-    'Que cada página te recuerde lo que ya lograste, y que el capítulo que viene lo escribas con la misma luz de siempre.',
-    'Feliz cumpleaños, Lemondrea.',
+    '¡Hola Andrea! ^-^',
+    'Traté de hacer lo mejor que pude con el tiempo que tenía, jajaja. En este libro, en la presentación, en el regalo... puse todo lo que pude. Sé que no soy artista ni fotógrafo, pero algo de computadoras sí sé.',
+    'Espero que cada página te recuerde y te alegre los días — ojalá hasta suene tu canción favorita, xdxdxd.',
+    'Sos de esa pigmentación de noche taciturna e inexplorada que, en palabras simples, es un evento maravilloso. Me alegro de haberte conocido: hiciste mis días más irónicamente coloridos.',
+    '¿Para cuándo el Roblox o el mundo de Minecraft? jajaja',
+    'Feliz cumpleaños, Andrea.',
   ],
-  signature: 'Con cariño, tu amigo', // ← firma aquí
+  signature: 'Con cariño, Luciel',
 };

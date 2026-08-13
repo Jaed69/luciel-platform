@@ -1,0 +1,224 @@
+---
+// Última celda del grid de capítulo I: deja que cualquier visitante sume una
+// foto o video propio al álbum "Momentos". Debe renderizarse como hijo
+// directo de #lemon-frames (mismo grid que las fotos curadas) para que el
+// layout no se rompa.
+---
+
+<div class="lemon-frame-cell" id="momentos-add-cell">
+  <div class="lemon-frame lemon-frame--add">
+    <div class="lemon-frame-img" id="momentos-add-slot">
+      <button class="lemon-frame-add-btn" id="momentos-add-btn" type="button" aria-label="Agregar foto o video">
+        <span class="plus">+</span>
+      </button>
+    </div>
+    <div class="lemon-frame-caption">Agregar foto o video</div>
+  </div>
+</div>
+
+<template id="momentos-add-form-tpl">
+  <form class="lemon-momentos-form">
+    <input class="lemon-momentos-file" type="file" accept="image/*,video/mp4,video/quicktime" required />
+    <input class="lemon-momentos-caption" type="text" placeholder="descripción (opcional)" maxlength="120" />
+    <button class="lemon-momentos-submit" type="submit">Subir</button>
+    <div class="lemon-momentos-status" role="status"></div>
+  </form>
+</template>
+
+<script>
+  import {
+    MOMENTOS_REST_URL,
+    MOMENTOS_STORAGE_UPLOAD_URL,
+    MOMENTOS_STORAGE_PUBLIC_URL,
+    SUPABASE_ANON_KEY,
+  } from '../data/supabase';
+
+  const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB — coincide con el límite recomendado del bucket
+  const TAPES = ['oklch(0.28 0.11 20)', 'oklch(0.9 0.01 320)', 'oklch(0.22 0.02 320)'];
+  const ROTATIONS = [-2.2, 1.6, -1.1, 2.4, -1.8];
+
+  interface MomentoRow {
+    id: number;
+    src: string;
+    video: string | null;
+    caption: string;
+    created_at: string;
+  }
+
+  const supabaseHeaders = {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  };
+
+  const framesEl = document.getElementById('lemon-frames');
+  const addCell = document.getElementById('momentos-add-cell');
+  const addSlot = document.getElementById('momentos-add-slot');
+  const addBtn = document.getElementById('momentos-add-btn');
+  const formTpl = document.getElementById('momentos-add-form-tpl') as HTMLTemplateElement | null;
+
+  let seq = 0;
+
+  function buildFrameCell(row: MomentoRow): HTMLElement {
+    const i = seq++;
+    const cell = document.createElement('div');
+    cell.className = 'lemon-frame-cell';
+    cell.style.animationDelay = `${(i * 0.08).toFixed(2)}s`;
+
+    const frame = document.createElement('div');
+    frame.className = 'lemon-frame';
+    frame.style.setProperty('--rot', `${ROTATIONS[i % ROTATIONS.length]}deg`);
+    frame.style.setProperty('--tape', TAPES[i % TAPES.length]);
+
+    const tape = document.createElement('div');
+    tape.className = 'lemon-frame-tape';
+
+    const imgWrap = document.createElement('div');
+    imgWrap.className = 'lemon-frame-img';
+    const img = document.createElement('img');
+    img.src = row.src;
+    img.alt = row.caption;
+    img.loading = 'lazy';
+    imgWrap.appendChild(img);
+    if (row.video) {
+      const playBtn = document.createElement('button');
+      playBtn.className = 'lemon-screen-play';
+      playBtn.type = 'button';
+      playBtn.dataset.frameVideo = row.video;
+      playBtn.setAttribute('aria-label', 'Reproducir video');
+      playBtn.innerHTML = '<span class="tri"></span>';
+      imgWrap.appendChild(playBtn);
+    }
+
+    const lace = document.createElement('div');
+    lace.className = 'lemon-frame-lace';
+
+    const caption = document.createElement('div');
+    caption.className = 'lemon-frame-caption';
+    caption.textContent = row.caption;
+
+    frame.append(tape, imgWrap, lace, caption);
+    cell.appendChild(frame);
+    return cell;
+  }
+
+  function insertRow(row: MomentoRow) {
+    if (!framesEl || !addCell) return;
+    framesEl.insertBefore(buildFrameCell(row), addCell);
+  }
+
+  // ---------- carga inicial: fotos/videos que ya subieron otros visitantes ----------
+  (async () => {
+    try {
+      const res = await fetch(`${MOMENTOS_REST_URL}?select=*&order=created_at.asc`, { headers: supabaseHeaders });
+      if (!res.ok) return;
+      const rows = (await res.json()) as MomentoRow[];
+      rows.forEach(insertRow);
+    } catch {
+      // sin conexión a Supabase — el álbum sigue mostrando lo curado a mano
+    }
+  })();
+
+  // ---------- capturar un frame del video como poster (sin backend) ----------
+  function extractPosterBlob(file: File): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'auto';
+      video.muted = true;
+      video.playsInline = true;
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      video.addEventListener('loadeddata', () => {
+        video.currentTime = Math.min(0.3, (video.duration || 1) / 4);
+      });
+      video.addEventListener('seeked', () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 480;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        URL.revokeObjectURL(url);
+        if (!ctx) return reject(new Error('sin contexto de canvas'));
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('no se pudo generar el poster'))), 'image/jpeg', 0.85);
+      });
+      video.addEventListener('error', () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('no se pudo leer el video'));
+      });
+    });
+  }
+
+  function extFor(file: File): string {
+    const fromName = file.name.split('.').pop();
+    if (fromName && fromName.length <= 5) return fromName.toLowerCase();
+    return file.type.split('/')[1] || 'bin';
+  }
+
+  async function uploadToStorage(blob: Blob, path: string, contentType: string): Promise<string> {
+    const res = await fetch(`${MOMENTOS_STORAGE_UPLOAD_URL}/${path}`, {
+      method: 'POST',
+      headers: { ...supabaseHeaders, 'Content-Type': contentType },
+      body: blob,
+    });
+    if (!res.ok) throw new Error('upload failed');
+    return `${MOMENTOS_STORAGE_PUBLIC_URL}/${path}`;
+  }
+
+  // ---------- abrir el formulario dentro del mismo marco ----------
+  addBtn?.addEventListener('click', () => {
+    if (!addSlot || !formTpl) return;
+    addSlot.replaceChildren(formTpl.content.cloneNode(true));
+
+    const form = addSlot.querySelector('.lemon-momentos-form') as HTMLFormElement;
+    const fileInput = form.querySelector('.lemon-momentos-file') as HTMLInputElement;
+    const captionInput = form.querySelector('.lemon-momentos-caption') as HTMLInputElement;
+    const submitBtn = form.querySelector('.lemon-momentos-submit') as HTMLButtonElement;
+    const statusEl = form.querySelector('.lemon-momentos-status') as HTMLElement;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      if (file.size > MAX_FILE_BYTES) {
+        statusEl.textContent = 'El archivo pesa más de 20MB — probá con uno más liviano.';
+        statusEl.classList.add('is-error');
+        return;
+      }
+
+      statusEl.textContent = 'Subiendo…';
+      statusEl.classList.remove('is-error');
+      submitBtn.disabled = true;
+
+      try {
+        const isVideo = file.type.startsWith('video/');
+        const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        let src: string;
+        let video: string | null = null;
+
+        if (isVideo) {
+          const posterBlob = await extractPosterBlob(file);
+          [src, video] = await Promise.all([
+            uploadToStorage(posterBlob, `${stamp}-poster.jpg`, 'image/jpeg'),
+            uploadToStorage(file, `${stamp}.${extFor(file)}`, file.type || 'video/mp4'),
+          ]);
+        } else {
+          src = await uploadToStorage(file, `${stamp}.${extFor(file)}`, file.type || 'image/jpeg');
+        }
+
+        const response = await fetch(MOMENTOS_REST_URL, {
+          method: 'POST',
+          headers: { ...supabaseHeaders, 'Content-Type': 'application/json', Prefer: 'return=representation' },
+          body: JSON.stringify({ src, video, caption: captionInput.value.trim() }),
+        });
+        if (!response.ok) throw new Error('insert failed');
+        const [row] = (await response.json()) as MomentoRow[];
+        if (row) insertRow(row);
+
+        addSlot?.replaceChildren(addBtn!);
+      } catch {
+        statusEl.textContent = 'No se pudo subir. Probá de nuevo en un momento.';
+        statusEl.classList.add('is-error');
+        submitBtn.disabled = false;
+      }
+    });
+  });
+</script>

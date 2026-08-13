@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import SoundToggle from '../components/SoundToggle.astro';
 import FullscreenToggle from '../components/FullscreenToggle.astro';
 import GuestbookForm from '../components/GuestbookForm.astro';
+import MomentosUploader from '../components/MomentosUploader.astro';
 import { sections as videoSections } from '../data/videos';
 import { artAlbums, birthdayWishes, guestbookMessages, dedication } from '../data/content';
 import { avatars } from '../data/avatars';
@@ -106,12 +107,12 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
           <div class="lemon-orn lemon-orn--cross">†</div>
           <div class="lemon-orn lemon-orn--fleuron">❦</div>
           <div class="lemon-atelier-head">
-            <div class="lemon-atelier-title">El taller de Lemon</div>
+            <div class="lemon-atelier-title">Construyendo by Lemon</div>
             <div class="lemon-atelier-tag">atelier · mmxxvi</div>
           </div>
           <div class="lemon-atelier-rule"></div>
-          <p class="lemon-atelier-intro">Obras y proceso creativo del año, prendidas con cinta y encaje sobre papel negro.</p>
-          <div class="lemon-frames">
+          <p class="lemon-atelier-intro">Mentos y momentos en los que me divierto junto a Andrea — tomo fotos, aunque debería tomar más, jaja.</p>
+          <div class="lemon-frames" id="lemon-frames">
             {photos.map((p, i) => (
               <div class="lemon-frame-cell" style={`animation-delay:${(i * 0.08).toFixed(2)}s`}>
                 <div class="lemon-frame" style={`--rot:${rotations[i % 5]}deg; --tape:${tapes[i % 3]}`}>
@@ -129,6 +130,7 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
                 </div>
               </div>
             ))}
+            <MomentosUploader />
           </div>
         </div>
         <div class="lemon-page-nav"><button data-nav="prev" disabled>‹</button><button data-nav="next">›</button></div>
@@ -141,7 +143,7 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
         <div class="lemon-chapter">
           <div class="lemon-signal-kicker"><i></i>TRANSMISIÓN ENTRANTE · <span id="profile-count">{String(wishes.length).padStart(2, '0')}</span> PERFILES</div>
           <div class="lemon-signal-title">BIRTHDAY WISHES</div>
-          <p class="lemon-signal-intro">Cada invitado subió su mensaje al escenario. Selecciona un perfil para leerlo.</p>
+          <p class="lemon-signal-intro">Para que veas el amor que recibes de cada personita que te quiere.</p>
           <div class="lemon-profiles" id="profiles">
             {wishes.map((w) => (
               <div class="lemon-profile-cell" style={`animation-delay:${w.delay}s`}>
@@ -188,7 +190,7 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
               <div class="lemon-cine-title">video memories</div>
               <div class="lemon-cine-tag">＊ ｍｅｍｅｓ ＆ ｇａｔｏｓ ＊</div>
             </div>
-            <p class="lemon-cine-intro">Elige un clip de la bobina. Palomitas opcionales, llorar permitido.</p>
+            <p class="lemon-cine-intro">Ahora que los veo me da tremenda vergüenza, así que... mira estos tú sola, plis. Ahhhh, T.T</p>
             <div class="lemon-cine-grid">
               <div class="lemon-clip-list" id="clip-list">
                 {clips.map((c, i) => (
@@ -249,7 +251,7 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
           <div class="lemon-orn lemon-orn--cross">†</div>
           <div class="lemon-orn lemon-orn--fleuron">❦</div>
           <div class="lemon-atelier-head">
-            <div class="lemon-atelier-title">Hasta el próximo capítulo</div>
+            <div class="lemon-atelier-title">Hasta que otra vuelva al sol</div>
           </div>
           <div class="lemon-atelier-rule"></div>
           <div class="lemon-farewell">
@@ -490,17 +492,19 @@ const approvedGuestbook = guestbookMessages.filter((m) => m.approved);
   });
 
   // ---------- capítulo I: marcos de video (poster + play inline) ----------
-  document.querySelectorAll<HTMLButtonElement>('[data-frame-video]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const frame = btn.closest('.lemon-frame-img');
-      const src = btn.dataset.frameVideo;
-      if (!frame || !src) return;
-      const video = document.createElement('video');
-      video.src = src;
-      video.controls = true;
-      video.autoplay = true;
-      video.playsInline = true;
-      frame.replaceChildren(video);
-    });
+  // delegado sobre el grid (no querySelectorAll directo) porque MomentosUploader
+  // agrega marcos nuevos dinámicamente después de la carga inicial de la página
+  document.getElementById('lemon-frames')?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-frame-video]');
+    if (!btn) return;
+    const frame = btn.closest('.lemon-frame-img');
+    const src = btn.dataset.frameVideo;
+    if (!frame || !src) return;
+    const video = document.createElement('video');
+    video.src = src;
+    video.controls = true;
+    video.autoplay = true;
+    video.playsInline = true;
+    frame.replaceChildren(video);
   });
 </script>
