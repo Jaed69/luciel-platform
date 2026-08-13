@@ -8,7 +8,7 @@
   </div>
 
   <div class="lemon-player-controls">
-    <button class="lemon-player-btn" id="lemon-shuffle" type="button" aria-label="Aleatorio" aria-pressed="false">
+    <button class="lemon-player-btn is-active" id="lemon-shuffle" type="button" aria-label="Aleatorio" aria-pressed="true">
       <svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
     </button>
     <button class="lemon-player-btn" id="lemon-prev" type="button" aria-label="Canción anterior">
@@ -52,7 +52,7 @@
 
   let isPlaying = false;
   let normalIndex = 0;
-  let shuffle = false;
+  let shuffle = true;
   let repeatOne = false;
   let seeking = false;
   let inFarewell = false;
@@ -203,7 +203,7 @@
     repeatBtn.setAttribute('aria-label', repeatOne ? 'Repetir esta canción' : 'Repetir playlist');
   });
 
-  loadNormal(0);
+  loadNormal(Math.floor(Math.random() * playlist.length));
 
   // Por defecto suena apenas hay un primer gesto en la página (los
   // navegadores bloquean audio con sonido sin interacción previa), salvo que

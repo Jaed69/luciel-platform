@@ -19,11 +19,37 @@ export const sections: Section[] = [
     title: 'Bienvenida',
     videos: [
       {
-        id: 'ejemplo-1',
-        title: 'Video de ejemplo — reemplázame',
-        youtubeId: 'dQw4w9WgXcQ',
-        date: '2026-07-15',
-        description: 'Reemplaza esta entrada con el primer video real.',
+        id: 'recopilado-1',
+        title: 'Creación de sticker',
+        youtubeId: 'aBYLe2C4T9I',
+        date: '2026-07-30',
+      },
+      {
+        id: 'recopilado-2',
+        title: 'Creación de sticker parte 2',
+        youtubeId: 'p6bEW32McRE',
+        date: '2026-07-30',
+      },
+      {
+        id: 'recopilado-3',
+        title: 'Graba bien yoyo!! XD',
+        youtubeId: 'BjI_XiacqWM',
+        date: '2026-07-30',
+      },
+      {
+        id: 'recopilado-4',
+        title: 'Buenas',
+        youtubeId: 'lR-ufHiSpsA',
+        date: '2026-07-30',
+      },
+      {
+        // Reemplazá youtubeId por el video real cuando lo tengas — el resto
+        // del clip queda listo.
+        id: 'especial',
+        title: 'Feliz cumpleaños',
+        youtubeId: 'PENDIENTE',
+        date: '2026-08-13',
+        description: 'Mensaje especial de cumpleaños.',
       },
     ],
   },
