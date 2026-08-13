@@ -1,82 +1,55 @@
----
-// Ambiente sonoro sintetizado (Web Audio API) — placeholder audible con un
-// mood por capítulo. Cuando exista una pista real con licencia, reemplaza
-// scheduleAmbient por un <audio loop> por capítulo manteniendo el mismo botón.
----
-
 <button class="lemon-sound-btn" id="lemon-sound-btn" type="button">
   <span class="lemon-sound-dot" id="lemon-sound-dot"></span>
   <span id="lemon-sound-label">sonido: apagado</span>
 </button>
+<div class="lemon-music-panel" id="lemon-music-panel" hidden>
+  <span class="lemon-music-track" id="lemon-music-track"></span>
+  <button class="lemon-music-next" id="lemon-music-next" type="button" aria-label="Siguiente canción">›</button>
+</div>
+<audio id="lemon-bg-audio" preload="none"></audio>
 
 <script>
-  const moods: Record<string, { notes: number[]; noteDur: number; gap: number; type: OscillatorType }> = {
-    art: { notes: [261.6, 329.6, 392.0, 440.0], noteDur: 1.4, gap: 1.5, type: 'sine' },
-    messages: { notes: [392.0, 440.0, 523.3, 587.3], noteDur: 0.9, gap: 1.0, type: 'triangle' },
-    videos: { notes: [130.8, 164.8, 196.0, 146.8], noteDur: 2.6, gap: 2.7, type: 'sine' },
-    guestbook: { notes: [349.2, 392.0, 440.0, 523.3, 587.3], noteDur: 0.6, gap: 0.7, type: 'triangle' },
-    farewell: { notes: [220.0, 261.6, 329.6, 293.7], noteDur: 2.0, gap: 2.2, type: 'sine' },
-  };
+  import { playlist } from '../data/music';
 
   const SOUND_KEY = 'lemon.sound';
 
-  let audioCtx: AudioContext | null = null;
-  let isSoundOn = false;
-  let pendingTimeouts: number[] = [];
-  let currentSection = 'art';
-
-  function ensureCtx() {
-    if (!audioCtx) audioCtx = new AudioContext();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-  }
-  function stopAmbient() {
-    pendingTimeouts.forEach((id) => clearTimeout(id));
-    pendingTimeouts = [];
-  }
-  function playNote(freq: number, duration: number, type: OscillatorType) {
-    if (!audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = type;
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, t0);
-    gain.gain.linearRampToValueAtTime(0.05, t0 + 0.15);
-    gain.gain.linearRampToValueAtTime(0, t0 + duration);
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.start(t0);
-    osc.stop(t0 + duration + 0.05);
-  }
-  function scheduleAmbient(key: string) {
-    const mood = moods[key];
-    if (!mood) return;
-    let i = 0;
-    function step() {
-      if (!isSoundOn) return;
-      playNote(mood.notes[i % mood.notes.length], mood.noteDur, mood.type);
-      i++;
-      pendingTimeouts.push(window.setTimeout(step, mood.gap * 1000));
-    }
-    step();
-  }
-
+  const audio = document.getElementById('lemon-bg-audio') as HTMLAudioElement | null;
   const btn = document.getElementById('lemon-sound-btn');
   const dot = document.getElementById('lemon-sound-dot');
   const label = document.getElementById('lemon-sound-label');
+  const panel = document.getElementById('lemon-music-panel');
+  const trackLabel = document.getElementById('lemon-music-track');
+  const nextBtn = document.getElementById('lemon-music-next');
+
+  let isSoundOn = false;
+  let trackIndex = 0;
+
+  function loadTrack(i: number) {
+    if (!audio || !playlist.length) return;
+    trackIndex = ((i % playlist.length) + playlist.length) % playlist.length;
+    const track = playlist[trackIndex];
+    audio.src = track.src;
+    if (trackLabel) trackLabel.textContent = `${track.title} — ${track.artist}`;
+  }
+
+  function playCurrent() {
+    if (!audio) return;
+    audio.play().catch(() => {}); // el navegador puede seguir bloqueando sin gesto — se reintenta en la siguiente interacción
+  }
 
   function setSound(on: boolean, persist = true) {
     isSoundOn = on;
     if (on) {
-      ensureCtx();
-      stopAmbient();
-      scheduleAmbient(currentSection);
+      if (!audio?.src) loadTrack(trackIndex);
+      playCurrent();
       dot?.classList.add('is-on');
       if (label) label.textContent = 'sonido: activado';
+      if (panel) panel.hidden = false;
     } else {
-      stopAmbient();
+      audio?.pause();
       dot?.classList.remove('is-on');
       if (label) label.textContent = 'sonido: apagado';
+      if (panel) panel.hidden = true;
     }
     if (persist) {
       try {
@@ -85,30 +58,44 @@
     }
   }
 
+  audio?.addEventListener('ended', () => {
+    loadTrack(trackIndex + 1);
+    playCurrent();
+  });
+
+  nextBtn?.addEventListener('click', () => {
+    loadTrack(trackIndex + 1);
+    if (isSoundOn) playCurrent();
+  });
+
   btn?.addEventListener('click', () => setSound(!isSoundOn));
 
-  // Preferencia recordada: el AudioContext necesita un gesto del usuario,
-  // así que se reactiva en la primera interacción de la visita.
-  let wantsSound = false;
+  loadTrack(0);
+
+  // Preferencia recordada: por defecto suena solo al abrir el libro (gesto de
+  // clic), salvo que el visitante lo haya apagado antes explícitamente.
+  let storedPref: string | null = null;
   try {
-    wantsSound = localStorage.getItem(SOUND_KEY) === 'on';
+    storedPref = localStorage.getItem(SOUND_KEY);
   } catch {}
-  if (wantsSound) {
-    if (label) label.textContent = 'sonido: toca para activar';
-    const resume = () => {
-      if (!isSoundOn) setSound(true, false);
-    };
-    document.addEventListener('pointerdown', resume, { once: true });
+  const wantsSound = storedPref !== 'off';
+
+  function tryAutoplay() {
+    if (!wantsSound || isSoundOn) return;
+    setSound(true, false);
   }
 
-  // cambia el mood al cambiar de capítulo (delegado, sin acoplarse al libro)
+  // El libro puede abrirse por clic (portada nueva) o ya venir abierto en una
+  // página guardada (visita repetida) — sin gesto, el navegador bloquea el
+  // audio hasta la primera interacción.
   document.addEventListener('click', (e) => {
-    const target = (e.target as HTMLElement)?.closest('[data-section-btn]') as HTMLElement | null;
-    if (!target) return;
-    currentSection = target.dataset.sectionBtn ?? 'art';
-    if (isSoundOn) {
-      stopAmbient();
-      scheduleAmbient(currentSection);
-    }
+    const target = (e.target as HTMLElement)?.closest('#open-cover, #reopen-cover');
+    if (target) tryAutoplay();
   });
+
+  const book = document.getElementById('book');
+  if (wantsSound && book && !book.hidden) {
+    if (label) label.textContent = 'sonido: toca para activar';
+    document.addEventListener('pointerdown', tryAutoplay, { once: true });
+  }
 </script>

@@ -46,10 +46,7 @@ export const artAlbums: Album[] = [
 ];
 
 // Mensajes de cariño curados por el dueño del sitio (no es un formulario público).
-export const birthdayWishes: Message[] = [
-  { name: 'Ana', text: 'Feliz cumple, tu arte nos inspira cada dia.', approved: true, role: 'coro / voz aguda' },
-  { name: 'Beto', text: 'Que este ano venga cargado de color y creatividad.', approved: true, role: 'coro / bajo' },
-];
+export const birthdayWishes: Message[] = [];
 
 // Mensajes del guestbook publico. El formulario real envia a un servicio externo
 // (ver GuestbookForm.astro) y el dueño copia aqui los que aprueba.

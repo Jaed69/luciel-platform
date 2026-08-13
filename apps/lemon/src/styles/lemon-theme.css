@@ -930,6 +930,39 @@
 .lemon-sound-dot { width: 8px; height: 8px; border-radius: 50%; background: #777; }
 .lemon-sound-dot.is-on { background: oklch(0.8 0.18 150); box-shadow: 0 0 8px oklch(0.8 0.18 150); }
 
+.lemon-music-panel {
+  position: fixed;
+  top: 54px;
+  right: 16px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 220px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  background: oklch(0.22 0.05 20 / 0.85);
+  color: var(--lemon-cream);
+  border: 1px solid oklch(0.75 0.13 85 / 0.4);
+  border-radius: 999px;
+  padding: 6px 8px 6px 14px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+.lemon-music-track { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lemon-music-next {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid oklch(0.75 0.13 85 / 0.4);
+  background: transparent;
+  color: var(--lemon-cream);
+  cursor: pointer;
+  line-height: 1;
+  font-size: 13px;
+}
+.lemon-music-next:hover { border-color: var(--lemon-gold); color: var(--lemon-gold); }
+
 /* ---------- fin (contraportada cerrada) ---------- */
 .lemon-end-note { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; animation: lemonPopIn 0.5s 0.4s both; }
 .lemon-end-title { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 22px; color: var(--lemon-gold); }
@@ -949,6 +982,7 @@
   .lemon-sound-btn, .lemon-fullscreen-btn { top: auto; bottom: 12px; }
   .lemon-sound-btn { right: 12px; }
   .lemon-fullscreen-btn { left: 12px; }
+  .lemon-music-panel { top: auto; bottom: 50px; right: 12px; max-width: 160px; }
 }
 
 /* ---------- rendimiento / accesibilidad ----------
