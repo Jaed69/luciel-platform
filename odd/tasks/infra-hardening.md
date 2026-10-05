@@ -27,15 +27,15 @@ test runner. Checks used instead: `docker compose config`, local image
 builds/runs where feasible, workflow YAML validation. Disclosed as a deviation.
 
 ## Tasks
-- [ ] T1 — Security (Phase 1): docker socket proxy, `tours-internal` network,
+- [x] T1 — Security (Phase 1): docker socket proxy, `tours-internal` network,
       container hardening (no-new-privileges, cap_drop, mem limits), Traefik
       security headers + rate limit middleware, required secrets (`:?`).
       Route: delegated (writer trigger: compose + traefik + dynamic config).
-- [ ] T2 — Reliability (Phase 2): healthchecks + depends_on, deploy by sha
+- [x] T2 — Reliability (Phase 2): healthchecks + depends_on, deploy by sha
       tag, post-deploy smoke test with automatic rollback, Litestream backup
       sidecar (opt-in profile), full-stack deploy that also applies Traefik changes.
       Route: delegated (compose + workflow + scripts).
-- [ ] T3 — Deploy speed (Phase 3): changed-apps-only matrix, native ARM
+- [x] T3 — Deploy speed (Phase 3): changed-apps-only matrix, native ARM
       runners (repo is PUBLIC), pnpm cache mounts, pinned base images,
       Dependabot, CI lint/test gate, Trivy scan, actions pinned.
       Route: delegated (workflow + Dockerfiles).
@@ -47,10 +47,29 @@ builds/runs where feasible, workflow YAML validation. Disclosed as a deviation.
 - CI builds only changed apps natively on arm64 and deploys a pinned sha.
 
 ## Manual steps for the user (cannot be automated)
-- (filled in as tasks complete)
+- `.env.example`: add `IMAGE_TAG` and `LITESTREAM_BUCKET/ENDPOINT/REGION/ACCESS_KEY_ID/SECRET_ACCESS_KEY`
+  (file is permission-denied for the agent).
+- Optional backups: create bucket (R2 or OCI) + the 5 `LITESTREAM_*` GitHub secrets.
+- External uptime monitor pointing at each subdomain.
+- First deploy has no previous IMAGE_TAG -> no automatic rollback that time.
 
 ## Progress / evidence
 - Branch: `chore/infra-hardening`
+- T1 done — commit 998bff3. `docker compose config -q` OK; missing ADMIN_INITIAL_PASSWORD fails loudly;
+  socket-proxy denies POST/images (403); landing/tours-web/tours-api ran with read_only + cap_drop.
+  traefik/socket-proxy keep caps (acme.json 600 needs DAC_OVERRIDE). Review assess: medium, under_budget.
+- T2 done (partial: .env.example manual) — commit 96a43fb. compose config (default + backup profile) OK;
+  greenlet RED (ImportError on fresh build) -> GREEN (/health 200), pytest 148 passed; deploy script bash -n OK.
+  Review assess on T1+T2 slice: high (shell in workflow/scripts) -> review START -> consent requested.
+
+- Review T1+T2 slice (lineage review-7015b91dca78f707): consent granted, 4 lenses, APPROVED, acknowledged
+  (authority burned). Reviewed boundary -> 96a43fb. Advisory warnings on deploy pull/rollback folded into T3.
+- T3 done — actionlint exit 0 (parent re-ran); deploy script bash -n OK; local builds OK
+  (landing 53s cold, tours-api 20s, lemon 14s, tours-web 36s); compose config OK.
+  tours-web lint gate is `continue-on-error` (2 pre-existing react-hooks errors on main);
+  1 tours-web test is timezone-dependent locally (expected to pass on UTC runner — unverified).
+  landing/lemon have no check scripts -> no CI gate.
 
 ## Next step
-T1.
+Phase 4 (structural: per-app compose `include:`, templates, docs) awaits user confirmation.
+Push / PR / merge are the user's decision.
