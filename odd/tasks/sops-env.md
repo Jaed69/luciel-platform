@@ -48,5 +48,14 @@ actionlint, `bash -n` on deploy script, `docker compose --env-file env/developme
   Parent checks: 17 `ENC[` lines, no `AGE-SECRET-KEY` in repo, check-env exit 1 with placeholders /
   exit 0 filled, actionlint exit 0. CI path (mask + GITHUB_ENV handoff) not yet run on a real runner.
 
+- Commits: 3629a0e (feature), 3de6645 (.gitattributes LF for env/sh — fresh checkout decrypt verified),
+  cfeae28 (correction).
+- Review lineage review-db819b58cbe829fa: consent granted; 3 lenses flagged the mask loop
+  `[ -n ] && echo` as aborting under set -e. One bounded correction (explicit `if`) applied and
+  validated -> APPROVED, acknowledged. Note: local repro showed bash does NOT abort there (failure
+  inside an `&&` list is exempt from errexit), so the finding was overstated; fix kept as clearer code.
+- Advisories (non-blocking): rollback restores IMAGE_TAG+git checkout but `.env` config content
+  comes from the new commit; duplicated env parser in deploy script; check-env has no automated test.
+
 ## Next step
 User manual steps above, then push / PR.
