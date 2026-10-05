@@ -11,7 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Download deps from the lockfile alone (cached layer + BuildKit store cache), install offline.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
 COPY apps/lemon/package.json apps/lemon/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline
 COPY apps/lemon/ apps/lemon/
 RUN pnpm --filter @luciel/lemon build
 

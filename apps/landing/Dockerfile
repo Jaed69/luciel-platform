@@ -11,7 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Download deps from the lockfile alone (cached layer + BuildKit store cache), install offline.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
 COPY apps/landing/package.json apps/landing/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --offline
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline
 COPY apps/landing/ apps/landing/
 RUN pnpm --filter @luciel/landing build
 
