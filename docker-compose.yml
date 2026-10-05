@@ -1,6 +1,35 @@
 # docker-compose.yml — root orchestration (D-10: image: not build:).
 # landing image is built by GitHub Actions -> GHCR (plan 01-02).
+
+# Rotate container logs so they cannot fill the VPS disk.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
+  # Read-only Docker API filter: Traefik talks to this instead of the raw socket.
+  # Mounting docker.sock into Traefik (even :ro) would give it full API access =
+  # root on the host if Traefik is compromised. ":ro" only protects the socket
+  # file itself, not the API calls made through it.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    container_name: docker-socket-proxy
+    restart: unless-stopped
+    environment:
+      # Only what Traefik's Docker provider needs (container discovery by labels).
+      # POST and every other API section stay at the image default (denied).
+      - CONTAINERS=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - socket-proxy
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+    logging: *default-logging
+
   traefik:
     image: traefik:v3.7.5
     container_name: traefik
@@ -9,9 +38,10 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      # Docker socket :ro — Traefik only needs read access for label discovery (D-19, T-01-01)
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # No docker.sock here: label discovery goes through docker-socket-proxy (D-19, T-01-01)
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      # Dynamic config (security headers + rate limit middlewares), file provider
+      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
       # acme.json bind-mounted, chmod 600, gitignored (D-13, T-01-03)
       - ./traefik/letsencrypt/acme.json:/acme.json
     # ACME resolver configured in traefik/traefik.yml — CLI args are ignored
@@ -27,15 +57,16 @@ services:
       - "traefik.http.routers.dashboard.tls.domains[0].main=traefik.luciel.dev"
       - "traefik.http.routers.dashboard.middlewares=dashboard-auth"
       # basicAuth with bcrypt/MD5 hash from .env (T-01-04)
-      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_USER}:${TRAEFIK_DASHBOARD_PASS_HASH}"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${TRAEFIK_DASHBOARD_USER:?TRAEFIK_DASHBOARD_USER is required}:${TRAEFIK_DASHBOARD_PASS_HASH:?TRAEFIK_DASHBOARD_PASS_HASH is required}"
     networks:
       - traefik-public
+      - socket-proxy
+    depends_on:
+      - docker-socket-proxy
     security_opt:
       - no-new-privileges:true
-    # user removed: non-root uid 65532 lacks membership in host docker group,
-    # breaking read access to /var/run/docker.sock and preventing container
-    # discovery via labels. The :ro mount already prevents container control
-    # (VFS-layer restriction, applies regardless of in-container uid).
+    mem_limit: 256m
+    logging: *default-logging
 
   landing:
     image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-landing:latest
@@ -52,6 +83,23 @@ services:
       - "traefik.http.services.landing.loadbalancer.server.port=8080"
     networks:
       - traefik-public
+    security_opt:
+      - no-new-privileges:true
+    # Verified locally: nginx master needs CHOWN/SETUID/SETGID to drop to the
+    # worker user; everything else can go. Writable paths only via tmpfs.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /run
+    mem_limit: 128m
+    logging: *default-logging
 
   lemon:
     image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-lemon:latest
@@ -67,6 +115,23 @@ services:
       - "traefik.http.services.lemon.loadbalancer.server.port=8080"
     networks:
       - traefik-public
+    security_opt:
+      - no-new-privileges:true
+    # Verified locally: nginx master needs CHOWN/SETUID/SETGID to drop to the
+    # worker user; everything else can go. Writable paths only via tmpfs.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /run
+    mem_limit: 128m
+    logging: *default-logging
 
   tours-web:
     image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-web:latest
@@ -74,7 +139,7 @@ services:
     restart: unless-stopped
     environment:
       - NEXTAUTH_URL=${NEXTAUTH_URL:-https://tours.luciel.dev}
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
       - TOURS_API_URL=http://tours-api:8000
     labels:
       - "traefik.enable=true"
@@ -84,29 +149,58 @@ services:
       - "traefik.http.routers.tours-web.tls.domains[0].main=tours.luciel.dev"
       # Next.js 16 standalone server.js listens on 3000 inside the container.
       - "traefik.http.services.tours-web.loadbalancer.server.port=3000"
+      # tours-web is on two networks; tell Traefik which one to use for routing.
+      - "traefik.docker.network=traefik-public"
     networks:
       - traefik-public
+      - tours-internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 512m
+    logging: *default-logging
 
   tours-api:
     image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-api:latest
     container_name: tours-api
     restart: unless-stopped
     environment:
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
       - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
       # Path interno del contenedor tours-api, no el path del host (D-03).
       - DATABASE_URL=sqlite+aiosqlite:////data/tours.db
-      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:-change-me}
+      - ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD:?ADMIN_INITIAL_PASSWORD is required}
     volumes:
       - tours-db-data:/data
     # NO traefik.http.routers.* labels — interno, sólo accesible vía Docker DNS desde tours-web (D-01).
+    # Only on tours-internal (internal: true -> no published ports, no internet
+    # egress; the API makes no outbound calls). landing/lemon cannot reach it.
     networks:
-      - traefik-public
+      - tours-internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 512m
+    logging: *default-logging
 
 networks:
   traefik-public:
     external: true
     name: traefik-public
+  # Traefik <-> socket proxy only; internal so the proxy is unreachable from outside.
+  socket-proxy:
+    internal: true
+  # tours-web <-> tours-api only.
+  tours-internal:
+    internal: true
 
 volumes:
   tours-db-data:

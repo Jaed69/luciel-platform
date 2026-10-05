@@ -1,0 +1,20 @@
+# traefik/dynamic.yml — DYNAMIC config (file provider). Hot-reloaded, no secrets.
+# Attached to every websecure router via entryPoints.websecure.http.middlewares
+# in traefik.yml.
+http:
+  middlewares:
+    secure-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        # No preload: it is hard to undo once submitted to browser lists.
+        stsPreload: false
+        contentTypeNosniff: true
+        customFrameOptionsValue: SAMEORIGIN
+        referrerPolicy: strict-origin-when-cross-origin
+        # No CSP on purpose: a generic one would break Astro/Next inline scripts.
+    rate-limit:
+      rateLimit:
+        # Per client IP (Cloudflare is DNS-only, so the source IP is the real one).
+        average: 100
+        burst: 200

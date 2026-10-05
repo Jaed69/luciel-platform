@@ -1,6 +1,7 @@
 # traefik/traefik.yml — STATIC config only (versioned, no secrets).
-# ACME config goes via docker-compose CLI args — Traefik does NOT interpolate
-# env vars in bind-mounted YAML files (per 01-RESEARCH.md Pattern 1 correction).
+# ACME resolver is defined below (not via CLI args): Traefik does NOT interpolate
+# env vars in bind-mounted YAML files, so nothing secret belongs in this file.
+# Middlewares (security headers, rate limit) live in traefik/dynamic.yml.
 
 api:
   dashboard: true
@@ -17,11 +18,21 @@ entryPoints:
           permanent: true
   websecure:
     address: ":443"
+    http:
+      # Applied to every router on this entrypoint (defined in dynamic.yml).
+      middlewares:
+        - secure-headers@file
+        - rate-limit@file
 
 providers:
   docker:
+    # Via docker-socket-proxy (read-only API filter), not the raw socket.
+    endpoint: tcp://docker-socket-proxy:2375
     exposedByDefault: false
     network: traefik-public
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
 
 log:
   level: INFO
