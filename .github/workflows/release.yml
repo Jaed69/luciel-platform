@@ -293,7 +293,9 @@ jobs:
           while IFS= read -r line || [ -n "$line" ]; do
             case "$line" in ''|'#'*) continue ;; esac
             value="${line#*=}"
-            [ -n "$value" ] && echo "::add-mask::${value}"
+            if [ -n "$value" ]; then
+              echo "::add-mask::${value}"
+            fi
           done < "$dec"
 
           bash scripts/check-env.sh "$dec"
