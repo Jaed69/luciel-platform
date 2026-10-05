@@ -1,0 +1,4 @@
+# SOPS MAC and shell scripts break with CRLF; keep LF on every OS.
+env/*.env text eol=lf
+.sops.yaml text eol=lf
+*.sh text eol=lf
