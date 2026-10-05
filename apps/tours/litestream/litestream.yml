@@ -1,0 +1,14 @@
+# Litestream (v0.5.x) config: continuous replication of the tours SQLite DB to an
+# S3-compatible bucket (Cloudflare R2, OCI Object Storage, ...).
+# ${VAR} values are expanded from the container environment (see docker-compose.yml
+# service `tours-backup`), so no secret lives in this file.
+dbs:
+  - path: /data/tours.db
+    replica:
+      type: s3
+      bucket: ${LITESTREAM_BUCKET}
+      path: tours
+      endpoint: ${LITESTREAM_ENDPOINT}
+      region: ${LITESTREAM_REGION}
+      access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+      secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}

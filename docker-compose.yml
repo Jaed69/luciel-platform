@@ -8,6 +8,14 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "3"
 
+# landing/lemon: nginx (alpine) listens on 8080; busybox wget ships in the image.
+x-nginx-healthcheck: &nginx-healthcheck
+  test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 10s
+
 services:
   # Read-only Docker API filter: Traefik talks to this instead of the raw socket.
   # Mounting docker.sock into Traefik (even :ro) would give it full API access =
@@ -40,8 +48,10 @@ services:
     volumes:
       # No docker.sock here: label discovery goes through docker-socket-proxy (D-19, T-01-01)
       - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
-      # Dynamic config (security headers + rate limit middlewares), file provider
-      - ./traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+      # Dynamic config (security headers + rate limit middlewares), file provider.
+      # Mounted as a DIRECTORY: single-file bind mounts keep the old inode after the
+      # deploy's `git reset --hard` replaces the file; a directory mount does not.
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
       # acme.json bind-mounted, chmod 600, gitignored (D-13, T-01-03)
       - ./traefik/letsencrypt/acme.json:/acme.json
     # ACME resolver configured in traefik/traefik.yml — CLI args are ignored
@@ -62,14 +72,22 @@ services:
       - traefik-public
       - socket-proxy
     depends_on:
-      - docker-socket-proxy
+      docker-socket-proxy:
+        condition: service_started
+    healthcheck:
+      # `ping` is enabled on the internal `traefik` entrypoint (traefik.yml).
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
     security_opt:
       - no-new-privileges:true
     mem_limit: 256m
     logging: *default-logging
 
   landing:
-    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-landing:latest
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-landing:${IMAGE_TAG:-latest}
     container_name: landing
     restart: unless-stopped
     labels:
@@ -83,6 +101,7 @@ services:
       - "traefik.http.services.landing.loadbalancer.server.port=8080"
     networks:
       - traefik-public
+    healthcheck: *nginx-healthcheck
     security_opt:
       - no-new-privileges:true
     # Verified locally: nginx master needs CHOWN/SETUID/SETGID to drop to the
@@ -102,7 +121,7 @@ services:
     logging: *default-logging
 
   lemon:
-    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-lemon:latest
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-lemon:${IMAGE_TAG:-latest}
     container_name: lemon
     restart: unless-stopped
     labels:
@@ -115,6 +134,7 @@ services:
       - "traefik.http.services.lemon.loadbalancer.server.port=8080"
     networks:
       - traefik-public
+    healthcheck: *nginx-healthcheck
     security_opt:
       - no-new-privileges:true
     # Verified locally: nginx master needs CHOWN/SETUID/SETGID to drop to the
@@ -134,7 +154,7 @@ services:
     logging: *default-logging
 
   tours-web:
-    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-web:latest
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-web:${IMAGE_TAG:-latest}
     container_name: tours-web
     restart: unless-stopped
     environment:
@@ -154,6 +174,22 @@ services:
     networks:
       - traefik-public
       - tours-internal
+    depends_on:
+      tours-api:
+        condition: service_healthy
+    healthcheck:
+      # Any 2xx/3xx is healthy; redirect is not followed (/ may redirect to login).
+      # Dials the container hostname: Docker sets HOSTNAME, so Next's standalone
+      # server may not be listening on loopback.
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://'+require('os').hostname()+':3000/',{redirect:'manual'}).then(r=>process.exit(r.status<400?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -165,7 +201,7 @@ services:
     logging: *default-logging
 
   tours-api:
-    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-api:latest
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-api:${IMAGE_TAG:-latest}
     container_name: tours-api
     restart: unless-stopped
     environment:
@@ -181,6 +217,7 @@ services:
     # egress; the API makes no outbound calls). landing/lemon cannot reach it.
     networks:
       - tours-internal
+    # Healthcheck comes from the image's HEALTHCHECK (apps/tours/api/Dockerfile: GET /health).
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -189,6 +226,45 @@ services:
     tmpfs:
       - /tmp
     mem_limit: 512m
+    logging: *default-logging
+
+  # Opt-in (`--profile backup`): continuous SQLite replication to S3-compatible
+  # storage (R2 / OCI Object Storage). Reads the same volume as tours-api; WAL
+  # coordination works across containers on one host.
+  tours-backup:
+    image: litestream/litestream:0.5.17
+    container_name: tours-backup
+    profiles: [backup]
+    restart: unless-stopped
+    command: ["replicate", "-config", "/etc/litestream/litestream.yml"]
+    # Empty defaults on purpose: compose interpolates every service even when its
+    # profile is off, so `:?` would break normal deploys. The deploy job only
+    # enables this profile when LITESTREAM_ACCESS_KEY_ID is set.
+    environment:
+      - LITESTREAM_BUCKET=${LITESTREAM_BUCKET:-}
+      - LITESTREAM_ENDPOINT=${LITESTREAM_ENDPOINT:-}
+      - LITESTREAM_REGION=${LITESTREAM_REGION:-auto}
+      - LITESTREAM_ACCESS_KEY_ID=${LITESTREAM_ACCESS_KEY_ID:-}
+      - LITESTREAM_SECRET_ACCESS_KEY=${LITESTREAM_SECRET_ACCESS_KEY:-}
+    volumes:
+      - tours-db-data:/data
+      # Directory mount (not a single file) so config edits survive `git reset --hard`.
+      - ./apps/tours/litestream:/etc/litestream:ro
+    # Needs outbound internet to reach the bucket, so it cannot sit on the
+    # internal-only tours-internal network.
+    networks:
+      - tours-backup-egress
+    depends_on:
+      tours-api:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 128m
     logging: *default-logging
 
 networks:
@@ -201,6 +277,8 @@ networks:
   # tours-web <-> tours-api only.
   tours-internal:
     internal: true
+  # tours-backup -> internet only (no other service attached).
+  tours-backup-egress: {}
 
 volumes:
   tours-db-data:

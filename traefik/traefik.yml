@@ -1,7 +1,7 @@
 # traefik/traefik.yml — STATIC config only (versioned, no secrets).
 # ACME resolver is defined below (not via CLI args): Traefik does NOT interpolate
 # env vars in bind-mounted YAML files, so nothing secret belongs in this file.
-# Middlewares (security headers, rate limit) live in traefik/dynamic.yml.
+# Middlewares (security headers, rate limit) live in traefik/dynamic/.
 
 api:
   dashboard: true
@@ -19,7 +19,7 @@ entryPoints:
   websecure:
     address: ":443"
     http:
-      # Applied to every router on this entrypoint (defined in dynamic.yml).
+      # Applied to every router on this entrypoint (defined in traefik/dynamic/).
       middlewares:
         - secure-headers@file
         - rate-limit@file
@@ -31,13 +31,19 @@ providers:
     exposedByDefault: false
     network: traefik-public
   file:
-    filename: /etc/traefik/dynamic.yml
+    # A directory (not a single file): the deploy's `git reset --hard` swaps files
+    # for new inodes, which a single-file bind mount would never see.
+    directory: /etc/traefik/dynamic
     watch: true
 
 log:
   level: INFO
 
 accessLog: {}
+
+# /ping on the internal `traefik` entrypoint (:8080, not published) for the
+# container healthcheck (`traefik healthcheck --ping`).
+ping: {}
 
 # ACME certificate resolver — defined here (not CLI args) because Traefik v3
 # treats config-file and CLI-args as mutually exclusive. When traefik.yml is

@@ -2,7 +2,8 @@
 # Closes the deploy loop: push to main -> CI build -> GHCR -> VPS pull (docker-compose.yml uses image:).
 #
 # D-04 matrix refactor: build/push landing + tours-web + tours-api images in parallel matrix jobs,
-# then a single deploy job SSH's into VPS and `docker compose pull + up -d` recreates the three.
+# then a single deploy job SSH's into VPS, pins the stack to this commit's sha tag and runs
+# `docker compose up -d --wait` for the WHOLE stack, then smoke-tests (auto-rollback on failure).
 name: Build and Push to GHCR
 
 on:
@@ -12,6 +13,10 @@ on:
       - 'apps/landing/**'
       - 'apps/tours/**'
       - 'apps/lemon/**'
+      # Platform layer: compose/Traefik/smoke-test changes must deploy too.
+      - 'docker-compose.yml'
+      - 'traefik/**'
+      - 'scripts/verify-prod.sh'
       - '.github/workflows/release.yml'
 
 env:
@@ -86,9 +91,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Auto-deploy: single SSH into VPS — git pull main, regenerate .env from GH repo
-  # secrets, pull latest images, recreate the three services. Traefik is never
-  # touched (D-01 — infra existed since Phase 1).
+  # Auto-deploy: single SSH into VPS — git sync main, regenerate .env from GH repo
+  # secrets, pin IMAGE_TAG=sha-<commit>, pull and `up -d --wait` the WHOLE stack
+  # (traefik + docker-socket-proxy + apps) so platform changes apply too. Then run
+  # scripts/verify-prod.sh; on failure, roll back to the previous IMAGE_TAG and fail
+  # the run. Every app image must exist for the sha tag (the build job guarantees it).
   #
   # GH repo secrets required (set via `gh secret set NAME -b "value"`):
   #   VPS_HOST, VPS_USER, VPS_SSH_KEY, DEPLOY_PATH          (Phase 01-02)
@@ -97,9 +104,13 @@ jobs:
   #   TRAEFIK_DASHBOARD_USER, TRAEFIK_DASHBOARD_PASS_HASH     # Phase 01 dashboard
   #   GHCR_OWNER                                             # GHCR owner (lowercase)
   #   GHCR_PAT (optional — only if GHCR package is private)
+  #   Optional SQLite backup (Litestream -> S3-compatible bucket); the `backup`
+  #   compose profile is enabled only when LITESTREAM_ACCESS_KEY_ID is non-empty:
+  #   LITESTREAM_BUCKET, LITESTREAM_ENDPOINT, LITESTREAM_REGION,
+  #   LITESTREAM_ACCESS_KEY_ID, LITESTREAM_SECRET_ACCESS_KEY
   #
   # To add a new env var: (1) add to .env.example, (2) `gh secret set NAME`,
-  # (3) add to `env:` below + to the heredoc body in `script`.
+  # (3) add to `env:` + `envs:` below + to the heredoc body in `script`.
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -119,20 +130,43 @@ jobs:
           TRAEFIK_DASHBOARD_PASS_HASH: ${{ secrets.TRAEFIK_DASHBOARD_PASS_HASH }}
           GHCR_OWNER: ${{ secrets.GHCR_OWNER }}
           GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          LITESTREAM_BUCKET: ${{ secrets.LITESTREAM_BUCKET }}
+          LITESTREAM_ENDPOINT: ${{ secrets.LITESTREAM_ENDPOINT }}
+          LITESTREAM_REGION: ${{ secrets.LITESTREAM_REGION }}
+          LITESTREAM_ACCESS_KEY_ID: ${{ secrets.LITESTREAM_ACCESS_KEY_ID }}
+          LITESTREAM_SECRET_ACCESS_KEY: ${{ secrets.LITESTREAM_SECRET_ACCESS_KEY }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: NEXTAUTH_SECRET,ADMIN_INITIAL_PASSWORD,NEXTAUTH_URL,JWT_ALGORITHM,TRAEFIK_DASHBOARD_USER,TRAEFIK_DASHBOARD_PASS_HASH,GHCR_PAT,GHCR_OWNER
+          envs: NEXTAUTH_SECRET,ADMIN_INITIAL_PASSWORD,NEXTAUTH_URL,JWT_ALGORITHM,TRAEFIK_DASHBOARD_USER,TRAEFIK_DASHBOARD_PASS_HASH,GHCR_PAT,GHCR_OWNER,LITESTREAM_BUCKET,LITESTREAM_ENDPOINT,LITESTREAM_REGION,LITESTREAM_ACCESS_KEY_ID,LITESTREAM_SECRET_ACCESS_KEY
           script: |
             set -eu
             cd ${{ secrets.DEPLOY_PATH }}
 
+            # Same format as docker/metadata-action `type=sha,prefix=sha-` (7 chars).
+            IMAGE_TAG="sha-$(printf '%s' '${{ github.sha }}' | cut -c1-7)"
+
+            # Previous tag (from the .env of the last deploy) = rollback target.
+            PREV_TAG=""
+            if [ -f .env ]; then
+              PREV_TAG="$(sed -n 's/^IMAGE_TAG=//p' .env | head -n1)"
+            fi
+
             # Sync compose + configs from main (fixes Phase-01-stale-VPS bug
             # discovered during Phase 02.1 deploy — VPS had Phase 01 compose
             # while local main had tours-web/tours-api; deploy silently failed).
+            OLD_HEAD="$(git rev-parse HEAD)"
             git fetch origin
             git reset --hard origin/main
+
+            # traefik.yml is static config (single-file bind mount, read at start):
+            # recreate Traefik when it changed. Dynamic config is a mounted directory
+            # and hot-reloads by itself.
+            TRAEFIK_RECREATE=0
+            if ! git diff --quiet "$OLD_HEAD" HEAD -- traefik/traefik.yml; then
+              TRAEFIK_RECREATE=1
+            fi
 
             # Regenerate .env from GH repo secrets (idempotent — overwrites on
             # every CI deploy). Any manual edits on the VPS will be wiped. To
@@ -141,6 +175,9 @@ jobs:
             # Managed by .github/workflows/release.yml deploy job.
             # Regenerated on every CI deploy — local manual edits will be wiped.
             # Generated: $(date -u +%FT%TZ)
+
+            # Image tag every app is pinned to (rollback: set it to a previous sha-<7>)
+            IMAGE_TAG=${IMAGE_TAG}
 
             # GHCR image refs (GHCR_OWNER lowercase — GitHub case-folds)
             GHCR_OWNER=${GHCR_OWNER}
@@ -155,17 +192,58 @@ jobs:
             NEXTAUTH_URL=${NEXTAUTH_URL}
             JWT_ALGORITHM=${JWT_ALGORITHM}
             ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD}
+
+            # Litestream SQLite backup (opt-in: profile enabled only if the key is set)
+            LITESTREAM_BUCKET=${LITESTREAM_BUCKET}
+            LITESTREAM_ENDPOINT=${LITESTREAM_ENDPOINT}
+            LITESTREAM_REGION=${LITESTREAM_REGION}
+            LITESTREAM_ACCESS_KEY_ID=${LITESTREAM_ACCESS_KEY_ID}
+            LITESTREAM_SECRET_ACCESS_KEY=${LITESTREAM_SECRET_ACCESS_KEY}
             EOF_ENV
             chmod 600 .env
 
             # GHCR login only when a PAT is provided (private packages).
-            # Public packages pull anonymously.
+            # Public packages pull anonymously. Logout runs on every exit path.
             if [ -n "${GHCR_PAT}" ]; then
               printf '%s' "${GHCR_PAT}" | docker login ghcr.io -u "${GHCR_OWNER}" --password-stdin
+              trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
             fi
 
-            docker compose pull landing lemon tours-web tours-api
-            docker compose up -d landing lemon tours-web tours-api
-            docker image prune -f
+            COMPOSE="docker compose"
+            if [ -n "${LITESTREAM_ACCESS_KEY_ID}" ]; then
+              COMPOSE="docker compose --profile backup"
+            fi
 
-            [ -n "${GHCR_PAT}" ] && docker logout ghcr.io 2>/dev/null || true
+            # Whole default stack, waiting for healthchecks. Called inside `if`, so
+            # a failure routes to the rollback instead of aborting under `set -e`.
+            rollout() {
+              $COMPOSE up -d --remove-orphans --wait --wait-timeout 180 || return 1
+              if [ "$TRAEFIK_RECREATE" = "1" ]; then
+                $COMPOSE up -d --force-recreate --wait --wait-timeout 60 traefik || return 1
+              fi
+            }
+
+            # A failed pull aborts here, before anything running is touched.
+            $COMPOSE pull
+
+            if rollout && VERIFY_RESOLVE_IP=127.0.0.1 bash scripts/verify-prod.sh; then
+              echo "Deploy ${IMAGE_TAG} OK"
+              # Keep recent images (rollback targets); drop what is >7 days old and unused.
+              docker image prune -af --filter "until=168h"
+            else
+              echo "Deploy ${IMAGE_TAG} FAILED (rollout or smoke test)" >&2
+              $COMPOSE ps >&2 || true
+              if [ -n "${PREV_TAG}" ] && [ "${PREV_TAG}" != "${IMAGE_TAG}" ]; then
+                echo "Rolling back to ${PREV_TAG}" >&2
+                sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${PREV_TAG}/" .env
+                TRAEFIK_RECREATE=0
+                if rollout; then
+                  echo "Rolled back to ${PREV_TAG}" >&2
+                else
+                  echo "ROLLBACK FAILED — manual intervention needed (see docs/operations.md)" >&2
+                fi
+              else
+                echo "No previous IMAGE_TAG to roll back to" >&2
+              fi
+              exit 1
+            fi

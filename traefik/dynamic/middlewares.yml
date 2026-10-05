@@ -1,4 +1,4 @@
-# traefik/dynamic.yml — DYNAMIC config (file provider). Hot-reloaded, no secrets.
+# traefik/dynamic/middlewares.yml — DYNAMIC config (file provider). Hot-reloaded, no secrets.
 # Attached to every websecure router via entryPoints.websecure.http.middlewares
 # in traefik.yml.
 http:
