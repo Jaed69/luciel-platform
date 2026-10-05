@@ -4,21 +4,30 @@ Single Oracle ARM VPS, Docker Compose + Traefik. Everything below runs on the VP
 
 ## How a deploy works
 
-`.github/workflows/release.yml` on push to `main`:
+`.github/workflows/release.yml` on push to `main`. Runs are serialized (one at a time, in order).
 
-1. Builds arm64 images natively (`ubuntu-24.04-arm`) for the apps that changed only. Each app's
-   checks run first (tours-api `pytest`, tours-web `test`; landing/lemon have none), the image is
-   pushed as `sha-<7>`, scanned with Trivy (fixable CRITICAL fails the run) and only then tagged
-   `latest`. Apps that did not change get `sha-<7>` copied from their `latest` (no rebuild).
-2. Decrypts `env/production.env` on the runner (SOPS, validated: no placeholders, no missing required
-   vars), SSHs to the VPS, `git reset --hard origin/main`, regenerates `.env` from it,
-   then `docker compose pull` + `up -d --remove-orphans --wait` for the whole stack
-   (Traefik, docker-socket-proxy, apps). `.env` switches to `IMAGE_TAG=sha-<7>` only after the pull.
-3. Runs `scripts/verify-prod.sh` (LE cert + HTTPS 2xx/3xx on every host).
-4. If step 2 or 3 fails, it restores the previous `IMAGE_TAG` **and** the previous git checkout
-   (recreating Traefik if its static config differs), brings the stack back up and fails the run.
-   A failed `pull` aborts before anything is touched (`.env` and the checkout stay as they were).
-   The very first deploy on a fresh VPS has no previous tag, so nothing to roll back to.
+1. Decides per app whether to rebuild: it diffs the app's paths (plus the shared JS files for JS
+   apps) against the commit recorded in the `org.opencontainers.image.revision` label of its current
+   `latest` image. Different, missing label or no `latest` means rebuild; identical means `latest`
+   is already right for this commit.
+2. Builds arm64 images natively (`ubuntu-24.04-arm`) for the apps to rebuild. Each app's checks run
+   first (tours-api `pytest`, tours-web `test`; landing/lemon have none), the image is pushed as
+   `sha-<7>`, scanned with Trivy (fixable CRITICAL fails the run) and only then tagged `latest`.
+   The other apps get `sha-<7>` copied from their `latest` (no rebuild).
+3. On the runner, tests `scripts/check-env.sh`, then decrypts `env/production.env` (SOPS) and
+   validates it (no placeholders, no missing required vars). It SSHs to the VPS and resets the
+   checkout to exactly the commit that was built (`git reset --hard <sha>`, not `origin/main`,
+   so a newer push never mixes its config with these images). It saves the current `.env` as
+   `.env.prev`, regenerates `.env` from the decrypted file, then `docker compose pull` +
+   `up -d --remove-orphans --wait` for the whole stack (Traefik, docker-socket-proxy, apps).
+   `.env` switches to `IMAGE_TAG=sha-<7>` only after the pull.
+4. Runs `scripts/verify-prod.sh` (LE cert + HTTPS 2xx/3xx on every host).
+5. If step 3 or 4 fails, it restores the previous `.env` (`.env.prev`: previous `IMAGE_TAG` and
+   config) **and** the previous git checkout (recreating Traefik if its static config differs),
+   brings the stack back up and fails the run. A failed `pull` aborts before anything running is
+   touched (`.env` and the checkout go back as they were).
+   The very first deploy on a fresh VPS has no previous deploy, so there is nothing to roll back
+   to. This happens once: watch that first deploy and fix forward if it fails.
 
 `traefik/traefik.yml` is static config: the deploy recreates Traefik when it changed.
 Files in `traefik/dynamic/` hot-reload.
@@ -26,7 +35,7 @@ Files in `traefik/dynamic/` hot-reload.
 ## Manual rollback
 
 ```sh
-sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=sha-<previous7>/' .env
+sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=sha-<previous7>/' .env   # or: cp .env.prev .env
 docker compose up -d --remove-orphans --wait   # add --profile backup if backups are on
 ```
 

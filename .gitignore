@@ -1,5 +1,6 @@
 # Secrets — never commit
 .env
+.env.prev
 ssh-key-*.key
 ssh-key-*.key.pub
 *.key
