@@ -35,5 +35,13 @@ actionlint, `bash -n` on deploy script, local simulation of the per-app change l
   11 cases, RED vs broken copy then GREEN, runs in deploy job (F5); ops doc rewritten (F6).
   Parent checks: test-check-env exit 0, actionlint exit 0. Simulations of deploy + F2 logic by writer.
 
+- Accumulated review (3 branches vs main, lineage review-3b2b603ad3e6bc2c): correction requested for
+  pnpm `--offline` with a cold cache mount. Not reproducible: pnpm 11 ignores `npm_config_store_dir`
+  and stores packages in the fetch layer (/root/.local/share/pnpm/store, 611M), so the cache mount is
+  unused. Applied `--prefer-offline` (a0a97cc) -> validated, APPROVED, acknowledged.
+- Open follow-ups: make pnpm use the cache mount (`--store-dir`), restore doc order in operations.md
+  (do not delete DB before a successful restore), rollback profile read from new env, failed tag as
+  next rollback target when there was no previous tag, needs-build.sh tests.
+
 ## Next step
 Review + push (user authorized push of this follow-up).
