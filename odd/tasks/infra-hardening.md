@@ -70,6 +70,10 @@ builds/runs where feasible, workflow YAML validation. Disclosed as a deviation.
   1 tours-web test is timezone-dependent locally (expected to pass on UTC runner — unverified).
   landing/lemon have no check scripts -> no CI gate.
 
+- T3 commit c301de8. Review (lineage review-31e9bdad80310c88): consent granted, 4 lenses, APPROVED,
+  acknowledged. Follow-up advisories: retag copies `latest`, which can be stale under concurrent
+  pushes (fix: workflow-level concurrency or retag from last deployed sha); ops doc line 19 claim.
+
 ## Next step
 Phase 4 (structural: per-app compose `include:`, templates, docs) awaits user confirmation.
 Push / PR / merge are the user's decision.
