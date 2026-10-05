@@ -67,7 +67,9 @@ docker run --rm --env-file .env -v tours-db-data:/data \
     set -e
     rm -f /data/tours.db.restored
     litestream restore -config /etc/litestream/litestream.yml -o /data/tours.db.restored /data/tours.db
-    sqlite3 /data/tours.db.restored "PRAGMA integrity_check"   # must print: ok
+    # integrity_check exits 0 even when it finds corruption, so compare its output.
+    result="$(sqlite3 /data/tours.db.restored "PRAGMA integrity_check")"
+    [ "$result" = "ok" ] || { echo "integrity check failed: $result" >&2; exit 1; }
   '
 
 # 2. Move the current DB aside (timestamped), then put the restored file in place.
@@ -75,7 +77,7 @@ docker run --rm -v tours-db-data:/data --entrypoint sh litestream/litestream:0.5
   set -e
   ts="$(date -u +%Y%m%dT%H%M%SZ)"
   for f in tours.db tours.db-wal tours.db-shm; do
-    [ -e "/data/$f" ] && mv "/data/$f" "/data/$f.before-restore-$ts"
+    if [ -e "/data/$f" ]; then mv "/data/$f" "/data/$f.before-restore-$ts"; fi
   done
   mv /data/tours.db.restored /data/tours.db
 '
