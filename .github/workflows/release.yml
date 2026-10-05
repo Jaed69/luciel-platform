@@ -25,6 +25,9 @@ on:
       - 'docker-compose.yml'
       - 'traefik/**'
       - 'scripts/**'
+      # Config-only changes deploy without a rebuild (no app is marked changed -> retag only).
+      - 'env/**'
+      - '.sops.yaml'
       - '.github/workflows/release.yml'
 
 env:
@@ -227,27 +230,23 @@ jobs:
             docker buildx imagetools create -t "${img}:${tag}" "${img}:latest"
           done
 
-  # Auto-deploy: single SSH into VPS — git sync main, regenerate .env from GH repo
-  # secrets, pin IMAGE_TAG=sha-<commit>, pull and `up -d --wait` the WHOLE stack
-  # (traefik + docker-socket-proxy + apps) so platform changes apply too. Then run
+  # Auto-deploy: decrypt env/production.env (SOPS + age) on the runner, then a single SSH
+  # into the VPS — git sync main, write .env from the decrypted file, pin
+  # IMAGE_TAG=sha-<commit>, pull and `up -d --wait` the WHOLE stack (traefik +
+  # docker-socket-proxy + apps) so platform changes apply too. Then run
   # scripts/verify-prod.sh; on failure, roll back checkout + IMAGE_TAG to the previous
   # deploy and fail the run. Every app image must exist for the sha tag (build + retag
   # guarantee it). Runs even when `build`/`retag` were skipped, never when they failed.
   #
   # GH repo secrets required (set via `gh secret set NAME -b "value"`):
-  #   VPS_HOST, VPS_USER, VPS_SSH_KEY, DEPLOY_PATH          (Phase 01-02)
-  #   NEXTAUTH_SECRET, ADMIN_INITIAL_PASSWORD, NEXTAUTH_URL, # tours app (02.1)
-  #   JWT_ALGORITHM
-  #   TRAEFIK_DASHBOARD_USER, TRAEFIK_DASHBOARD_PASS_HASH     # Phase 01 dashboard
-  #   GHCR_OWNER                                             # GHCR owner (lowercase)
-  #   GHCR_PAT (optional — only if GHCR package is private)
-  #   Optional SQLite backup (Litestream -> S3-compatible bucket); the `backup`
-  #   compose profile is enabled only when LITESTREAM_ACCESS_KEY_ID is non-empty:
-  #   LITESTREAM_BUCKET, LITESTREAM_ENDPOINT, LITESTREAM_REGION,
-  #   LITESTREAM_ACCESS_KEY_ID, LITESTREAM_SECRET_ACCESS_KEY
+  #   VPS_HOST, VPS_USER, VPS_SSH_KEY, DEPLOY_PATH   (reach the VPS)
+  #   SOPS_AGE_KEY                                    (age private key that decrypts env/production.env)
+  # Every app variable (tours, Traefik dashboard, GHCR, Litestream) lives in the
+  # encrypted env/production.env, not in GitHub secrets.
   #
-  # To add a new env var: (1) add to .env.example, (2) `gh secret set NAME`,
-  # (3) add to `env:` + `envs:` below + to the heredoc body in `script`.
+  # To add a new env var: `sops edit env/production.env`, add the line, and reference it
+  # in docker-compose.yml. No workflow change. The deploy refuses `__FILL_ME__`
+  # placeholders and any variable compose requires via `${VAR:?...}` that is missing/empty.
   deploy:
     needs: [changes, build, retag]
     if: >-
@@ -262,27 +261,54 @@ jobs:
       group: deploy-vps
       cancel-in-progress: false  # never cancel a deploy mid-flight
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Pinned release binary, verified against the checksum published with that release.
+      - name: Install sops
+        env:
+          SOPS_VERSION: v3.13.3
+          SOPS_SHA256: e5bec3346a873ae91d871550f3e698c1aad962aff462a080e40f25fde17fef6b
+        run: |
+          set -eu
+          curl -fsSL -o sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
+          echo "${SOPS_SHA256}  sops" | sha256sum -c -
+          sudo install -m 0755 sops /usr/local/bin/sops
+
+      # Decrypts env/production.env. Every value is masked before anything else runs, the
+      # file is validated (names only in errors), and the result travels to the SSH step as
+      # base64 in the job env (GITHUB_ENV is not echoed in step logs; the blob is masked too).
+      - name: Decrypt and validate production env
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          set -eu
+          umask 077
+          dec="$(mktemp)"
+          trap 'rm -f "$dec"' EXIT
+          sops decrypt env/production.env > "$dec"
+
+          # dotenv is one line per variable, so each value is a single-line mask.
+          while IFS= read -r line || [ -n "$line" ]; do
+            case "$line" in ''|'#'*) continue ;; esac
+            value="${line#*=}"
+            [ -n "$value" ] && echo "::add-mask::${value}"
+          done < "$dec"
+
+          bash scripts/check-env.sh "$dec"
+
+          blob="$(base64 -w0 "$dec")"
+          echo "::add-mask::${blob}"
+          echo "PROD_ENV_B64=${blob}" >> "$GITHUB_ENV"
+
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
-        env:
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-          JWT_ALGORITHM: ${{ secrets.JWT_ALGORITHM }}
-          TRAEFIK_DASHBOARD_USER: ${{ secrets.TRAEFIK_DASHBOARD_USER }}
-          TRAEFIK_DASHBOARD_PASS_HASH: ${{ secrets.TRAEFIK_DASHBOARD_PASS_HASH }}
-          GHCR_OWNER: ${{ secrets.GHCR_OWNER }}
-          GHCR_PAT: ${{ secrets.GHCR_PAT }}
-          LITESTREAM_BUCKET: ${{ secrets.LITESTREAM_BUCKET }}
-          LITESTREAM_ENDPOINT: ${{ secrets.LITESTREAM_ENDPOINT }}
-          LITESTREAM_REGION: ${{ secrets.LITESTREAM_REGION }}
-          LITESTREAM_ACCESS_KEY_ID: ${{ secrets.LITESTREAM_ACCESS_KEY_ID }}
-          LITESTREAM_SECRET_ACCESS_KEY: ${{ secrets.LITESTREAM_SECRET_ACCESS_KEY }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: NEXTAUTH_SECRET,ADMIN_INITIAL_PASSWORD,NEXTAUTH_URL,JWT_ALGORITHM,TRAEFIK_DASHBOARD_USER,TRAEFIK_DASHBOARD_PASS_HASH,GHCR_PAT,GHCR_OWNER,LITESTREAM_BUCKET,LITESTREAM_ENDPOINT,LITESTREAM_REGION,LITESTREAM_ACCESS_KEY_ID,LITESTREAM_SECRET_ACCESS_KEY
+          envs: PROD_ENV_B64
           script: |
             set -eu
             cd ${{ secrets.DEPLOY_PATH }}
@@ -313,41 +339,29 @@ jobs:
               TRAEFIK_RECREATE=1
             fi
 
-            # Regenerate .env from GH repo secrets (idempotent — overwrites on
-            # every CI deploy). Any manual edits on the VPS will be wiped. To
-            # add a var, see the workflow header comment.
+            # Rebuild .env from the decrypted env/production.env (idempotent — overwrites on
+            # every CI deploy; manual edits on the VPS are wiped). To add a var, see the
+            # workflow header comment.
             # IMAGE_TAG keeps the PREVIOUS tag until the new images are pulled (see below),
             # so a failed pull never leaves a tag that does not exist in .env.
-            cat > .env <<EOF_ENV
-            # Managed by .github/workflows/release.yml deploy job.
-            # Regenerated on every CI deploy — local manual edits will be wiped.
-            # Generated: $(date -u +%FT%TZ)
+            umask 077
+            printf '%s' "${PROD_ENV_B64}" | base64 -d > .env.new
+            {
+              echo "# Managed by .github/workflows/release.yml deploy job (from env/production.env)."
+              echo "# Regenerated on every CI deploy — local manual edits will be wiped."
+              echo "# Generated: $(date -u +%FT%TZ)"
+              echo "IMAGE_TAG=${PREV_TAG:-${IMAGE_TAG}}"
+              cat .env.new
+            } > .env.tmp
+            chmod 600 .env.tmp
+            mv .env.tmp .env
 
-            # Image tag every app is pinned to (rollback: set it to a previous sha-<7>)
-            IMAGE_TAG=${PREV_TAG:-${IMAGE_TAG}}
-
-            # GHCR image refs (GHCR_OWNER lowercase — GitHub case-folds)
-            GHCR_OWNER=${GHCR_OWNER}
-            GHCR_PAT=${GHCR_PAT}
-
-            # Traefik dashboard basic-auth (D-17)
-            TRAEFIK_DASHBOARD_USER=${TRAEFIK_DASHBOARD_USER}
-            TRAEFIK_DASHBOARD_PASS_HASH=${TRAEFIK_DASHBOARD_PASS_HASH}
-
-            # Tours (Phase 02.1) — JWT bridge NextAuth <-> FastAPI (D-02)
-            NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-            NEXTAUTH_URL=${NEXTAUTH_URL}
-            JWT_ALGORITHM=${JWT_ALGORITHM}
-            ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD}
-
-            # Litestream SQLite backup (opt-in: profile enabled only if the key is set)
-            LITESTREAM_BUCKET=${LITESTREAM_BUCKET}
-            LITESTREAM_ENDPOINT=${LITESTREAM_ENDPOINT}
-            LITESTREAM_REGION=${LITESTREAM_REGION}
-            LITESTREAM_ACCESS_KEY_ID=${LITESTREAM_ACCESS_KEY_ID}
-            LITESTREAM_SECRET_ACCESS_KEY=${LITESTREAM_SECRET_ACCESS_KEY}
-            EOF_ENV
-            chmod 600 .env
+            # Values are read by parsing, never by sourcing: they may contain `$` (bcrypt).
+            envval() { sed -n "s/^$1=//p" .env.new | head -n1; }
+            GHCR_OWNER="$(envval GHCR_OWNER)"
+            GHCR_PAT="$(envval GHCR_PAT)"
+            LITESTREAM_ACCESS_KEY_ID="$(envval LITESTREAM_ACCESS_KEY_ID)"
+            rm -f .env.new
 
             # GHCR login only when a PAT is provided (private packages).
             # Public packages pull anonymously. Logout runs on every exit path.
