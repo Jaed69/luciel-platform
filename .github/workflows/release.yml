@@ -95,12 +95,14 @@ jobs:
             # multi-platform: a map keyed by platform). Empty on any failure -> rebuild.
             rev="$(docker buildx imagetools inspect "${img}:latest" --format '{{json .Image}}' 2>/dev/null               | jq -r '(if .config then . else first(.[] | select(.architecture == "arm64")) end)
                        | .config.Labels["org.opencontainers.image.revision"] // empty' 2>/dev/null || true)"
+            # A failing script counts as `build`: never skip on an error.
             # shellcheck disable=SC2086  # $paths is a space-separated list on purpose
-            if bash scripts/needs-build.sh "$rev" $paths; then
+            decision="$(bash scripts/needs-build.sh "$rev" $paths || echo build)"
+            if [ "$decision" = skip ]; then
+              echo "${app}: retag (latest ${rev} has the same content)"
+            else
               echo "${app}: build (latest revision: ${rev:-none})"
               build="$(jq -c --arg n "$app" '. + [$n]' <<<"$build")"
-            else
-              echo "${app}: retag (latest ${rev} has the same content)"
             fi
           done
 
@@ -280,9 +282,13 @@ jobs:
         with:
           persist-credentials: false
 
-      # Cheap guard for the env validator before it is trusted with the real file.
+      # Cheap guards for the scripts the pipeline trusts: the env validator before it sees the
+      # real file, and the build/skip decision behind every retag.
       - name: Test check-env
         run: bash scripts/test-check-env.sh
+
+      - name: Test needs-build
+        run: bash scripts/test-needs-build.sh
 
       # Pinned release binary, verified against the checksum published with that release.
       - name: Install sops
@@ -394,7 +400,6 @@ jobs:
             envval() { sed -n "s/^$1=//p" .env.new | head -n1; }
             GHCR_OWNER="$(envval GHCR_OWNER)"
             GHCR_PAT="$(envval GHCR_PAT)"
-            LITESTREAM_ACCESS_KEY_ID="$(envval LITESTREAM_ACCESS_KEY_ID)"
             rm -f .env.new
 
             # GHCR login only when a PAT is provided (private packages).
@@ -404,17 +409,23 @@ jobs:
               trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
             fi
 
-            COMPOSE="docker compose"
-            if [ -n "${LITESTREAM_ACCESS_KEY_ID}" ]; then
-              COMPOSE="docker compose --profile backup"
-            fi
+            # `docker compose` with the backup profile only when the .env in effect enables
+            # Litestream. Read at every call, so a rollback that restores .env.prev also
+            # restores the profile decision of that deploy.
+            compose() {
+              if [ -n "$(sed -n 's/^LITESTREAM_ACCESS_KEY_ID=//p' .env | head -n1)" ]; then
+                docker compose --profile backup "$@"
+              else
+                docker compose "$@"
+              fi
+            }
 
             # Whole default stack, waiting for healthchecks. Called inside `if`, so
             # a failure routes to the rollback instead of aborting under `set -e`.
             rollout() {
-              $COMPOSE up -d --remove-orphans --wait --wait-timeout 180 || return 1
+              compose up -d --remove-orphans --wait --wait-timeout 180 || return 1
               if [ "$TRAEFIK_RECREATE" = "1" ]; then
-                $COMPOSE up -d --force-recreate --wait --wait-timeout 60 traefik || return 1
+                compose up -d --force-recreate --wait --wait-timeout 60 traefik || return 1
               fi
             }
 
@@ -422,10 +433,12 @@ jobs:
             # over .env for compose interpolation). A failed pull aborts before anything
             # running is touched: .env goes back to .env.prev and the checkout to OLD_HEAD,
             # so the next deploy diffs traefik.yml against what is running.
-            if ! IMAGE_TAG="${IMAGE_TAG}" $COMPOSE pull; then
+            if ! IMAGE_TAG="${IMAGE_TAG}" compose pull; then
               echo "Pull of ${IMAGE_TAG} FAILED — nothing was changed on the VPS" >&2
               if [ -f .env.prev ]; then
                 cp -p .env.prev .env
+              else
+                sed -i '/^IMAGE_TAG=/d' .env  # first deploy: the never-pulled tag is not a baseline
               fi
               git reset --hard "$OLD_HEAD"
               exit 1
@@ -438,7 +451,7 @@ jobs:
               docker image prune -af --filter "until=168h"
             else
               echo "Deploy ${IMAGE_TAG} FAILED (rollout or smoke test)" >&2
-              $COMPOSE ps >&2 || true
+              compose ps >&2 || true
               if [ -n "${PREV_TAG}" ] && [ "${PREV_TAG}" != "${IMAGE_TAG}" ]; then
                 echo "Rolling back to ${PREV_TAG} (checkout ${OLD_HEAD})" >&2
                 cp -p .env.prev .env
@@ -456,6 +469,14 @@ jobs:
                 fi
               else
                 echo "No rollback target (first deploy on this VPS, or same tag as running) — fix forward. Expected once: watch the first deploy." >&2
+                # Do not leave the failed config as the baseline: without a previous tag, drop
+                # the failed IMAGE_TAG so the next deploy does not treat it as its rollback
+                # target (compose falls back to `latest`). Checkout goes back to what was there.
+                if [ -z "${PREV_TAG}" ]; then
+                  sed -i '/^IMAGE_TAG=/d' .env
+                fi
+                git reset --hard "$OLD_HEAD"
+                echo "Checkout reset to ${OLD_HEAD}" >&2
               fi
               exit 1
             fi

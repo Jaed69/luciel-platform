@@ -4,11 +4,12 @@
 #   docker build -t luciel-platform-lemon -f apps/lemon/Dockerfile .
 FROM node:22.23.3-slim AS build
 ENV PNPM_CONFIG_STRICT_DEP_BUILDS=false \
-    npm_config_store_dir=/pnpm/store
+    pnpm_config_store_dir=/pnpm/store
 WORKDIR /app
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-# Download deps from the lockfile alone (cached layer + BuildKit store cache), install offline.
+# Download deps from the lockfile alone (cached layer + BuildKit store cache at /pnpm/store, set via
+# pnpm_config_store_dir: pnpm 11 ignores npm_config_store_dir), then link them with the manifests.
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm fetch
 COPY apps/lemon/package.json apps/lemon/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --prefer-offline

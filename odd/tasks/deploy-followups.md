@@ -27,6 +27,11 @@ actionlint, `bash -n` on deploy script, local simulation of the per-app change l
 
 ## Tasks
 - [x] T1 — F1..F6. Route: delegated (writer trigger: workflow + scripts + docs).
+- [x] T2 — Accumulated-review follow-ups (user authorized "corrige los pendientes"):
+      G1 restore doc must not delete the DB before a verified restore; G2 pnpm actually uses the
+      BuildKit cache mount (`--store-dir`); G3 rollback reads backup profile from the restored env;
+      G4 a failed first deploy must not become the next rollback target; G5 tests for needs-build.sh.
+      Route: delegated (writer trigger: workflow + Dockerfiles + scripts + docs).
 
 ## Progress / evidence
 - T1 done: exact-sha reset (F1); per-app build decision vs `latest` revision label via
@@ -42,6 +47,12 @@ actionlint, `bash -n` on deploy script, local simulation of the per-app change l
 - Open follow-ups: make pnpm use the cache mount (`--store-dir`), restore doc order in operations.md
   (do not delete DB before a successful restore), rollback profile read from new env, failed tag as
   next rollback target when there was no previous tag, needs-build.sh tests.
+
+- T2 done: G1 safe restore (restore to new path, integrity_check, move live DB aside); G2
+  `pnpm_config_store_dir=/pnpm/store` (store now in BuildKit mount, not image layer); G3 compose()
+  reads backup profile from current .env each call; G4 failed first deploy/pull drops IMAGE_TAG and
+  resets checkout; G5 needs-build.sh prints build|skip + scripts/test-needs-build.sh (7 cases, RED vs
+  old contract). Parent checks: both test scripts pass, actionlint exit 0.
 
 ## Next step
 Review + push (user authorized push of this follow-up).

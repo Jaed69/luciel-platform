@@ -14,8 +14,8 @@ Single Oracle ARM VPS, Docker Compose + Traefik. Everything below runs on the VP
    first (tours-api `pytest`, tours-web `test`; landing/lemon have none), the image is pushed as
    `sha-<7>`, scanned with Trivy (fixable CRITICAL fails the run) and only then tagged `latest`.
    The other apps get `sha-<7>` copied from their `latest` (no rebuild).
-3. On the runner, tests `scripts/check-env.sh`, then decrypts `env/production.env` (SOPS) and
-   validates it (no placeholders, no missing required vars). It SSHs to the VPS and resets the
+3. On the runner, tests `scripts/check-env.sh` and `scripts/needs-build.sh`, then decrypts
+   `env/production.env` (SOPS) and validates it (no placeholders, no missing required vars). It SSHs to the VPS and resets the
    checkout to exactly the commit that was built (`git reset --hard <sha>`, not `origin/main`,
    so a newer push never mixes its config with these images). It saves the current `.env` as
    `.env.prev`, regenerates `.env` from the decrypted file, then `docker compose pull` +
@@ -27,7 +27,9 @@ Single Oracle ARM VPS, Docker Compose + Traefik. Everything below runs on the VP
    brings the stack back up and fails the run. A failed `pull` aborts before anything running is
    touched (`.env` and the checkout go back as they were).
    The very first deploy on a fresh VPS has no previous deploy, so there is nothing to roll back
-   to. This happens once: watch that first deploy and fix forward if it fails.
+   to. This happens once: watch that first deploy and fix forward if it fails. A failed first
+   deploy drops the failed `IMAGE_TAG` from `.env` and resets the checkout, so the next deploy
+   starts again with no rollback target instead of treating the failed tag as the last good one.
 
 `traefik/traefik.yml` is static config: the deploy recreates Traefik when it changed.
 Files in `traefik/dynamic/` hot-reload.
@@ -52,14 +54,36 @@ Check: `docker logs tours-backup`.
 
 ## Restore from backup
 
+The live DB is only replaced after the restored copy passes an integrity check, and it is
+kept aside (not deleted) so a bad restore can be undone.
+
 ```sh
 docker compose --profile backup stop tours-web tours-api tours-backup
+
+# 1. Restore into a NEW file and verify it. Stop here if either command fails: nothing was touched.
 docker run --rm --env-file .env -v tours-db-data:/data \
   -v "$PWD/apps/tours/litestream:/etc/litestream:ro" --entrypoint sh \
-  litestream/litestream:0.5.17 -c \
-  'rm -f /data/tours.db /data/tours.db-wal /data/tours.db-shm && litestream restore -config /etc/litestream/litestream.yml /data/tours.db'
+  litestream/litestream:0.5.17 -c '
+    set -e
+    rm -f /data/tours.db.restored
+    litestream restore -config /etc/litestream/litestream.yml -o /data/tours.db.restored /data/tours.db
+    sqlite3 /data/tours.db.restored "PRAGMA integrity_check"   # must print: ok
+  '
+
+# 2. Move the current DB aside (timestamped), then put the restored file in place.
+docker run --rm -v tours-db-data:/data --entrypoint sh litestream/litestream:0.5.17 -c '
+  set -e
+  ts="$(date -u +%Y%m%dT%H%M%SZ)"
+  for f in tours.db tours.db-wal tours.db-shm; do
+    [ -e "/data/$f" ] && mv "/data/$f" "/data/$f.before-restore-$ts"
+  done
+  mv /data/tours.db.restored /data/tours.db
+'
+
 docker compose --profile backup up -d --wait
 ```
+
+Once the restored data is confirmed good, delete the `*.before-restore-*` files from the volume.
 
 ## Monitoring
 
