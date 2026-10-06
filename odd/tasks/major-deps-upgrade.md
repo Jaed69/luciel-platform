@@ -36,8 +36,12 @@ then restrict Dependabot to patch/minor (security updates keep flowing).
       Evidence: 65/65 tests (TZ=UTC, as CI) before and after; `pnpm install --frozen-lockfile` ok;
       `tsc --noEmit` exit 0; tours-web image builds on Node 26.
       Known: `traslados.test.tsx` fails outside UTC (pre-existing, timezone-dependent; backlog).
-- [ ] S5 — Dependabot ignores semver-major; close superseded major PRs
+- [x] S5 — Dependabot ignores semver-major; close superseded major PRs
       (#8, #10-#17).
+      `ignore: version-update:semver-major` on all 5 ecosystems. GitHub docs: `update-types`
+      only affects version updates, not security updates. Repo had Dependabot alerts and
+      security updates DISABLED: enabled both (alerts 204, automated-security-fixes enabled).
+      Superseded open PRs #10, #12, #13, #14 closed with a pointer to #25/#26.
 
 ## Next step
-S5 (Dependabot semver-major ignore + close superseded PRs).
+Done. Backlog: timezone-dependent `traslados.test.tsx` (pin TZ in vitest), 2 tours-web lint errors.
