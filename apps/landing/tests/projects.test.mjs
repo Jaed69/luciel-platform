@@ -2,19 +2,42 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { DIST, read } from './helpers.mjs';
+import { DIST, read, requireDist } from './helpers.mjs';
 
-const pagePath = join(DIST, 'projects', 'index.html');
+const pagePath = () => join(DIST, 'projects', 'index.html');
+
+const cardOf = (html, name) =>
+  html.match(new RegExp(`<article[^>]*data-project="${name}"[\\s\\S]*?</article>`))?.[0] ?? '';
 
 test('/projects/ is built', () => {
-  assert.ok(existsSync(pagePath), 'dist/projects/index.html is missing');
+  requireDist();
+  assert.ok(existsSync(pagePath()), 'dist/projects/index.html is missing');
 });
 
 test('tours is marked live and rtk, graph, hackathons are marked planned', () => {
-  const html = read(pagePath);
-  for (const [name, status] of [['tours', 'live'], ['rtk', 'planned'], ['graph', 'planned'], ['hackathons', 'planned']]) {
-    const card = new RegExp(`<article[^>]*data-project="${name}"[^>]*data-status="${status}"`);
-    assert.match(html, card, `${name} should be ${status}`);
+  const html = read(pagePath());
+  for (const [name, status, badge] of [
+    ['tours', 'live', 'Live'],
+    ['rtk', 'planned', 'Planned'],
+    ['graph', 'planned', 'Planned'],
+    ['hackathons', 'planned', 'Planned'],
+  ]) {
+    const card = cardOf(html, name);
+    assert.match(card, new RegExp(`data-status="${status}"`), `${name} should be ${status}`);
+    assert.match(card, new RegExp(`>\\s*${badge}\\s*</span>`),`${name} should show the ${badge} badge`);
+  }
+});
+
+test('tours card renders its live link and source link', () => {
+  const card = cardOf(read(pagePath()), 'tours');
+  assert.match(card, /href="https:\/\/tours\.luciel\.dev"/);
+  assert.match(card, /href="https:\/\/github\.com\/Jaed69\/luciel-platform\/tree\/main\/apps\/tours"/);
+});
+
+test('planned projects render no links', () => {
+  const html = read(pagePath());
+  for (const name of ['rtk', 'graph', 'hackathons']) {
+    assert.doesNotMatch(cardOf(html, name), /<a /, `${name} should not link anywhere`);
   }
 });
 
