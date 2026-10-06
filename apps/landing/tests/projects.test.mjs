@@ -37,7 +37,9 @@ test('tours card renders its live link and source link', () => {
 test('planned projects render no links', () => {
   const html = read(pagePath());
   for (const name of ['rtk', 'graph', 'hackathons']) {
-    assert.doesNotMatch(cardOf(html, name), /<a /, `${name} should not link anywhere`);
+    const card = cardOf(html, name);
+    assert.ok(card, `${name} card not found`);
+    assert.doesNotMatch(card, /<a /, `${name} should not link anywhere`);
   }
 });
 
@@ -45,4 +47,11 @@ test('projects page is linked from the header', () => {
   const home = read(join(DIST, 'index.html'));
   const header = home.match(/<header[\s\S]*?<\/header>/)?.[0] ?? '';
   assert.match(header, /href="\/projects\/"/);
+});
+
+test('projects page marks Projects as the current nav link and not Home', () => {
+  const html = read(pagePath());
+  const header = html.match(/<header[\s\S]*?<\/header>/)?.[0] ?? '';
+  assert.match(header, /<a[^>]*href="\/projects\/"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/projects\/"/);
+  assert.doesNotMatch(header, /<a[^>]*href="\/"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/"/);
 });

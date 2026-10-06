@@ -37,3 +37,9 @@ test('home exposes no email address or phone number', () => {
   assert.doesNotMatch(body, /[\w.+-]+@[\w-]+\.[\w.-]+/, 'email-like string found');
   assert.doesNotMatch(body, /\+?\d[\d\s-]{7,}\d/, 'phone-like number found');
 });
+
+test('home marks Home as the current nav link and not Projects', () => {
+  const header = home().match(/<header[\s\S]*?<\/header>/)?.[0] ?? '';
+  assert.match(header, /<a[^>]*href="\/"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/"/);
+  assert.doesNotMatch(header, /<a[^>]*href="\/projects\/"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/projects\/"/);
+});
