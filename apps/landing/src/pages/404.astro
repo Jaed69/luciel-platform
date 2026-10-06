@@ -1,0 +1,17 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Page not found | luciel.dev" path="/404.html" description="The page you were looking for does not exist.">
+  <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-lg py-section">
+    <p class="font-mono text-mono-label uppercase text-slate" style="letter-spacing: 0.28px;">404</p>
+    <h1 class="mt-md font-display text-section-heading" style="line-height: 1.2; letter-spacing: -0.48px;">Page not found</h1>
+    <p class="mt-md max-w-prose text-body-large text-body-muted" style="line-height: 1.4;">
+      That address does not exist on luciel.dev.
+    </p>
+    <p class="mt-xl flex gap-lg text-button" style="font-weight: 500;">
+      <a href="/" class="text-action-blue underline">Go to Home</a>
+      <a href="/projects/" class="text-action-blue underline">See Projects</a>
+    </p>
+  </main>
+</Layout>

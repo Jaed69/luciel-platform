@@ -7,15 +7,17 @@ interface Props {
   title?: string;
   description?: string;
   image?: string;
+  path?: string;
 }
 
 const {
   title = 'luciel.dev',
   description = 'luciel.dev: a productized portfolio of real, working web tools.',
   image = '/og-default.png',
+  path = Astro.url.pathname,
 } = Astro.props;
 
-const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const canonical = new URL(path, Astro.site).href;
 const ogImage = new URL(image, Astro.site).href;
 ---
 
