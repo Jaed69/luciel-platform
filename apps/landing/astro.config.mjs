@@ -7,14 +7,14 @@ import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
-// @astrojs/sitemap emits sitemap-index.xml + sitemap-0.xml. Serve the same urlset at /sitemap.xml,
-// the conventional location crawlers probe first.
+// @astrojs/sitemap emits sitemap-index.xml plus numbered chunks. Serve the index at /sitemap.xml too,
+// the conventional location crawlers probe first; an index stays valid for any number of chunks.
 const rootSitemap = {
   name: 'root-sitemap',
   hooks: {
     'astro:build:done': ({ dir }) => {
       const out = fileURLToPath(dir);
-      copyFileSync(`${out}sitemap-0.xml`, `${out}sitemap.xml`);
+      copyFileSync(`${out}sitemap-index.xml`, `${out}sitemap.xml`);
     },
   },
 };
