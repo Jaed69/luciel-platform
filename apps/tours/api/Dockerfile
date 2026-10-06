@@ -9,9 +9,13 @@ ENV PYTHONUNBUFFERED=1 \
     UV_LINK_MODE=copy
 
 RUN pip install --no-cache-dir uv
-COPY pyproject.toml ./
-# BuildKit cache mount keeps downloaded wheels between builds (never lands in the image).
-RUN --mount=type=cache,id=uv,target=/root/.cache/uv uv pip install --system .
+COPY pyproject.toml uv.lock ./
+# Install the exact versions pinned in uv.lock (hash-verified), so the image runs what
+# the tests ran. BuildKit cache mount keeps wheels between builds (never in the image).
+RUN --mount=type=cache,id=uv,target=/root/.cache/uv \
+    uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt \
+    && uv pip install --system -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
 COPY app/ app/
 COPY migrations/ migrations/
 EXPOSE 8000
