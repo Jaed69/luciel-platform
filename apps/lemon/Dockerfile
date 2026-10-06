@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1
-# Multi-stage: node:22.23.3-slim build -> nginx:1.31.6-alpine runtime. Mirrors apps/landing/Dockerfile.
+# Multi-stage: node:26.10.0-slim build -> nginx:1.31.6-alpine runtime. Mirrors apps/landing/Dockerfile.
 # Build context MUST be repo root — pnpm workspace needs the root lockfile.
 #   docker build -t luciel-platform-lemon -f apps/lemon/Dockerfile .
-FROM node:22.23.3-slim AS build
+FROM node:26.10.0-slim AS build
 ENV PNPM_CONFIG_STRICT_DEP_BUILDS=false \
     pnpm_config_store_dir=/pnpm/store
 WORKDIR /app
-RUN corepack enable
+# Node 26 no longer bundles corepack: install the pnpm pinned in root package.json (packageManager) via npm.
+RUN npm install -g pnpm@11.9.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Download deps from the lockfile alone (cached layer + BuildKit store cache at /pnpm/store, set via
 # pnpm_config_store_dir: pnpm 11 ignores npm_config_store_dir), then link them with the manifests.

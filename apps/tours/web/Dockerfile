@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1
-# Multi-stage node:22.23.3-slim build + node:22.23.3-slim runtime for Next.js 16 standalone.
+# Multi-stage node:26.10.0-slim build + node:26.10.0-slim runtime for Next.js 16 standalone.
 # Build context MUST be repo root — pnpm workspace needs the root lockfile.
 #   docker build -t luciel-platform-tours-web -f apps/tours/web/Dockerfile .
-FROM node:22.23.3-slim AS build
+FROM node:26.10.0-slim AS build
 ENV PNPM_CONFIG_STRICT_DEP_BUILDS=false \
     pnpm_config_store_dir=/pnpm/store
 WORKDIR /app
-RUN corepack enable
+# Node 26 no longer bundles corepack: install the pnpm pinned in root package.json (packageManager) via npm.
+RUN npm install -g pnpm@11.9.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Download deps from the lockfile alone (cached layer + BuildKit store cache at /pnpm/store, set via
 # pnpm_config_store_dir: pnpm 11 ignores npm_config_store_dir), then link them with the manifests.
@@ -18,13 +19,7 @@ COPY apps/tours/web/ apps/tours/web/
 RUN pnpm --filter @luciel-platform/tours build
 
 # Next.js 16 standalone: copy .next/standalone + .next/static + public/
-FROM node:22.23.3-slim AS runtime
-# Base image ships perl-base deb12u3 (CRITICAL CVE-2026-13221/42496/8376, fixed in deb12u4).
-# Drop this once a node:22 slim tag with deb12u4 is published.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends --only-upgrade perl-base \
-    && rm -rf /var/lib/apt/lists/*
-ENV NODE_ENV=production
+FROM node:26.10.0-slim AS runtime
 WORKDIR /app
 COPY --from=build /app/apps/tours/web/.next/standalone ./
 COPY --from=build /app/apps/tours/web/.next/static ./apps/tours/web/.next/static

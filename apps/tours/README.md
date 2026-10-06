@@ -11,7 +11,7 @@ Aplicación contable para agencias de tours en Cusco. Frontend Next.js 16 + back
 
 ## Dev local
 
-El proyecto usa pnpm workspaces + uv (Python). Requiere Node 22+ y Python 3.13+.
+El proyecto usa pnpm workspaces + uv (Python). Requiere Node 26+ y Python 3.13+.
 
 ```bash
 # Workspace install (desde repo raíz — pnpm-workspace.yaml referencia apps/tours/web)
