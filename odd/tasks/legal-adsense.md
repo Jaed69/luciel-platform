@@ -28,10 +28,12 @@ Fonts (visitor IPs reach Google). AdSense review requires the legal pages and cr
 - TDD: strict (RED before GREEN), node:test against dist.
 
 ## Tasks
-- [ ] L1 — Self-host fonts (@fontsource packages), remove Google Fonts links; update tests.
-- [ ] L2 — Privacy, Terms and Contact pages + footer links; narrow the PII guard.
+- [x] L1 — Self-host fonts (@fontsource packages), remove Google Fonts links; update tests.
+      Also pins `engines.node >=22.18` (tests import TS data via type stripping). Commit 419e376.
+- [x] L2 — Privacy, Terms and Contact pages + footer links; narrow the PII guard. Commit 5148c84.
+      Log-rotation claim verified: Traefik uses the shared 10m x 3 json-file logging in docker-compose.yml.
 - [ ] L3 — robots.txt with Mediapartners-Google + sitemap line; `/sitemap.xml` at root; 404
-      excluded from the sitemap.
+      excluded from the sitemap. Commit 87aaf29.
 
 ## Acceptance criteria
 - `/privacy/`, `/terms/`, `/contact/` built, linked from every page's footer, with OG/canonical.
@@ -45,5 +47,10 @@ Fonts (visitor IPs reach Google). AdSense review requires the legal pages and cr
 ## Progress
 - 2026-10-06: document created; branch `feat/legal-adsense` from `feat/content-hub` (71952fd).
 
+- 2026-10-06: L1–L3 done. Evidence: RED per task; GREEN 40/40 (`pnpm --filter @luciel/landing test`);
+  parent re-ran tests and built the real Docker image: /, /privacy/, /terms/, /contact/, /robots.txt,
+  /sitemap.xml return 200 from nginx, unknown path returns 404.
+
 ## Next step
-L1–L3 via one delegated writer.
+User reviews the legal wording (not legal advice); then push + PR stacked on #33. User-owned:
+ads.txt (publisher ID), Search Console DNS verification, AdSense application.
