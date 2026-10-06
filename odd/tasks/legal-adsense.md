@@ -32,7 +32,7 @@ Fonts (visitor IPs reach Google). AdSense review requires the legal pages and cr
       Also pins `engines.node >=22.18` (tests import TS data via type stripping). Commit 419e376.
 - [x] L2 — Privacy, Terms and Contact pages + footer links; narrow the PII guard. Commit 5148c84.
       Log-rotation claim verified: Traefik uses the shared 10m x 3 json-file logging in docker-compose.yml.
-- [ ] L3 — robots.txt with Mediapartners-Google + sitemap line; `/sitemap.xml` at root; 404
+- [x] L3 — robots.txt with Mediapartners-Google + sitemap line; `/sitemap.xml` at root; 404
       excluded from the sitemap. Commit 87aaf29.
 
 ## Acceptance criteria
