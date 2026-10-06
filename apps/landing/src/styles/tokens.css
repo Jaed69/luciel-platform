@@ -131,3 +131,4 @@ code, .chip {
 /* ---------- footer ---------- */
 .foot { padding-block: 2.5rem 3rem; color: var(--color-faint); font-family: var(--font-mono); font-size: var(--step--1); }
 .foot .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; }
+.foot nav ul { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; list-style: none; margin: 0; padding: 0; }
