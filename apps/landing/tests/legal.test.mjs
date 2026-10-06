@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { DIST, CONTACT_EMAIL, htmlFiles, piiFindings, read } from './helpers.mjs';
+const EMAIL_RE = CONTACT_EMAIL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const rel = (p) => p.slice(DIST.length + 1);
 const page = (name) => join(DIST, name, 'index.html');
@@ -39,7 +40,7 @@ test('privacy policy covers logs, cookies, AdSense, Law 29733 and rights', () =>
   const html = read(page('privacy'));
   assert.match(html, /href="https:\/\/policies\.google\.com\/technologies\/ads"/);
   assert.match(html, /href="https:\/\/adssettings\.google\.com"/);
-  assert.match(html, new RegExp(`mailto:${CONTACT_EMAIL.replace('.', '\.')}`));
+  assert.match(html, new RegExp(`mailto:${EMAIL_RE}`));
 });
 
 test('terms cover ownership, warranty, liability and governing law', () => {
@@ -51,8 +52,8 @@ test('terms cover ownership, warranty, liability and governing law', () => {
 
 test('contact page shows the email as text and as a mailto link, with no form', () => {
   const html = read(page('contact'));
-  assert.match(text(html), new RegExp(CONTACT_EMAIL.replaceAll('.', '\.')));
-  assert.match(html, new RegExp(`href="mailto:${CONTACT_EMAIL.replaceAll('.', '\.')}"`));
+  assert.match(text(html), new RegExp(EMAIL_RE));
+  assert.match(html, new RegExp(`href="mailto:${EMAIL_RE}"`));
   assert.doesNotMatch(html, /<form[\s>]/);
 });
 
