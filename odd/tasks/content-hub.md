@@ -36,8 +36,16 @@ Projects page, no 404, no blog content. Phase 3 (legal pages + AdSense) depends 
       Evidence: RED (dist/projects/index.html missing); GREEN 7/7; parent re-ran build + tests
       (7/7) and checked every claim in src/data/projects.ts against README/STATUS/PROJECT.md.
       Commit 608b0e8.
-- [ ] C3 — Home page: personal intro, project philosophy, tool directory (CONT-02).
-- [ ] C4 — Custom 404 page (CONT-09).
+- [x] R — Review follow-ups from C1–C2 reliability review (approved, acknowledged): og:image must
+      exist in dist, clear message when dist/ is missing, projects badge text + tours links.
+      Evidence: RED via temporary bogus og:image path; GREEN. Commit cbd282b.
+- [x] C3 — Home page: personal intro, project philosophy, tool directory (CONT-02).
+      Intro sourced only from the user's CV (user-provided 2026-10-06); no phone, email,
+      references, metrics or class rank. Philosophy from .planning/PROJECT.md; directory reuses
+      src/data/projects.ts. Evidence: RED 5 failing; GREEN 16/16. Commit f15a5e1.
+- [x] C4 — Custom 404 page (CONT-09). nginx already had `error_page 404 /404.html;` (now tested).
+      Evidence: RED (dist/404.html missing); GREEN. Commit 088ec13.
+      Parent re-ran build + tests (16/16) and grepped dist/src for personal data (none).
 - [ ] C5 — Blog: content collection + MDX + Shiki, list/detail pages, RSS (CONT-03/04/11).
       Needs the user's real articles; nothing is written on their behalf.
 
@@ -52,7 +60,8 @@ Projects page, no 404, no blog content. Phase 3 (legal pages + AdSense) depends 
 - Branch: `feat/content-hub` (from main 54c96f2).
 
 ## Progress
-- 2026-10-06: feature document created; C1 and C2 done (af68518, 608b0e8).
+- 2026-10-06: feature document created; C1 and C2 done (af68518, 608b0e8); review approved.
+- 2026-10-06: R, C3, C4 done (cbd282b, f15a5e1, 088ec13).
 
 ## Next step
-C3 home page (needs the user's personal intro and philosophy wording), then C4 404.
+User approval of the home intro wording; then C5 blog (needs the user's real articles).
