@@ -20,6 +20,7 @@ RUN pnpm --filter @luciel-platform/tours build
 
 # Next.js 16 standalone: copy .next/standalone + .next/static + public/
 FROM node:26.10.0-slim AS runtime
+ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/apps/tours/web/.next/standalone ./
 COPY --from=build /app/apps/tours/web/.next/static ./apps/tours/web/.next/static
