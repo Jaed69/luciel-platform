@@ -1,0 +1,28 @@
+---
+const links = [
+  { href: '/', label: 'Home' },
+];
+
+const current = Astro.url.pathname.replace(/\/?$/, '/');
+---
+
+<header class="border-b border-hairline">
+  <div class="mx-auto flex max-w-5xl items-center justify-between px-lg py-lg">
+    <a href="/" class="font-display text-feature-heading text-primary" style="letter-spacing: -0.32px;">luciel.dev</a>
+    <nav aria-label="Main">
+      <ul class="flex items-center gap-xl text-body">
+        {links.map((link) => (
+          <li>
+            <a
+              href={link.href}
+              aria-current={current === link.href ? 'page' : undefined}
+              class:list={['hover:underline', current === link.href ? 'underline underline-offset-4 text-primary' : 'text-body-muted']}
+            >
+              {link.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+</header>

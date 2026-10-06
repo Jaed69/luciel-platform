@@ -1,11 +1,22 @@
 ---
 import '../styles/tokens.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
 
 interface Props {
   title?: string;
+  description?: string;
+  image?: string;
 }
 
-const { title = 'luciel.dev' } = Astro.props;
+const {
+  title = 'luciel.dev',
+  description = 'luciel.dev: a productized portfolio of real, working web tools.',
+  image = '/og-default.png',
+} = Astro.props;
+
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const ogImage = new URL(image, Astro.site).href;
 ---
 
 <!doctype html>
@@ -14,9 +25,25 @@ const { title = 'luciel.dev' } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
-    <meta name="description" content="luciel.dev — a productized portfolio. Under construction." />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="luciel.dev" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
   </head>
-  <body class="font-body bg-canvas text-ink">
-    <slot />
+  <body class="font-body bg-canvas text-ink min-h-screen flex flex-col">
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-md focus:top-md focus:bg-canvas focus:px-lg focus:py-sm focus:rounded-sm focus:outline-2 focus:outline-focus-blue">Skip to content</a>
+    <Header />
+    <div id="main" class="flex-1 flex flex-col">
+      <slot />
+    </div>
+    <Footer />
   </body>
 </html>
