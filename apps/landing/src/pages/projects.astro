@@ -1,0 +1,53 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { projects } from '../data/projects';
+
+const statusLabel = { live: 'Live', planned: 'Planned' } as const;
+---
+
+<Layout
+  title="Projects | luciel.dev"
+  description="Tools built and planned on luciel.dev: what is live, what is login-only, and what is next."
+>
+  <main class="mx-auto w-full max-w-5xl px-lg py-section">
+    <h1 class="font-display text-section-heading" style="line-height: 1.2; letter-spacing: -0.48px;">Projects</h1>
+    <p class="mt-md max-w-prose text-body-large text-body-muted" style="line-height: 1.4;">
+      Each tool lives in the <a href="https://github.com/Jaed69/luciel-platform" class="text-action-blue underline">luciel-platform</a> monorepo and runs on its own subdomain.
+    </p>
+
+    <ul class="mt-xxl grid gap-xl md:grid-cols-2">
+      {projects.map((project) => (
+        <li>
+          <article
+            data-project={project.name}
+            data-status={project.status}
+            class="h-full rounded-sm bg-soft-stone p-xxl"
+          >
+            <div class="flex items-center justify-between gap-md">
+              <h2 class="font-display text-card-heading" style="line-height: 1.2; letter-spacing: -0.32px;">{project.name}</h2>
+              <span
+                class:list={[
+                  'rounded-full px-md py-xs font-mono text-mono-label uppercase',
+                  project.status === 'live' ? 'bg-primary text-on-primary' : 'border border-primary text-primary',
+                ]}
+                style="letter-spacing: 0.28px;"
+              >
+                {statusLabel[project.status]}
+              </span>
+            </div>
+            <p class="mt-lg text-body" style="line-height: 1.5;">{project.summary}</p>
+            {project.stack.length > 0 && (
+              <p class="mt-md font-mono text-caption text-body-muted">{project.stack.join(' · ')}</p>
+            )}
+            {(project.url || project.sourceUrl) && (
+              <p class="mt-lg flex flex-wrap gap-lg text-button" style="font-weight: 500;">
+                {project.url && <a href={project.url} class="text-action-blue underline">{project.url.replace('https://', '')} (login required)</a>}
+                {project.sourceUrl && <a href={project.sourceUrl} class="text-action-blue underline">Source on GitHub</a>}
+              </p>
+            )}
+          </article>
+        </li>
+      ))}
+    </ul>
+  </main>
+</Layout>
