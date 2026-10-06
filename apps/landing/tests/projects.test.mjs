@@ -55,3 +55,15 @@ test('projects page marks Projects as the current nav link and not Home', () => 
   assert.match(header, /<a[^>]*href="\/projects\/"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/projects\/"/);
   assert.doesNotMatch(header, /<a[^>]*href="\/"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/"/);
 });
+
+test('login note on project links is driven by the data module', async () => {
+  const { projects } = await import('../src/data/projects.ts');
+  const html = read(pagePath());
+  for (const project of projects.filter((p) => p.url)) {
+    assert.ok(project.access, `${project.name} has a url but no access field`);
+    const card = cardOf(html, project.name);
+    const note = /login required/.test(card);
+    assert.equal(note, project.access === 'login', `${project.name}: login note should follow access=${project.access}`);
+  }
+  assert.equal(projects.find((p) => p.name === 'tours')?.access, 'login');
+});

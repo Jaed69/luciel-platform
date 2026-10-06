@@ -43,3 +43,14 @@ test('every page has a header with nav and a footer', () => {
     assert.match(html, /<footer[\s>]/, `${rel(page)}: footer`);
   }
 });
+
+test('every same-page #fragment link points to an element with that id', () => {
+  for (const page of htmlFiles()) {
+    const html = read(page);
+    const ids = new Set([...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+    for (const [, frag] of html.matchAll(/\shref="#([^"]*)"/g)) {
+      if (frag === '') continue;
+      assert.ok(ids.has(frag), `${rel(page)}: href="#${frag}" has no target id`);
+    }
+  }
+});

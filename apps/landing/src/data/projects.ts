@@ -5,6 +5,8 @@ export interface Project {
   url?: string;
   sourceUrl?: string;
   status: ProjectStatus;
+  /** Who can open `url`: 'login' means a login-only back-office. */
+  access?: 'login' | 'public';
   summary: string;
   stack: string[];
 }
@@ -16,6 +18,7 @@ export const projects: Project[] = [
     url: 'https://tours.luciel.dev',
     sourceUrl: 'https://github.com/Jaed69/luciel-platform/tree/main/apps/tours',
     status: 'live',
+    access: 'login',
     summary:
       'Double-entry accounting panel for a tour agency and hotel in Cusco: sales, commissions, settlements and an audit log. It is a login-only back-office for a real client, so there is no public demo; the source is on GitHub.',
     stack: ['Next.js', 'FastAPI', 'SQLite (WAL)'],

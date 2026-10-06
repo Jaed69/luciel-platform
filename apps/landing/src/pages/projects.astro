@@ -41,7 +41,7 @@ const statusLabel = { live: 'Live', planned: 'Planned' } as const;
             )}
             {(project.url || project.sourceUrl) && (
               <p class="mt-lg flex flex-wrap gap-lg text-button" style="font-weight: 500;">
-                {project.url && <a href={project.url} class="text-action-blue underline">{project.url.replace('https://', '')} (login required)</a>}
+                {project.url && <a href={project.url} class="text-action-blue underline">{project.url.replace('https://', '')}{project.access === 'login' ? ' (login required)' : ''}</a>}
                 {project.sourceUrl && <a href={project.sourceUrl} class="text-action-blue underline">Source on GitHub</a>}
               </p>
             )}
