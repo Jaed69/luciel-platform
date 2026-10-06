@@ -1,0 +1,35 @@
+---
+const links = [
+  { href: '/', label: 'Home' },
+  { href: '/projects/', label: 'Projects' },
+];
+
+const current = Astro.url.pathname.replace(/\/?$/, '/');
+---
+
+<header class="hud" aria-label="Status bar">
+  <div class="wrap">
+    <a href="/" class="brand">luciel<span>.</span>dev</a>
+    <span>LIM <b id="clock">--:--:--</b></span>
+    <span>−12.0464 −77.0428</span>
+    <span>depth <b id="depth">0%</b></span>
+    <nav aria-label="Main">
+      <ul>
+        {links.map((link) => (
+          <li>
+            <a href={link.href} aria-current={current === link.href ? 'page' : undefined}>{link.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  </div>
+  <div class="depth-bar" aria-hidden="true"></div>
+</header>
+
+<script is:inline>
+  (()=>{const c=document.getElementById('clock'),d=document.getElementById('depth'),
+  f=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Lima',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}),
+  t=()=>{c.textContent=f.format(new Date())},
+  s=()=>{const m=document.documentElement.scrollHeight-innerHeight;d.textContent=(m>0?Math.round(scrollY/m*100):0)+'%'};
+  t();setInterval(t,1000);addEventListener('scroll',s,{passive:true});s()})();
+</script>

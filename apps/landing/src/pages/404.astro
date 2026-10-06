@@ -1,0 +1,22 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Page not found | luciel.dev" path="/404.html" description="The page you were looking for does not exist.">
+  <main class="wrap lost">
+    <p class="eyebrow">Error · 404</p>
+    <h1>Page not found</h1>
+    <p class="lead">That address does not exist on luciel.dev.</p>
+    <p class="actions">
+      <a href="/">Go to Home</a>
+      <a href="/projects/">See Projects</a>
+    </p>
+  </main>
+</Layout>
+
+<style is:global>
+  .lost { display: grid; gap: 1.1rem; align-content: center; padding-block: clamp(3rem, 10vw, 7rem); width: 100%; }
+  .lost h1 { font-size: var(--step-3); font-weight: 800; line-height: 0.98; letter-spacing: -0.03em; }
+  .lost .lead { color: var(--color-muted); font-size: var(--step-1); }
+  .lost .actions { display: flex; flex-wrap: wrap; gap: 0.6rem 1.6rem; font-family: var(--font-mono); font-size: var(--step--1); }
+</style>

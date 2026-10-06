@@ -1,11 +1,24 @@
 ---
 import '../styles/tokens.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
 
 interface Props {
   title?: string;
+  description?: string;
+  image?: string;
+  path?: string;
 }
 
-const { title = 'luciel.dev' } = Astro.props;
+const {
+  title = 'luciel.dev',
+  description = 'luciel.dev: a productized portfolio of real, working web tools.',
+  image = '/og-default.png',
+  path = Astro.url.pathname,
+} = Astro.props;
+
+const canonical = new URL(path, Astro.site).href;
+const ogImage = new URL(image, Astro.site).href;
 ---
 
 <!doctype html>
@@ -14,9 +27,32 @@ const { title = 'luciel.dev' } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
-    <meta name="description" content="luciel.dev — a productized portfolio. Under construction." />
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="luciel.dev" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="color-scheme" content="dark" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
   </head>
-  <body class="font-body bg-canvas text-ink">
-    <slot />
+  <body>
+    <a href="#main" class="skip">Skip to content</a>
+    <Header />
+    <div id="main" tabindex="-1">
+      <slot />
+    </div>
+    <Footer />
   </body>
 </html>
