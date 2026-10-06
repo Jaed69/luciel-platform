@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { DIST, CONTACT_EMAIL, htmlFiles, piiFindings, read } from './helpers.mjs';
-const EMAIL_RE = CONTACT_EMAIL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+import { DIST, CONTACT_EMAIL, escapeRe, htmlFiles, piiFindings, read } from './helpers.mjs';
+const EMAIL_RE = escapeRe(CONTACT_EMAIL);
 
 const rel = (p) => p.slice(DIST.length + 1);
 const page = (name) => join(DIST, name, 'index.html');
@@ -15,7 +15,7 @@ test('privacy, terms and contact pages are built with an h1 and a main landmark'
     const html = read(page(name));
     assert.match(html, /<main[\s>]/, `${name}: main`);
     assert.match(html, new RegExp(`<h1[^>]*>[^<]*${h1.source}`), `${name}: h1`);
-    assert.match(html, new RegExp(`<link rel="canonical" href="https://luciel\.dev/${name}/"`), `${name}: canonical`);
+    assert.match(html, new RegExp(`<link rel="canonical" href="${escapeRe(`https://luciel.dev/${name}/`)}"`), `${name}: canonical`);
   }
 });
 
@@ -68,4 +68,27 @@ test('the PII guard rejects other emails and phone numbers', () => {
   assert.deepEqual(piiFindings('<p>x@example.com</p>'), ['email-like string']);
   assert.deepEqual(piiFindings(`<p>${CONTACT_EMAIL} and other.person@luciel.dev</p>`), ['email-like string']);
   assert.deepEqual(piiFindings('<p>+51 987 654 321</p>'), ['phone-like number']);
+});
+
+test('the PII guard still scans meta descriptions', () => {
+  const meta = (name, content) => `<meta name="${name}" content="${content}">`;
+  assert.deepEqual(piiFindings(meta('description', 'write me: x@example.com')), ['email-like string']);
+  assert.deepEqual(piiFindings(`<meta property="og:description" content="call +51 987 654 321">`), ['phone-like number']);
+  assert.deepEqual(piiFindings(meta('twitter:description', 'x@example.com')), ['email-like string']);
+  assert.deepEqual(piiFindings(meta('description', 'A plain description')), []);
+  assert.deepEqual(piiFindings(meta('description', `mail ${CONTACT_EMAIL}`)), []);
+  assert.deepEqual(piiFindings('<link rel="canonical" href="https://luciel.dev/a@b.co/">'), []);
+});
+
+test('the PII guard allows only the exact standalone contact address', () => {
+  assert.deepEqual(piiFindings(`<p>${CONTACT_EMAIL}.</p>`), []);
+  assert.deepEqual(piiFindings(`<a href="mailto:${CONTACT_EMAIL}">x</a>`), []);
+  assert.deepEqual(piiFindings(`<p>x${CONTACT_EMAIL}</p>`), ['email-like string']);
+  assert.deepEqual(piiFindings(`<p>${CONTACT_EMAIL}.evil</p>`), ['email-like string']);
+  assert.deepEqual(piiFindings(`<p>${CONTACT_EMAIL}m</p>`), ['email-like string']);
+});
+
+test('escapeRe makes a literal pattern', () => {
+  assert.match('a.b', new RegExp(`^${escapeRe('a.b')}$`));
+  assert.doesNotMatch('axb', new RegExp(`^${escapeRe('a.b')}$`));
 });
