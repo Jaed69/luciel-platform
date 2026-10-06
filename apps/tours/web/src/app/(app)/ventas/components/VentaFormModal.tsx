@@ -167,6 +167,9 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
   // cada vez que cambia la cantidad, pero solo mientras el campo no esté en
   // modo edición manual (lápiz abierto) — así no se pisa un valor que el
   // vendedor ya escribió a mano.
+  // Totals are recomputed where their inputs change: here for cantidad, and in
+  // handleTourSelect/resetForm for the unit prices. A new place that sets
+  // precioUnitarioAuto/costoUnitarioAuto must also set monto/costo.
   function handleCantidadChange(value: string) {
     setCantidadPasajeros(value);
     const cantidad = parseInt(value) || 1;

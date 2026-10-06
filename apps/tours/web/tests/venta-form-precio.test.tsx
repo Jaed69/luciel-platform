@@ -259,6 +259,15 @@ describe("VentaFormModal — total follows cantidad de pasajeros", () => {
     await waitFor(() => expect(screen.getByLabelText("Costo proveedor")).toHaveTextContent("300"));
     expect((screen.getByLabelText("Monto") as HTMLInputElement).value).toBe("180");
   });
+
+  it("applies the current cantidad when the tour is picked after it", async () => {
+    await openModalAndSearch();
+    fireEvent.change(screen.getByLabelText("Cantidad de pasajeros"), { target: { value: "3" } });
+    fireEvent.mouseDown(screen.getByText("7 Lagunas"));
+
+    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("660"));
+    expect(screen.getByLabelText("Costo proveedor")).toHaveTextContent("450");
+  });
 });
 
 describe("VentaFormModal — duplicado warning", () => {

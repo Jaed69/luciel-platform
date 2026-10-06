@@ -38,7 +38,7 @@ Plataforma "portafolio productizado": un monorepo en `luciel.dev` que combina un
 | Astro | 7.0.x (7.0.4) | Landing/content hub (luciel.dev root) | **See recommendation below (Next.js vs Astro)**. Zero-JS default output = best AdSense/SEO baseline. Content Collections + MDX for blog. |
 | Next.js | 16.2.x (16.2.10) | Tool subdomain frontends | Full-stack React for interactive tools. Indexable by Google. AdSense-compatible ad placement. Required for tool UIs that need client-side state. |
 | SQLite | 3.51.x (latest bundled with Python 3.13+) | Primary database (WAL mode) | No separate DB server. WAL mode handles concurrent reads during writes. Named Docker volume for persistence. Migrate to Postgres ONLY on evidence of write contention. |
-| Node.js | 26.x (LTS from Oct 2026) | Runtime for Astro/Next.js builds and dev | Node 24 leaves active support Oct 2026; 26 becomes LTS on 2026-10-28. Both Astro 7 and Next.js 16 require Node 22+. Images pin `node:26.x-slim`; pnpm is installed explicitly (Node 26 no longer bundles corepack). |
+| Node.js | 26.x (Current; LTS from 2026-10-28) | Runtime for Astro/Next.js builds and dev | Node 24 leaves active support Oct 2026; 26 becomes LTS on 2026-10-28. Both Astro 7 and Next.js 16 require Node 22+. Images pin `node:26.x-slim`; pnpm is installed explicitly (Node 26 no longer bundles corepack). |
 
 ### Supporting Libraries
 

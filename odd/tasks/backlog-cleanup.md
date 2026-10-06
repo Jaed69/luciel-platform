@@ -25,6 +25,10 @@ Close three small follow-ups left by the infra and dependency work.
       NewLiquidacionModal: open-reset via prevOpen render-time adjustment. Commit f28100d.
       Parent check: auto prices are only set in resetForm/handleTourSelect (which already
       compute amounts) and the cantidad handler, so behavior matches the removed effect.
+      Review (high, 4 lenses): approved. Follow-up: test for cantidad-before-tour order (passes
+      on old and new code), invariant comment on handleCantidadChange, AGENTS.md says Node 26 is
+      Current until 2026-10-28. 68/68 tests, eslint exit 0. Liquidacion reset: old effect deps
+      were only [open], so the open-transition reset is equivalent.
 - [x] B3 — AGENTS.md: Node 22 -> 26 (route: inline, mechanical doc edit).
       Runtime row + deploy line updated; compatibility rows (Astro/Next need >=22) kept. Commit 4fdc4bf.
 
