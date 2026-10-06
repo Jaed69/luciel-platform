@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Empty scaffold repository. No codebase, commands, or conventions yet.
+pnpm/uv monorepo for luciel.dev (Astro sites, Next.js + FastAPI `tours` app, Traefik + Docker Compose deploy via GitHub Actions); see README.md for architecture and commands.
 
 <!-- GSD:project-start source:PROJECT.md -->
 
