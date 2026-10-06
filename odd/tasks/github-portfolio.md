@@ -44,17 +44,23 @@ NAO_PET, antlr-cpp-statistical-interpreter, Datafest. More projects may be added
       NAO_PET, antlr-cpp-statistical-interpreter, Datafest. Spanish originals kept as README.es.md.
       Descriptions + topics set on all 6; no homepage (no live demos). Unverifiable claims removed
       (metrics, MIT without LICENSE, coverage). Merge pending (user).
-- [~] P4 — Rewrite profile README (repo Jaed69/Jaed69) + profile bio/website (remote).
+- [x] P4 — Rewrite profile README (repo Jaed69/Jaed69) + profile bio/website (remote).
       Contact source: user's CV (2026-10-06): email jhamil.pcardenas@luciel.dev; phone NOT
       published; LinkedIn URL not provided. Bio/website: gh token lacks `user` scope ->
       user sets them manually in GitHub settings.
       Profile README PR: Jaed69/Jaed69#1 (reviewed by parent: CV facts only, no phone/LinkedIn).
-      Pending: user merges PR, sets bio/URL/hireable, decides UPC-LLM-AWS visibility.
-- [ ] P5 — Curation proposal: pins, duplicates, course-work repos to archive/privatize.
+      Merged. User decision: UPC-LLM-AWS -> private (institutional); profile row unlinked in
+      Jaed69/Jaed69#2. Bio/URL/hireable: user sets manually (gh token lacks `user` scope).
+- [x] P5 — Curation (user-approved 2026-10-06). Archived: Smart-traffic (superseded by v2.0),
+      ContSmart (2-commit template; ConSmart is the real one). Private: Trabajo_Final, Se-ales,
+      ING-SOF-2024-2, War-Tragedy, Modspack, Practica_Angular, Final_Proyect_IA, Salvacion,
+      ABET-UPC (institutional). Verified via gh api. Pins (UI-only) set by user: luciel-platform,
+      Datafest, Smart-Trafic-v2.0, NAO_PET, Traductor-Lenguaje-Senas-GRU, antlr interpreter.
 
 ## Checks
 - Every link in each README resolves (live demos, repo paths).
 - Claims cross-checked against the source repo.
 
 ## Next step
-User: merge 7 PRs, set bio; decide UPC-LLM-AWS visibility. Then P5 curation.
+Done. Follow-ups (not in scope): 19 Dependabot alerts on luciel-platform; measured results
+(accuracy/metrics, demo media) for featured AI repos; projects page on luciel.dev (Content Hub).
