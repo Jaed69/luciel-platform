@@ -19,6 +19,11 @@ RUN pnpm --filter @luciel-platform/tours build
 
 # Next.js 16 standalone: copy .next/standalone + .next/static + public/
 FROM node:22.23.3-slim AS runtime
+# Base image ships perl-base deb12u3 (CRITICAL CVE-2026-13221/42496/8376, fixed in deb12u4).
+# Drop this once a node:22 slim tag with deb12u4 is published.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends --only-upgrade perl-base \
+    && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/apps/tours/web/.next/standalone ./

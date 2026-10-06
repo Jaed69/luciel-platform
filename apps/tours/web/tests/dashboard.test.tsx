@@ -2,15 +2,15 @@
 // Plan 02.1-02 — Dashboard S2 render: 4 content-cards + filter bar visible.
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { DashboardCards } from "../src/app/(app)/_components/DashboardCards";
+import { DashboardCards, type SaldosRow } from "../src/app/(app)/_components/DashboardCards";
 
 describe("Dashboard S2", () => {
   it("renders 4 content-cards with the exact titles per UI-SPEC", () => {
-    const saldos = [
-      { codigo: "101-CAJA-PEN", nombre: "Caja Soles", moneda: "PEN", saldo: 350.0 },
-      { codigo: "101-CAJA-USD", nombre: "Caja Dólares", moneda: "USD", saldo: 0 },
-      { codigo: "401-INGRESOS-TOURS-PEN", nombre: "Ingresos Tours", moneda: "PEN", saldo: 100.0 },
-      { codigo: "501-COSTOS-TOURS-PEN", nombre: "Costos Tours", moneda: "PEN", saldo: -50.0 },
+    const saldos: SaldosRow[] = [
+      { id: 1, codigo: "101-CAJA-PEN", nombre: "Caja Soles", moneda: "PEN", saldo: 350.0 },
+      { id: 2, codigo: "101-CAJA-USD", nombre: "Caja Dólares", moneda: "USD", saldo: 0 },
+      { id: 3, codigo: "401-INGRESOS-TOURS-PEN", nombre: "Ingresos Tours", moneda: "PEN", saldo: 100.0 },
+      { id: 4, codigo: "501-COSTOS-TOURS-PEN", nombre: "Costos Tours", moneda: "PEN", saldo: -50.0 },
     ];
     render(<DashboardCards saldos={saldos} />);
     expect(screen.getByText(/Caja Soles/i)).toBeTruthy();

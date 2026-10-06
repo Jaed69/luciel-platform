@@ -14,12 +14,13 @@ type TipoTourRow = {
   precio_default_usd: number | null;
   moneda_default: string;
   activo: boolean;
+  estado: string;
 };
 
 const MOCK_TOURS: TipoTourRow[] = [
   {
     id: 1, codigo: "T-7LAGUNAS", nombre: "7 Lagunas", descripcion: null, tiempo: "Full day",
-    precio_default: 150, precio_default_usd: 42, moneda_default: "PEN", activo: true,
+    precio_default: 150, precio_default_usd: 42, moneda_default: "PEN", activo: true, estado: "disponible_para_venta",
   },
 ];
 
