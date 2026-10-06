@@ -1,0 +1,10 @@
+# Keep secrets, VCS data and heavy local dirs out of every build context (root-context builds).
+**/node_modules
+**/.next
+**/dist
+.git
+.codegraph
+.atl
+.planning
+odd
+**/.env

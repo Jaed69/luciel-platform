@@ -1,11 +1,16 @@
 # Secrets — never commit
 .env
+.env.prev
 ssh-key-*.key
 ssh-key-*.key.pub
 *.key
 *.key.pub
 *.pem
 *.ppk
+
+# Local env overrides and decrypted copies of env/production.env
+env/*.local.env
+env/*.dec*
 
 # Let's Encrypt cert store (contains private key material — D-13, D-20, T-01-03)
 traefik/letsencrypt/

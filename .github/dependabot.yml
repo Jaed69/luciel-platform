@@ -1,0 +1,52 @@
+# Weekly dependency PRs. Minor/patch bumps are grouped per ecosystem to limit
+# noise; major bumps still arrive as individual PRs. Pinned action SHAs and
+# pinned base-image versions only stay fresh because of this file.
+version: 2
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        update-types: [minor, patch]
+
+  # pnpm workspace (root lockfile covers every JS app).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        update-types: [minor, patch]
+
+  - package-ecosystem: uv
+    directory: /apps/tours/api
+    schedule:
+      interval: weekly
+    groups:
+      uv:
+        update-types: [minor, patch]
+
+  # Base images pinned in each app Dockerfile.
+  - package-ecosystem: docker
+    directories:
+      - /apps/landing
+      - /apps/lemon
+      - /apps/tours/web
+      - /apps/tours/api
+    schedule:
+      interval: weekly
+    groups:
+      docker:
+        update-types: [minor, patch]
+
+  # Images pinned in docker-compose.yml (traefik, socket proxy, litestream).
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      docker-compose:
+        update-types: [minor, patch]

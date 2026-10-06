@@ -1,15 +1,17 @@
 # apps/tours/api/Dockerfile
 # Self-contained build context = apps/tours/api/ (simplifies CI matrix per Plan 02).
-# python:3.13-slim + uv install + uvicorn CMD.
-FROM python:3.13-slim AS runtime
+# python:3.13.16-slim + uv install + uvicorn CMD.
+FROM python:3.13.16-slim AS runtime
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    UV_LINK_MODE=copy
 
 RUN pip install --no-cache-dir uv
 COPY pyproject.toml ./
-RUN uv pip install --system --no-cache .
+# BuildKit cache mount keeps downloaded wheels between builds (never lands in the image).
+RUN --mount=type=cache,id=uv,target=/root/.cache/uv uv pip install --system .
 COPY app/ app/
 COPY migrations/ migrations/
 EXPOSE 8000

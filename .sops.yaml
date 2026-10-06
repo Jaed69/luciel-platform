@@ -1,0 +1,7 @@
+# SOPS config: files matching path_regex are encrypted for the age recipients below.
+# Rotate/add a recipient: edit `age`, then `sops updatekeys env/production.env`.
+creation_rules:
+  # The `.` before `production` matches both `/` and Windows `\` path separators.
+  - path_regex: env.production\.env$
+    input_type: dotenv
+    age: age16glph2hfw7py0250wn9hvs37xwsqwgw4uardl0w2ksxwy9tm7y8q8yse78

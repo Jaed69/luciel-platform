@@ -1,64 +1,181 @@
 # Build arm64 images and push to GHCR (RESEARCH.md Pattern 5, D-06/D-10/D-04).
 # Closes the deploy loop: push to main -> CI build -> GHCR -> VPS pull (docker-compose.yml uses image:).
 #
-# D-04 matrix refactor: build/push landing + tours-web + tours-api images in parallel matrix jobs,
-# then a single deploy job SSH's into VPS and `docker compose pull + up -d` recreates the three.
+# Pipeline: `changes` decides which apps need a rebuild -> `build` (matrix, native arm64) runs
+# each app's checks, pushes `sha-<7>`, scans it with Trivy and only then moves `latest` ->
+# `retag` gives the apps that were NOT rebuilt the same `sha-<7>` tag (registry-side copy of
+# their `latest`, no rebuild) -> a single `deploy` job SSH's into the VPS, pins the stack to
+# this commit's sha tag, runs `docker compose up -d --wait` for the WHOLE stack and
+# smoke-tests it (auto-rollback on failure). Deploy requires the sha tag to exist for ALL apps.
+#
+# Third-party actions are pinned to a full commit SHA (supply chain); Dependabot keeps them fresh.
 name: Build and Push to GHCR
 
 on:
   push:
     branches: [main]
     paths:
-      - 'apps/landing/**'
-      - 'apps/tours/**'
-      - 'apps/lemon/**'
+      - 'apps/**'
+      # Shared JS inputs (also mark every JS app as changed, see `changes` job).
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.dockerignore'
+      # Platform layer: compose/Traefik/smoke-test changes must deploy too.
+      - 'docker-compose.yml'
+      - 'traefik/**'
+      - 'scripts/**'
+      # Config-only changes deploy without a rebuild (no app is marked changed -> retag only).
+      - 'env/**'
+      - '.sops.yaml'
       - '.github/workflows/release.yml'
+
+# One run at a time, in order. Waiting runs may be superseded by a newer one: that is safe
+# because `changes` diffs against the revision stored in each app's `latest` image, not
+# against the previous push, so a skipped run never leaves an app stale.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
 
+# Least privilege by default; jobs that push images add `packages: write`.
+permissions:
+  contents: read
+
 jobs:
-  build-and-push:
+  # Which apps need a new image? Per app: diff HEAD against the revision label of its
+  # current `latest` image (scripts/needs-build.sh). Rebuild when the app's paths differ,
+  # or `latest` is missing / has no label / points to a commit not in history; otherwise
+  # `latest` already equals HEAD for that app and it is retagged instead. Outputs the build
+  # matrix (apps to rebuild) and the names of the apps to retag.
+  changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+      build: ${{ steps.matrix.outputs.build }}
+      unchanged: ${{ steps.matrix.outputs.unchanged }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0  # the `latest` revision may be any commit in history
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build matrix
+        id: matrix
+        run: |
+          set -eu
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          # tours-api context MUST be apps/tours/api — its Dockerfile is self-contained
+          # (COPY pyproject.toml / COPY app/) and does NOT use root-relative paths.
+          # `paths` = what the image is built from; JS apps also depend on the shared files.
+          shared='package.json pnpm-lock.yaml pnpm-workspace.yaml .dockerignore'
+          apps="$(jq -n --arg s "$shared" '[
+            {"name":"landing","context":".","file":"apps/landing/Dockerfile","paths":("apps/landing " + $s)},
+            {"name":"lemon","context":".","file":"apps/lemon/Dockerfile","paths":("apps/lemon " + $s)},
+            {"name":"tours-web","context":".","file":"apps/tours/web/Dockerfile","paths":("apps/tours/web " + $s)},
+            {"name":"tours-api","context":"apps/tours/api","file":"apps/tours/api/Dockerfile","paths":"apps/tours/api"}
+          ]')"
+
+          build='[]'
+          for app in $(jq -r '.[].name' <<<"$apps"); do
+            img="${REGISTRY}/${owner}/luciel-platform-${app}"
+            paths="$(jq -r --arg n "$app" '.[] | select(.name == $n) | .paths' <<<"$apps")"
+            # Revision label of `latest` (single-platform image: .Image is the config itself;
+            # multi-platform: a map keyed by platform). Empty on any failure -> rebuild.
+            rev="$(docker buildx imagetools inspect "${img}:latest" --format '{{json .Image}}' 2>/dev/null               | jq -r '(if .config then . else first(.[] | select(.architecture == "arm64")) end)
+                       | .config.Labels["org.opencontainers.image.revision"] // empty' 2>/dev/null || true)"
+            # A failing script counts as `build`: never skip on an error.
+            # shellcheck disable=SC2086  # $paths is a space-separated list on purpose
+            decision="$(bash scripts/needs-build.sh "$rev" $paths || echo build)"
+            if [ "$decision" = skip ]; then
+              echo "${app}: retag (latest ${rev} has the same content)"
+            else
+              echo "${app}: build (latest revision: ${rev:-none})"
+              build="$(jq -c --arg n "$app" '. + [$n]' <<<"$build")"
+            fi
+          done
+
+          matrix="$(jq -c --argjson c "$build" '[.[] | select(.name as $n | $c | index($n)) | del(.paths)]' <<<"$apps")"
+          unchanged="$(jq -c --argjson c "$build" '[.[] | select(.name as $n | $c | index($n) | not) | .name]' <<<"$apps")"
+          {
+            echo "matrix=${matrix}"
+            echo "unchanged=${unchanged}"
+            echo "build=$([ "$matrix" = '[]' ] && echo false || echo true)"
+          } >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    # Native arm64 runner (free for public repos) — no QEMU emulation, matches the arm64 VPS.
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write  # GITHUB_TOKEN can push to GHCR — no separate PAT needed (T-01-08)
     strategy:
       fail-fast: false
       matrix:
-        app: [landing, lemon, tours-web, tours-api]
-        include:
-          - app: landing
-            context: "."
-            file: ./apps/landing/Dockerfile
-            image_suffix: landing
-          - app: lemon
-            context: "."
-            file: ./apps/lemon/Dockerfile
-            image_suffix: lemon
-          - app: tours-web
-            context: "."
-            file: ./apps/tours/web/Dockerfile
-            image_suffix: tours-web
-          # tours-api context MUST be apps/tours/api — its Dockerfile is self-contained
-          # (COPY pyproject.toml / COPY app/) and does NOT use root-relative paths
-          # (using "." here would break the build — BLOCKER fix per Plan 02.1-02 D-04).
-          - app: tours-api
-            context: apps/tours/api
-            file: ./apps/tours/api/Dockerfile
-            image_suffix: tours-api
+        app: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # GitHub runners are x86_64 only — QEMU emulates arm64 for the arm64 VPS target (D-06).
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      # --- CI gate: the app's own checks must pass before an image is built. ---
+      # landing and lemon have no lint/test/typecheck script (only `astro build`, which the
+      # Dockerfile already runs), so they have no gate here. Add one when a script exists.
+      - name: Set up uv
+        if: matrix.app.name == 'tours-api'
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          enable-cache: true
+          cache-dependency-glob: apps/tours/api/uv.lock
 
+      - name: Test tours-api
+        if: matrix.app.name == 'tours-api'
+        working-directory: apps/tours/api
+        run: uv run --extra dev pytest
+
+      - name: Set up pnpm
+        if: matrix.app.name == 'tours-web'
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        if: matrix.app.name == 'tours-web'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install JS dependencies
+        if: matrix.app.name == 'tours-web'
+        run: pnpm install --frozen-lockfile
+
+      # Advisory for now: lint already fails on main (2 react-hooks/set-state-in-effect
+      # errors). Drop `continue-on-error` once they are fixed so it becomes a real gate.
+      - name: Lint tours-web
+        if: matrix.app.name == 'tours-web'
+        continue-on-error: true
+        run: pnpm --filter @luciel-platform/tours lint
+
+      - name: Test tours-web
+        if: matrix.app.name == 'tours-web'
+        run: pnpm --filter @luciel-platform/tours test
+
+      # --- Build, push sha tag, scan, then promote to latest. ---
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -66,106 +183,300 @@ jobs:
 
       - name: Extract metadata (tags, labels)
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
         with:
-          # github.repository_owner is GHCR user (case-folded). lowercase via github mechanism.
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/luciel-platform-${{ matrix.image_suffix }}
+          # metadata-action lowercases the image name (GHCR requires lowercase).
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/luciel-platform-${{ matrix.app.name }}
+          # Only the sha tag here: `latest` is moved after the Trivy scan passes.
           tags: |
             type=sha,prefix=sha-
-            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Build and push
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.file }}
+          context: ${{ matrix.app.context }}
+          file: ${{ matrix.app.file }}
           platforms: linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.app.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
 
-  # Auto-deploy: single SSH into VPS — git pull main, regenerate .env from GH repo
-  # secrets, pull latest images, recreate the three services. Traefik is never
-  # touched (D-01 — infra existed since Phase 1).
+      # Fail the job (and therefore the deploy) on fixable CRITICAL vulnerabilities.
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Promote to latest
+        env:
+          SHA_REF: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+        run: docker buildx imagetools create -t "${SHA_REF%%:*}:latest" "$SHA_REF"
+
+  # Apps that were not rebuilt still need a sha-<7> tag: the deploy pins every app to it.
+  # Registry-side manifest copy of their `latest` — no rebuild, no pull.
+  retag:
+    needs: changes
+    if: needs.changes.outputs.unchanged != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Retag unchanged apps
+        env:
+          UNCHANGED: ${{ needs.changes.outputs.unchanged }}
+        run: |
+          set -eu
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          # Same format as docker/metadata-action `type=sha,prefix=sha-` (7 chars).
+          tag="sha-${GITHUB_SHA::7}"
+          for app in $(jq -r '.[]' <<<"$UNCHANGED"); do
+            img="${REGISTRY}/${owner}/luciel-platform-${app}"
+            docker buildx imagetools create -t "${img}:${tag}" "${img}:latest"
+          done
+
+  # Auto-deploy: decrypt env/production.env (SOPS + age) on the runner, then a single SSH
+  # into the VPS — git sync main, write .env from the decrypted file, pin
+  # IMAGE_TAG=sha-<commit>, pull and `up -d --wait` the WHOLE stack (traefik +
+  # docker-socket-proxy + apps) so platform changes apply too. Then run
+  # scripts/verify-prod.sh; on failure, roll back checkout + IMAGE_TAG to the previous
+  # deploy and fail the run. Every app image must exist for the sha tag (build + retag
+  # guarantee it). Runs even when `build`/`retag` were skipped, never when they failed.
   #
   # GH repo secrets required (set via `gh secret set NAME -b "value"`):
-  #   VPS_HOST, VPS_USER, VPS_SSH_KEY, DEPLOY_PATH          (Phase 01-02)
-  #   NEXTAUTH_SECRET, ADMIN_INITIAL_PASSWORD, NEXTAUTH_URL, # tours app (02.1)
-  #   JWT_ALGORITHM
-  #   TRAEFIK_DASHBOARD_USER, TRAEFIK_DASHBOARD_PASS_HASH     # Phase 01 dashboard
-  #   GHCR_OWNER                                             # GHCR owner (lowercase)
-  #   GHCR_PAT (optional — only if GHCR package is private)
+  #   VPS_HOST, VPS_USER, VPS_SSH_KEY, DEPLOY_PATH   (reach the VPS)
+  #   SOPS_AGE_KEY                                    (age private key that decrypts env/production.env)
+  # Every app variable (tours, Traefik dashboard, GHCR, Litestream) lives in the
+  # encrypted env/production.env, not in GitHub secrets.
   #
-  # To add a new env var: (1) add to .env.example, (2) `gh secret set NAME`,
-  # (3) add to `env:` below + to the heredoc body in `script`.
+  # To add a new env var: `sops edit env/production.env`, add the line, and reference it
+  # in docker-compose.yml. No workflow change. The deploy refuses `__FILL_ME__`
+  # placeholders and any variable compose requires via `${VAR:?...}` that is missing/empty.
   deploy:
-    needs: build-and-push
+    needs: [changes, build, retag]
+    if: >-
+      always() && github.ref == 'refs/heads/main'
+      && needs.changes.result == 'success'
+      && contains(fromJSON('["success","skipped"]'), needs.build.result)
+      && contains(fromJSON('["success","skipped"]'), needs.retag.result)
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    concurrency:
-      group: deploy-vps
-      cancel-in-progress: false  # never cancel a deploy mid-flight
+    permissions:
+      contents: read
     steps:
-      - name: Deploy to VPS via SSH
-        uses: appleboy/ssh-action@v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Cheap guards for the scripts the pipeline trusts: the env validator before it sees the
+      # real file, and the build/skip decision behind every retag.
+      - name: Test check-env
+        run: bash scripts/test-check-env.sh
+
+      - name: Test needs-build
+        run: bash scripts/test-needs-build.sh
+
+      # Pinned release binary, verified against the checksum published with that release.
+      - name: Install sops
         env:
-          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-          ADMIN_INITIAL_PASSWORD: ${{ secrets.ADMIN_INITIAL_PASSWORD }}
-          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
-          JWT_ALGORITHM: ${{ secrets.JWT_ALGORITHM }}
-          TRAEFIK_DASHBOARD_USER: ${{ secrets.TRAEFIK_DASHBOARD_USER }}
-          TRAEFIK_DASHBOARD_PASS_HASH: ${{ secrets.TRAEFIK_DASHBOARD_PASS_HASH }}
-          GHCR_OWNER: ${{ secrets.GHCR_OWNER }}
-          GHCR_PAT: ${{ secrets.GHCR_PAT }}
+          SOPS_VERSION: v3.13.3
+          SOPS_SHA256: e5bec3346a873ae91d871550f3e698c1aad962aff462a080e40f25fde17fef6b
+        run: |
+          set -eu
+          curl -fsSL -o sops "https://github.com/getsops/sops/releases/download/${SOPS_VERSION}/sops-${SOPS_VERSION}.linux.amd64"
+          echo "${SOPS_SHA256}  sops" | sha256sum -c -
+          sudo install -m 0755 sops /usr/local/bin/sops
+
+      # Decrypts env/production.env. Every value is masked before anything else runs, the
+      # file is validated (names only in errors), and the result travels to the SSH step as
+      # base64 in the job env (GITHUB_ENV is not echoed in step logs; the blob is masked too).
+      - name: Decrypt and validate production env
+        env:
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          set -eu
+          umask 077
+          dec="$(mktemp)"
+          trap 'rm -f "$dec"' EXIT
+          sops decrypt env/production.env > "$dec"
+
+          # dotenv is one line per variable, so each value is a single-line mask.
+          while IFS= read -r line || [ -n "$line" ]; do
+            case "$line" in ''|'#'*) continue ;; esac
+            value="${line#*=}"
+            if [ -n "$value" ]; then
+              echo "::add-mask::${value}"
+            fi
+          done < "$dec"
+
+          bash scripts/check-env.sh "$dec"
+
+          blob="$(base64 -w0 "$dec")"
+          echo "::add-mask::${blob}"
+          echo "PROD_ENV_B64=${blob}" >> "$GITHUB_ENV"
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: NEXTAUTH_SECRET,ADMIN_INITIAL_PASSWORD,NEXTAUTH_URL,JWT_ALGORITHM,TRAEFIK_DASHBOARD_USER,TRAEFIK_DASHBOARD_PASS_HASH,GHCR_PAT,GHCR_OWNER
+          envs: PROD_ENV_B64
           script: |
             set -eu
             cd ${{ secrets.DEPLOY_PATH }}
 
-            # Sync compose + configs from main (fixes Phase-01-stale-VPS bug
-            # discovered during Phase 02.1 deploy — VPS had Phase 01 compose
-            # while local main had tours-web/tours-api; deploy silently failed).
-            git fetch origin
-            git reset --hard origin/main
+            # Same format as docker/metadata-action `type=sha,prefix=sha-` (7 chars).
+            SHA='${{ github.sha }}'
+            IMAGE_TAG="sha-$(printf '%s' "${SHA}" | cut -c1-7)"
 
-            # Regenerate .env from GH repo secrets (idempotent — overwrites on
-            # every CI deploy). Any manual edits on the VPS will be wiped. To
-            # add a var, see the workflow header comment.
-            cat > .env <<EOF_ENV
-            # Managed by .github/workflows/release.yml deploy job.
-            # Regenerated on every CI deploy — local manual edits will be wiped.
-            # Generated: $(date -u +%FT%TZ)
-
-            # GHCR image refs (GHCR_OWNER lowercase — GitHub case-folds)
-            GHCR_OWNER=${GHCR_OWNER}
-            GHCR_PAT=${GHCR_PAT}
-
-            # Traefik dashboard basic-auth (D-17)
-            TRAEFIK_DASHBOARD_USER=${TRAEFIK_DASHBOARD_USER}
-            TRAEFIK_DASHBOARD_PASS_HASH=${TRAEFIK_DASHBOARD_PASS_HASH}
-
-            # Tours (Phase 02.1) — JWT bridge NextAuth <-> FastAPI (D-02)
-            NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
-            NEXTAUTH_URL=${NEXTAUTH_URL}
-            JWT_ALGORITHM=${JWT_ALGORITHM}
-            ADMIN_INITIAL_PASSWORD=${ADMIN_INITIAL_PASSWORD}
-            EOF_ENV
-            chmod 600 .env
-
-            # GHCR login only when a PAT is provided (private packages).
-            # Public packages pull anonymously.
-            if [ -n "${GHCR_PAT}" ]; then
-              printf '%s' "${GHCR_PAT}" | docker login ghcr.io -u "${GHCR_OWNER}" --password-stdin
+            # Previous tag (from the .env of the last deploy) = rollback target.
+            # Empty on a fresh VPS: that first deploy has nothing to roll back to.
+            PREV_TAG=""
+            if [ -f .env ]; then
+              PREV_TAG="$(sed -n 's/^IMAGE_TAG=//p' .env | head -n1)"
             fi
 
-            docker compose pull landing lemon tours-web tours-api
-            docker compose up -d landing lemon tours-web tours-api
-            docker image prune -f
+            # Sync compose + configs to EXACTLY the commit this run built images for (fixes the
+            # Phase-01-stale-VPS bug; also stops a newer push to main from mixing its config
+            # with this run's images). Nothing is touched if that commit is unreachable.
+            OLD_HEAD="$(git rev-parse HEAD)"
+            git fetch origin main
+            if ! git cat-file -e "${SHA}^{commit}" 2>/dev/null; then
+              echo "Commit ${SHA} is not reachable from origin/main on the VPS — nothing was changed" >&2
+              exit 1
+            fi
+            git reset --hard "${SHA}"
+            NEW_HEAD="$(git rev-parse HEAD)"
 
-            [ -n "${GHCR_PAT}" ] && docker logout ghcr.io 2>/dev/null || true
+            # traefik.yml is static config (single-file bind mount, read at start):
+            # recreate Traefik when it changed. Dynamic config is a mounted directory
+            # and hot-reloads by itself.
+            TRAEFIK_RECREATE=0
+            if ! git diff --quiet "$OLD_HEAD" "$NEW_HEAD" -- traefik/traefik.yml; then
+              TRAEFIK_RECREATE=1
+            fi
+
+            # Rebuild .env from the decrypted env/production.env (idempotent — overwrites on
+            # every CI deploy; manual edits on the VPS are wiped). To add a var, see the
+            # workflow header comment.
+            # IMAGE_TAG keeps the PREVIOUS tag until the new images are pulled (see below),
+            # so a failed pull never leaves a tag that does not exist in .env.
+            # The current .env is kept as .env.prev: it is the rollback target for config
+            # (it already carries PREV_TAG).
+            umask 077
+            if [ -f .env ]; then
+              cp -p .env .env.prev
+              chmod 600 .env.prev
+            else
+              rm -f .env.prev
+            fi
+            printf '%s' "${PROD_ENV_B64}" | base64 -d > .env.new
+            {
+              echo "# Managed by .github/workflows/release.yml deploy job (from env/production.env)."
+              echo "# Regenerated on every CI deploy — local manual edits will be wiped."
+              echo "# Generated: $(date -u +%FT%TZ)"
+              echo "IMAGE_TAG=${PREV_TAG:-${IMAGE_TAG}}"
+              cat .env.new
+            } > .env.tmp
+            chmod 600 .env.tmp
+            mv .env.tmp .env
+
+            # Values are read by parsing, never by sourcing: they may contain `$` (bcrypt).
+            envval() { sed -n "s/^$1=//p" .env.new | head -n1; }
+            GHCR_OWNER="$(envval GHCR_OWNER)"
+            GHCR_PAT="$(envval GHCR_PAT)"
+            rm -f .env.new
+
+            # GHCR login only when a PAT is provided (private packages).
+            # Public packages pull anonymously. Logout runs on every exit path.
+            if [ -n "${GHCR_PAT}" ]; then
+              printf '%s' "${GHCR_PAT}" | docker login ghcr.io -u "${GHCR_OWNER}" --password-stdin
+              trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+            fi
+
+            # `docker compose` with the backup profile only when the .env in effect enables
+            # Litestream. Read at every call, so a rollback that restores .env.prev also
+            # restores the profile decision of that deploy.
+            compose() {
+              if [ -n "$(sed -n 's/^LITESTREAM_ACCESS_KEY_ID=//p' .env | head -n1)" ]; then
+                docker compose --profile backup "$@"
+              else
+                docker compose "$@"
+              fi
+            }
+
+            # Whole default stack, waiting for healthchecks. Called inside `if`, so
+            # a failure routes to the rollback instead of aborting under `set -e`.
+            rollout() {
+              compose up -d --remove-orphans --wait --wait-timeout 180 || return 1
+              if [ "$TRAEFIK_RECREATE" = "1" ]; then
+                compose up -d --force-recreate --wait --wait-timeout 60 traefik || return 1
+              fi
+            }
+
+            # Pull with the new tag only in this command's environment (the shell env wins
+            # over .env for compose interpolation). A failed pull aborts before anything
+            # running is touched: .env goes back to .env.prev and the checkout to OLD_HEAD,
+            # so the next deploy diffs traefik.yml against what is running.
+            if ! IMAGE_TAG="${IMAGE_TAG}" compose pull; then
+              echo "Pull of ${IMAGE_TAG} FAILED — nothing was changed on the VPS" >&2
+              if [ -f .env.prev ]; then
+                cp -p .env.prev .env
+              else
+                sed -i '/^IMAGE_TAG=/d' .env  # first deploy: the never-pulled tag is not a baseline
+              fi
+              git reset --hard "$OLD_HEAD"
+              exit 1
+            fi
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env
+
+            if rollout && VERIFY_RESOLVE_IP=127.0.0.1 bash scripts/verify-prod.sh; then
+              echo "Deploy ${IMAGE_TAG} OK"
+              # Keep recent images (rollback targets); drop what is >7 days old and unused.
+              docker image prune -af --filter "until=168h"
+            else
+              echo "Deploy ${IMAGE_TAG} FAILED (rollout or smoke test)" >&2
+              compose ps >&2 || true
+              if [ -n "${PREV_TAG}" ] && [ "${PREV_TAG}" != "${IMAGE_TAG}" ]; then
+                echo "Rolling back to ${PREV_TAG} (checkout ${OLD_HEAD})" >&2
+                cp -p .env.prev .env
+                # Restore compose/Traefik config too, and recreate Traefik if the failed
+                # deploy changed its static config.
+                git reset --hard "$OLD_HEAD"
+                TRAEFIK_RECREATE=0
+                if ! git diff --quiet "$NEW_HEAD" "$OLD_HEAD" -- traefik/traefik.yml; then
+                  TRAEFIK_RECREATE=1
+                fi
+                if rollout; then
+                  echo "Rolled back to ${PREV_TAG}" >&2
+                else
+                  echo "ROLLBACK FAILED — manual intervention needed (see docs/operations.md)" >&2
+                fi
+              else
+                echo "No rollback target (first deploy on this VPS, or same tag as running) — fix forward. Expected once: watch the first deploy." >&2
+                # Do not leave the failed config as the baseline: without a previous tag, drop
+                # the failed IMAGE_TAG so the next deploy does not treat it as its rollback
+                # target (compose falls back to `latest`). Checkout goes back to what was there.
+                if [ -z "${PREV_TAG}" ]; then
+                  sed -i '/^IMAGE_TAG=/d' .env
+                fi
+                git reset --hard "$OLD_HEAD"
+                echo "Checkout reset to ${OLD_HEAD}" >&2
+              fi
+              exit 1
+            fi
