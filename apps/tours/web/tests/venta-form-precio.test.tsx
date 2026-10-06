@@ -230,6 +230,37 @@ describe("VentaFormModal — motivo required on edited costo/monto", () => {
   });
 });
 
+describe("VentaFormModal — total follows cantidad de pasajeros", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFetch();
+  });
+
+  it("recomputes monto and costo as unit price x cantidad while neither is being edited", async () => {
+    await openModalAndSearch();
+    fireEvent.mouseDown(screen.getByText("7 Lagunas"));
+    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("220"));
+
+    fireEvent.change(screen.getByLabelText("Cantidad de pasajeros"), { target: { value: "3" } });
+
+    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("660"));
+    expect(screen.getByLabelText("Costo proveedor")).toHaveTextContent("450");
+  });
+
+  it("keeps a manually edited monto when cantidad changes but still recomputes the other field", async () => {
+    await openModalAndSearch();
+    fireEvent.mouseDown(screen.getByText("7 Lagunas"));
+    await waitFor(() => expect(screen.getByLabelText("Monto")).toHaveTextContent("220"));
+
+    fireEvent.click(screen.getByRole("button", { name: /editar monto/i }));
+    fireEvent.change(screen.getByLabelText("Monto"), { target: { value: "180" } });
+    fireEvent.change(screen.getByLabelText("Cantidad de pasajeros"), { target: { value: "2" } });
+
+    await waitFor(() => expect(screen.getByLabelText("Costo proveedor")).toHaveTextContent("300"));
+    expect((screen.getByLabelText("Monto") as HTMLInputElement).value).toBe("180");
+  });
+});
+
 describe("VentaFormModal — duplicado warning", () => {
   beforeEach(() => {
     vi.clearAllMocks();

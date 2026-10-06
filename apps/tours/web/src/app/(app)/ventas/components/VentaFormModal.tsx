@@ -167,16 +167,16 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
   // cada vez que cambia la cantidad, pero solo mientras el campo no esté en
   // modo edición manual (lápiz abierto) — así no se pisa un valor que el
   // vendedor ya escribió a mano.
-  useEffect(() => {
-    const cantidad = parseInt(cantidadPasajeros) || 1;
+  function handleCantidadChange(value: string) {
+    setCantidadPasajeros(value);
+    const cantidad = parseInt(value) || 1;
     if (!montoEditing && precioUnitarioAuto != null) {
       setMonto(fmtNum(precioUnitarioAuto * cantidad));
     }
     if (!costoEditing && costoUnitarioAuto != null) {
       setCosto(fmtNum(costoUnitarioAuto * cantidad));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cantidadPasajeros, precioUnitarioAuto, costoUnitarioAuto]);
+  }
 
   async function doSubmit(createAnother: boolean, skipDupeCheck = false) {
     if (submitting) return;
@@ -430,7 +430,7 @@ export function VentaFormModal({ role, vendedorId: ownVendedorId }: { role?: str
               min={1}
               step={1}
               value={cantidadPasajeros}
-              onChange={(e) => setCantidadPasajeros(e.target.value)}
+              onChange={(e) => handleCantidadChange(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-gold/30 bg-canvas tabular-nums"
             />
           </label>
