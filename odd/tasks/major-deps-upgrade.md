@@ -29,9 +29,15 @@ then restrict Dependabot to patch/minor (security updates keep flowing).
       Trivy CRITICAL (fixed) exit 0, container healthy + `/health` 200.
       148 passed inside python:3.14.7-slim with the frozen lock (SQLAlchemy 2.1.3, greenlet 3.5.3).
       Commit ae85262. Review: medium, granted, approved (advisories closed by the in-image run).
-- [ ] S4 — Test tooling: vitest 5, jsdom 30, @testing-library/jest-dom 7.
+- [x] S4 — Test tooling: vitest 5, jsdom 30, @testing-library/jest-dom 7.
+      vitest 5.0.3, jsdom 30.1.2, jest-dom 7.0.1; `vitest.config.ts` uses `import.meta.dirname`
+      (Vite warned `__dirname` breaks under its future native config loader). Supersedes #10, #12, #13.
+      Lockfile: drops vite 7.3.6 (only vitest 3 used it); astro 7.3.5 / vite 8.3.2 / next unchanged.
+      Evidence: 65/65 tests (TZ=UTC, as CI) before and after; `pnpm install --frozen-lockfile` ok;
+      `tsc --noEmit` exit 0; tours-web image builds on Node 26.
+      Known: `traslados.test.tsx` fails outside UTC (pre-existing, timezone-dependent; backlog).
 - [ ] S5 — Dependabot ignores semver-major; close superseded major PRs
       (#8, #10-#17).
 
 ## Next step
-S4 (test tooling majors).
+S5 (Dependabot semver-major ignore + close superseded PRs).
