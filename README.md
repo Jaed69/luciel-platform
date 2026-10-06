@@ -104,10 +104,8 @@ pnpm --filter @luciel-platform/tours lint
 pnpm --filter @luciel-platform/tours test
 
 # tours-api (http://localhost:8000/health)
-cd apps/tours/api
-uv sync
-uv run uvicorn app.main:app --reload --port 8000
-uv run --extra dev pytest
+(cd apps/tours/api && uv sync && uv run --extra dev pytest)
+(cd apps/tours/api && uv run uvicorn app.main:app --reload --port 8000)
 
 # pipeline helper tests
 bash scripts/test-check-env.sh
