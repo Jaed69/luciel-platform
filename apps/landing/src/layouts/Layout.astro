@@ -50,7 +50,7 @@ const ogImage = new URL(image, Astro.site).href;
   <body>
     <a href="#main" class="skip">Skip to content</a>
     <Header />
-    <div id="main">
+    <div id="main" tabindex="-1">
       <slot />
     </div>
     <Footer />

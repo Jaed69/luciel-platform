@@ -89,7 +89,8 @@ code, .chip {
 }
 .status.live { color: var(--color-moss); }
 .status.build { color: var(--color-ochre); }
-.facets { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 1rem 1.6rem; }
+.facets { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1rem 1.6rem; }
+@media (min-width: 720px) { .facets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .facet { display: grid; gap: 0.3rem; min-width: 0; }
 .facet .eyebrow { color: var(--color-rust); }
 .facet p { color: var(--color-muted); font-size: 0.95rem; }
