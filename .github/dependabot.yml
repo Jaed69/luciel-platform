@@ -1,6 +1,9 @@
-# Weekly dependency PRs. Minor/patch bumps are grouped per ecosystem to limit
-# noise; major bumps still arrive as individual PRs. Pinned action SHAs and
-# pinned base-image versions only stay fresh because of this file.
+# Weekly dependency PRs, minor/patch only, grouped per ecosystem to limit noise.
+# Major bumps are ignored here and taken deliberately (see odd/tasks/major-deps-upgrade.md).
+# The ignore applies to version updates only: security updates (repo setting
+# "Dependabot security updates") still open PRs for any version, majors included.
+# Note: docker tags count Python 3.14 -> 3.15 as minor, so those still arrive.
+# Pinned action SHAs and pinned base-image versions only stay fresh because of this file.
 version: 2
 
 updates:
@@ -11,6 +14,9 @@ updates:
     groups:
       actions:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # pnpm workspace (root lockfile covers every JS app).
   - package-ecosystem: npm
@@ -20,6 +26,9 @@ updates:
     groups:
       npm:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: uv
     directory: /apps/tours/api
@@ -28,6 +37,9 @@ updates:
     groups:
       uv:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Base images pinned in each app Dockerfile.
   - package-ecosystem: docker
@@ -41,6 +53,9 @@ updates:
     groups:
       docker:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Images pinned in docker-compose.yml (traefik, socket proxy, litestream).
   - package-ecosystem: docker-compose
@@ -50,3 +65,6 @@ updates:
     groups:
       docker-compose:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
