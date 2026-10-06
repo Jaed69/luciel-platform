@@ -194,6 +194,10 @@ components:
     typography: "{typography.micro}"
 ---
 
+## luciel.dev landing: autumn dark
+
+The luciel.dev landing (`apps/landing`) no longer uses the Cohere-derived tokens described below. It uses the "autumn dark" token set (espresso ground, desaturated autumn accents, Bricolage Grotesque, IBM Plex Sans and JetBrains Mono) defined in `apps/landing/src/styles/tokens.css`. The rest of this file is kept as the original reference analysis.
+
 ## Overview
 
 Cohere's current web presence feels like a sober enterprise AI command center with editorial restraint. The home page opens on a huge typographic declaration over a white canvas, then uses photography, dark product mockups, trust logos, and generous empty space to make AI infrastructure feel controlled rather than speculative. Product pages invert the tone into deep green-black or dark navy bands, while blog and research pages move toward publishing-system clarity: large filters, thin rules, dense lists, and pale technical backgrounds.

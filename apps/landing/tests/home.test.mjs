@@ -33,7 +33,7 @@ test('home no longer says it is under construction', () => {
 });
 
 test('home exposes no email address or phone number', () => {
-  const body = home().replace(/<(script|style)[^]*?<\/\1>/g, '');
+  const body = home().replace(/<(script|style)[^]*?<\/\1>|<link[^>]*>/g, '');
   assert.doesNotMatch(body, /[\w.+-]+@[\w-]+\.[\w.-]+/, 'email-like string found');
   assert.doesNotMatch(body, /\+?\d[\d\s-]{7,}\d/, 'phone-like number found');
 });

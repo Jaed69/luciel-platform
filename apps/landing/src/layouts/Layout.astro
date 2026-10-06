@@ -39,11 +39,18 @@ const ogImage = new URL(image, Astro.site).href;
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
+    <meta name="color-scheme" content="dark" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
   </head>
-  <body class="font-body bg-canvas text-ink min-h-screen flex flex-col">
-    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:left-md focus:top-md focus:bg-canvas focus:px-lg focus:py-sm focus:rounded-sm focus:outline-2 focus:outline-focus-blue">Skip to content</a>
+  <body>
+    <a href="#main" class="skip">Skip to content</a>
     <Header />
-    <div id="main" class="flex-1 flex flex-col">
+    <div id="main">
       <slot />
     </div>
     <Footer />
