@@ -56,11 +56,20 @@ export function NewLiquidacionModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Reset wizard state each time the modal opens (adjust state during render,
+  // not in the fetch effect below).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setStep(1);
+      setSeleccion(new Set());
+      setError(null);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
-    setStep(1);
-    setSeleccion(new Set());
-    setError(null);
     Promise.all([
       fetch("/api/catalogos/vendedores").then((r) => r.json()).catch(() => []),
       fetch("/api/catalogos/agencias").then((r) => r.json()).catch(() => []),

@@ -159,11 +159,8 @@ jobs:
         if: matrix.app.name == 'tours-web'
         run: pnpm install --frozen-lockfile
 
-      # Advisory for now: lint already fails on main (2 react-hooks/set-state-in-effect
-      # errors). Drop `continue-on-error` once they are fixed so it becomes a real gate.
       - name: Lint tours-web
         if: matrix.app.name == 'tours-web'
-        continue-on-error: true
         run: pnpm --filter @luciel-platform/tours lint
 
       - name: Test tours-web
