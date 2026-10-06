@@ -8,16 +8,27 @@ import { DIST, htmlFiles, read } from './helpers.mjs';
 const rel = (p) => p.slice(DIST.length + 1);
 const tokensPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'styles', 'tokens.css');
 
-test('every page links the three Google font families with preconnect and display=swap', () => {
+test('no page loads fonts from Google', () => {
   for (const page of htmlFiles()) {
     const html = read(page);
-    assert.match(html, /<link[^>]*rel="preconnect"[^>]*href="https:\/\/fonts\.googleapis\.com"/, `${rel(page)}: preconnect`);
-    assert.match(html, /<link[^>]*rel="preconnect"[^>]*href="https:\/\/fonts\.gstatic\.com"/, `${rel(page)}: preconnect gstatic`);
-    const sheet = html.match(/<link[^>]*href="(https:\/\/fonts\.googleapis\.com\/css2[^"]*)"/)?.[1] ?? '';
-    for (const family of ['Bricolage+Grotesque', 'IBM+Plex+Sans', 'JetBrains+Mono']) {
-      assert.ok(sheet.includes(`family=${family}`), `${rel(page)}: missing font ${family}`);
-    }
-    assert.match(sheet, /display=swap/, `${rel(page)}: display=swap`);
+    assert.doesNotMatch(html, /fonts\.googleapis\.com|fonts\.gstatic\.com/, `${rel(page)}: references Google Fonts`);
+  }
+});
+
+const cssFiles = (dir = DIST) =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = join(dir, e.name);
+    return e.isDirectory() ? cssFiles(p) : e.name.endsWith('.css') ? [p] : [];
+  });
+
+test('the built CSS self-hosts the three font families with local woff2 files', () => {
+  const css = cssFiles().map((f) => readFileSync(f, 'utf8')).join('\n');
+  for (const family of ['Bricolage Grotesque', 'IBM Plex Sans', 'JetBrains Mono']) {
+    assert.match(css, new RegExp(`@font-face\\s*\\{[^}]*font-family:\\s*["']?${family}`), `no @font-face for ${family}`);
+  }
+  assert.doesNotMatch(css, /url\(\s*["']?https?:/, 'font or asset loaded from a remote URL');
+  for (const [, url] of css.matchAll(/url\(\s*["']?(\/[^"')]+\.woff2)/g)) {
+    assert.ok(existsSync(join(DIST, url)), `font file ${url} missing from dist`);
   }
 });
 
@@ -42,12 +53,6 @@ test('inline client script stays under 1 kB per page and nothing is loaded exter
     assert.ok(bytes < 1024, `${rel(page)}: ${bytes} bytes of inline script`);
   }
 });
-
-const cssFiles = (dir = DIST) =>
-  readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-    const p = join(dir, e.name);
-    return e.isDirectory() ? cssFiles(p) : e.name.endsWith('.css') ? [p] : [];
-  });
 
 test('nothing is hidden at rest with opacity 0', () => {
   const hides = /opacity\s*:\s*0(?![.\d])/;
