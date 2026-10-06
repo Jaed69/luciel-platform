@@ -28,8 +28,9 @@ Single Oracle ARM VPS, Docker Compose + Traefik. Everything below runs on the VP
    touched (`.env` and the checkout go back as they were).
    The very first deploy on a fresh VPS has no previous deploy, so there is nothing to roll back
    to. This happens once: watch that first deploy and fix forward if it fails. A failed first
-   deploy drops the failed `IMAGE_TAG` from `.env` and resets the checkout, so the next deploy
-   starts again with no rollback target instead of treating the failed tag as the last good one.
+   deploy drops the failed `IMAGE_TAG` from `.env`, so the next deploy starts again with no
+   rollback target instead of treating the failed tag as the last good one. The checkout stays
+   at the new commit: the new containers keep running and need their mounted config on disk.
 
 `traefik/traefik.yml` is static config: the deploy recreates Traefik when it changed.
 Files in `traefik/dynamic/` hot-reload.
