@@ -27,6 +27,8 @@ then restrict Dependabot to patch/minor (security updates keep flowing).
       `requires-python >=3.14`, `sqlalchemy[asyncio]>=2.1,<2.2` -> 2.1.3. Supersedes #8, #14.
       Evidence: 148 passed on 3.14.6 locally; image 3.14.7 / SQLAlchemy 2.1.3 / greenlet 3.5.3,
       Trivy CRITICAL (fixed) exit 0, container healthy + `/health` 200.
+      148 passed inside python:3.14.7-slim with the frozen lock (SQLAlchemy 2.1.3, greenlet 3.5.3).
+      Commit ae85262. Review: medium, granted, approved (advisories closed by the in-image run).
 - [ ] S4 — Test tooling: vitest 5, jsdom 30, @testing-library/jest-dom 7.
 - [ ] S5 — Dependabot ignores semver-major; close superseded major PRs
       (#8, #10-#17).
