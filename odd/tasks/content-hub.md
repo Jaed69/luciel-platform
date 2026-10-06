@@ -46,7 +46,7 @@ Projects page, no 404, no blog content. Phase 3 (legal pages + AdSense) depends 
 - [x] C4 — Custom 404 page (CONT-09). nginx already had `error_page 404 /404.html;` (now tested).
       Evidence: RED (dist/404.html missing); GREEN. Commit 088ec13.
       Parent re-ran build + tests (16/16) and grepped dist/src for personal data (none).
-- [ ] C6 — Visual redesign v1 (user-approved concept 2026-10-06, modelled on ashwingupta.dev):
+- [x] C6 — Visual redesign v1 (user-approved concept 2026-10-06, modelled on ashwingupta.dev):
       dark autumn tokens + Bricolage Grotesque / IBM Plex Sans / JetBrains Mono; HUD header with
       Lima clock, coordinates and scroll depth; home as hero, readouts, case studies
       (Context/Approach/System/Outcome: tours + accreditation assistant), scroll-lit trajectory,
@@ -54,6 +54,12 @@ Projects page, no 404, no blog content. Phase 3 (legal pages + AdSense) depends 
       visible at rest; client JS budget < 1 kB (clock + depth). Also closes review notes: test for
       header aria-current, planned-card test fails when a card is missing, build-then-test script.
       Reference: https://claude.ai/artifact/RFJ2r6amQJYLdJ4xLspzHY (route: delegated writer).
+      Evidence: RED per test group (mutations reverted); GREEN 29/29 via
+      `pnpm --filter @luciel/landing test` (builds first). Contrast ≥ 4.5:1 for every text token on
+      every surface (faint, rust, wine lightened). Headless Edge screenshots at desktop and 400px
+      checked by parent; parent switched case facets to 2×2 and made #main focusable.
+      Commits 27e1cde, 3ea4c3e, 5f4c757, 5808c7b, 69f9879 and the parent's polish commit.
+      Also: projects data gained `access: 'login' | 'public'`; fragment links are verified.
 - [ ] C5 — Blog: content collection + MDX + Shiki, list/detail pages, RSS (CONT-03/04/11).
       Needs the user's real articles; nothing is written on their behalf.
 
@@ -71,5 +77,7 @@ Projects page, no 404, no blog content. Phase 3 (legal pages + AdSense) depends 
 - 2026-10-06: feature document created; C1 and C2 done (af68518, 608b0e8); review approved.
 - 2026-10-06: R, C3, C4 done (cbd282b, f15a5e1, 088ec13).
 
+- 2026-10-06: intro split (a9738c0); design research (two rounds); C6 redesign done.
+
 ## Next step
-User approval of the home intro wording; then C5 blog (needs the user's real articles).
+C5 blog (needs the user's real articles), then push and PR for the branch.
