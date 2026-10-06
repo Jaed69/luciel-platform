@@ -209,6 +209,8 @@ jobs:
         env:
           TRIVY_USERNAME: ${{ github.actor }}
           TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          # Images are arm64-only; Trivy defaults to linux/amd64 and fails with "no child with platform".
+          TRIVY_PLATFORM: linux/arm64
         with:
           image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
           severity: CRITICAL

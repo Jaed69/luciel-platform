@@ -1,7 +1,7 @@
 // apps/tours/web/tests/catalogo-page-client.test.tsx
 // CatalogoPageClient — Eliminar action, monedas hard-delete copy, agencias
 // estado-operativo badge, vendedores read-only UX (icon + usuario_activo col).
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach, type MockInstance } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { CatalogoPageClient } from "../src/app/(app)/catalogos/[entidad]/_components/CatalogoPageClient";
 
@@ -20,7 +20,7 @@ const VENDEDORES = [
 ];
 
 describe("CatalogoPageClient", () => {
-  let confirmSpy: ReturnType<typeof vi.spyOn>;
+  let confirmSpy: MockInstance<typeof window.confirm>;
 
   beforeEach(() => {
     vi.clearAllMocks();
