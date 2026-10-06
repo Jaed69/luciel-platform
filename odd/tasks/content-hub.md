@@ -46,6 +46,14 @@ Projects page, no 404, no blog content. Phase 3 (legal pages + AdSense) depends 
 - [x] C4 — Custom 404 page (CONT-09). nginx already had `error_page 404 /404.html;` (now tested).
       Evidence: RED (dist/404.html missing); GREEN. Commit 088ec13.
       Parent re-ran build + tests (16/16) and grepped dist/src for personal data (none).
+- [ ] C6 — Visual redesign v1 (user-approved concept 2026-10-06, modelled on ashwingupta.dev):
+      dark autumn tokens + Bricolage Grotesque / IBM Plex Sans / JetBrains Mono; HUD header with
+      Lima clock, coordinates and scroll depth; home as hero, readouts, case studies
+      (Context/Approach/System/Outcome: tours + accreditation assistant), scroll-lit trajectory,
+      stack; projects and 404 restyled. CSS-only motion behind @supports + reduced-motion, content
+      visible at rest; client JS budget < 1 kB (clock + depth). Also closes review notes: test for
+      header aria-current, planned-card test fails when a card is missing, build-then-test script.
+      Reference: https://claude.ai/artifact/RFJ2r6amQJYLdJ4xLspzHY (route: delegated writer).
 - [ ] C5 — Blog: content collection + MDX + Shiki, list/detail pages, RSS (CONT-03/04/11).
       Needs the user's real articles; nothing is written on their behalf.
 
