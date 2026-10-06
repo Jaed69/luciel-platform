@@ -113,3 +113,10 @@ test('the display font family used by the tokens is declared by a built @font-fa
   assert.ok(family, 'no --font-display token');
   assert.match(css, new RegExp(`@font-face\s*\{[^}]*font-family:\s*["']?${family}["']?[;}]`), `no @font-face for ${family}`);
 });
+
+test('the depth readout is recomputed on scroll and on resize', () => {
+  const html = read(join(DIST, 'index.html'));
+  const script = html.match(/<script(?![^>]*\ssrc=)[^>]*>([^]*?)<\/script>/)?.[1] ?? '';
+  assert.match(script, /addEventListener\('scroll',\w+,\{passive:true\}\)/);
+  assert.match(script, /addEventListener\('resize',\w+,\{passive:true\}\)/);
+});

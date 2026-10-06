@@ -31,5 +31,5 @@ const current = Astro.url.pathname.replace(/\/?$/, '/');
   f=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Lima',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}),
   t=()=>{c.textContent=f.format(new Date())},
   s=()=>{const m=document.documentElement.scrollHeight-innerHeight;d.textContent=(m>0?Math.round(scrollY/m*100):0)+'%'};
-  t();setInterval(t,1000);addEventListener('scroll',s,{passive:true});s()})();
+  t();setInterval(t,1000);addEventListener('scroll',s,{passive:true});addEventListener('resize',s,{passive:true});s()})();
 </script>
