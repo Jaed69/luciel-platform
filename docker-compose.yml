@@ -39,7 +39,7 @@ services:
     logging: *default-logging
 
   traefik:
-    image: traefik:v3.7.5
+    image: traefik:v3.7.13
     container_name: traefik
     restart: unless-stopped
     ports:
