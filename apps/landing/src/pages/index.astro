@@ -1,35 +1,78 @@
 ---
 import Layout from '../layouts/Layout.astro';
-
-// ponytail: static placeholder, zero client JS. Real content lands Phase 2.
-const repoUrl = 'https://github.com/Jaed69/luciel-platform';
+import { projects } from '../data/projects';
 ---
 
-<Layout title="luciel.dev — under construction" description="luciel.dev is being built: a productized portfolio of real, working web tools.">
-  <main class="flex-1 flex flex-col items-center justify-center px-md py-xl">
-    <span class="inline-flex items-center bg-coral text-on-dark font-mono text-mono-label uppercase rounded-full px-lg py-xs" style="letter-spacing: 0.28px;">
-      Under construction
-    </span>
+<Layout
+  title="Jhamil Peña | luciel.dev"
+  description="Jhamil Peña, Computer Science student in Lima. A productized portfolio of real, working web tools."
+>
+  <main class="mx-auto w-full max-w-5xl px-lg">
+    <section id="intro" class="py-section" aria-labelledby="intro-heading">
+      <p class="font-mono text-mono-label uppercase text-slate" style="letter-spacing: 0.28px;">luciel.dev</p>
+      <h1 id="intro-heading" class="mt-md font-display text-section-heading" style="line-height: 1.2; letter-spacing: -0.48px;">
+        Jhamil Peña
+      </h1>
+      <div class="mt-xl max-w-prose space-y-lg text-body-large" style="line-height: 1.4;">
+        <p>
+          I'm a Computer Science student at Universidad Peruana de Ciencias Aplicadas (UPC) in Lima, Peru, focused on
+          data science, machine learning and generative AI. I work with Python (pandas, scikit-learn, PyTorch,
+          TensorFlow), LangChain, SQL and Docker.
+        </p>
+        <p>
+          Right now I'm building, with a classmate and under faculty supervision, an LLM-assisted system on Amazon
+          Bedrock that analyses large volumes of unstructured documents for the faculty's accreditation process. It uses
+          a FastAPI backend, async PostgreSQL, multi-phase batch processing and prompt caching. Before that I interned
+          in Processes &amp; Technology for Wealth Management at Credicorp Capital (Power BI dashboards, SQL
+          optimization, Databricks/Spark migration support, SSIS ETL), and I have led student tech communities as
+          President of IEEE CIS UPC and Project Director at IEEE ComSoc UPC.
+        </p>
+      </div>
+    </section>
 
-    <h1 class="font-display text-section-heading mt-xl text-center" style="line-height: 1.2; letter-spacing: -0.48px;">
-      luciel.dev
-    </h1>
+    <section id="philosophy" class="border-t border-hairline py-section" aria-labelledby="philosophy-heading">
+      <h2 id="philosophy-heading" class="font-display text-card-heading" style="line-height: 1.2; letter-spacing: -0.32px;">
+        How this site works
+      </h2>
+      <ul class="mt-xl grid gap-xl md:grid-cols-3">
+        <li>
+          <h3 class="font-display text-feature-heading" style="line-height: 1.3;">Real tools, not demos</h3>
+          <p class="mt-sm text-body text-body-muted" style="line-height: 1.5;">
+            Each project is a working tool that solves a real problem, not an empty demo.
+          </p>
+        </li>
+        <li>
+          <h3 class="font-display text-feature-heading" style="line-height: 1.3;">One subdomain per tool</h3>
+          <p class="mt-sm text-body text-body-muted" style="line-height: 1.5;">
+            Every tool lives on its own subdomain, with genuine content written around it.
+          </p>
+        </li>
+        <li>
+          <h3 class="font-display text-feature-heading" style="line-height: 1.3;">Reproducible infrastructure</h3>
+          <p class="mt-sm text-body text-body-muted" style="line-height: 1.5;">
+            Everything runs on infrastructure versioned in git: Traefik and Docker Compose, one container per app.
+          </p>
+        </li>
+      </ul>
+    </section>
 
-    <h2 class="font-display text-feature-heading mt-md text-center" style="line-height: 1.3;">
-      Under construction
-    </h2>
-
-    <p class="font-display text-feature-heading mt-lg text-center" style="line-height: 1.3;">
-      Nothing here yet
-    </p>
-
-    <p class="text-body mt-md max-w-prose text-center" style="line-height: 1.5;">
-      luciel.dev is being built. Real content — a personal intro, technical blog,
-      and tool directory — lands in the next phase. Follow the build on GitHub.
-    </p>
-
-    <a href={repoUrl} class="text-action-blue underline mt-lg text-button" style="font-weight: 500;">
-      View source on GitHub
-    </a>
+    <section id="tools" class="border-t border-hairline py-section" aria-labelledby="tools-heading">
+      <h2 id="tools-heading" class="font-display text-card-heading" style="line-height: 1.2; letter-spacing: -0.32px;">
+        Tools
+      </h2>
+      <ul class="mt-xl divide-y divide-hairline border-y border-hairline">
+        {projects.map((project) => (
+          <li class="flex items-baseline justify-between gap-lg py-lg">
+            <span class="font-display text-feature-heading" style="line-height: 1.3;">{project.name}</span>
+            <span class="font-mono text-mono-label uppercase text-slate" style="letter-spacing: 0.28px;">
+              {project.status === 'live' ? 'Live' : 'Coming soon'}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p class="mt-lg text-button" style="font-weight: 500;">
+        <a href="/projects/" class="text-action-blue underline">See details on the Projects page</a>
+      </p>
+    </section>
   </main>
 </Layout>
