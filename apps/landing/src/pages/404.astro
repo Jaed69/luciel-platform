@@ -3,15 +3,20 @@ import Layout from '../layouts/Layout.astro';
 ---
 
 <Layout title="Page not found | luciel.dev" path="/404.html" description="The page you were looking for does not exist.">
-  <main class="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center px-lg py-section">
-    <p class="font-mono text-mono-label uppercase text-slate" style="letter-spacing: 0.28px;">404</p>
-    <h1 class="mt-md font-display text-section-heading" style="line-height: 1.2; letter-spacing: -0.48px;">Page not found</h1>
-    <p class="mt-md max-w-prose text-body-large text-body-muted" style="line-height: 1.4;">
-      That address does not exist on luciel.dev.
-    </p>
-    <p class="mt-xl flex gap-lg text-button" style="font-weight: 500;">
-      <a href="/" class="text-action-blue underline">Go to Home</a>
-      <a href="/projects/" class="text-action-blue underline">See Projects</a>
+  <main class="wrap lost">
+    <p class="eyebrow">Error · 404</p>
+    <h1>Page not found</h1>
+    <p class="lead">That address does not exist on luciel.dev.</p>
+    <p class="actions">
+      <a href="/">Go to Home</a>
+      <a href="/projects/">See Projects</a>
     </p>
   </main>
 </Layout>
+
+<style is:global>
+  .lost { display: grid; gap: 1.1rem; align-content: center; padding-block: clamp(3rem, 10vw, 7rem); width: 100%; }
+  .lost h1 { font-size: var(--step-3); font-weight: 800; line-height: 0.98; letter-spacing: -0.03em; }
+  .lost .lead { color: var(--color-muted); font-size: var(--step-1); }
+  .lost .actions { display: flex; flex-wrap: wrap; gap: 0.6rem 1.6rem; font-family: var(--font-mono); font-size: var(--step--1); }
+</style>
