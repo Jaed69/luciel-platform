@@ -1,7 +1,7 @@
 # apps/tours/api/Dockerfile
 # Self-contained build context = apps/tours/api/ (simplifies CI matrix per Plan 02).
 # python:3.13.16-slim + uv install + uvicorn CMD.
-FROM python:3.13.16-slim AS runtime
+FROM python:3.14.7-slim AS runtime
 WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
