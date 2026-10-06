@@ -473,12 +473,13 @@ jobs:
                 echo "No rollback target (first deploy on this VPS, or same tag as running) — fix forward. Expected once: watch the first deploy." >&2
                 # Do not leave the failed config as the baseline: without a previous tag, drop
                 # the failed IMAGE_TAG so the next deploy does not treat it as its rollback
-                # target (compose falls back to `latest`). Checkout goes back to what was there.
+                # target (compose falls back to `latest`).
                 if [ -z "${PREV_TAG}" ]; then
                   sed -i '/^IMAGE_TAG=/d' .env
                 fi
-                git reset --hard "$OLD_HEAD"
-                echo "Checkout reset to ${OLD_HEAD}" >&2
+                # Keep the checkout at NEW_HEAD: the new containers are still running and
+                # their bind-mounted config (e.g. traefik/dynamic/) must stay on disk.
+                echo "Checkout kept at ${NEW_HEAD} to match the running containers" >&2
               fi
               exit 1
             fi

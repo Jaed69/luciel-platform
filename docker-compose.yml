@@ -161,6 +161,9 @@ services:
       - NEXTAUTH_URL=${NEXTAUTH_URL:-https://tours.luciel.dev}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?NEXTAUTH_SECRET is required}
       - TOURS_API_URL=http://tours-api:8000
+      # Next standalone binds to $HOSTNAME, which Docker resolves to only one of the
+      # two network IPs; listen on all interfaces so Traefik can reach it.
+      - HOSTNAME=0.0.0.0
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.tours-web.rule=Host(`tours.luciel.dev`)"
@@ -179,13 +182,12 @@ services:
         condition: service_healthy
     healthcheck:
       # Any 2xx/3xx is healthy; redirect is not followed (/ may redirect to login).
-      # Dials the container hostname: Docker sets HOSTNAME, so Next's standalone
-      # server may not be listening on loopback.
+      # Server listens on 0.0.0.0 (HOSTNAME above), so loopback works.
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://'+require('os').hostname()+':3000/',{redirect:'manual'}).then(r=>process.exit(r.status<400?0:1)).catch(()=>process.exit(1))"
+        - "fetch('http://127.0.0.1:3000/',{redirect:'manual'}).then(r=>process.exit(r.status<400?0:1)).catch(()=>process.exit(1))"
       interval: 30s
       timeout: 5s
       retries: 3
