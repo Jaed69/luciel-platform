@@ -161,7 +161,8 @@ test('nginx serves the Spanish 404 for unknown paths under /es/', () => {
 
 test('nginx answers a direct request to the Spanish 404 page with a 404 status (no soft 404)', () => {
   const conf = readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', 'nginx', 'nginx.conf'), 'utf8');
-  const block = conf.match(/location\s+=\s+\/es\/404\/\s*\{[^}]*\}/)?.[0] ?? '';
+  // Regex location so both /es/404 and /es/404/ answer 404.
+  const block = conf.match(/location\s+~\s+\^\/es\/404\/\?\$\s*\{[^}]*\}/)?.[0] ?? '';
   assert.match(block, /error_page\s+404\s+\/es\/404\/index\.html;/);
   assert.match(block, /return\s+404;/);
 });
