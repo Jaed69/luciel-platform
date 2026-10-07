@@ -1,7 +1,11 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import { useDictionary } from '../i18n';
+import type { Locale, PageKey } from '../i18n/routes';
 
 interface Props {
+  page: PageKey;
+  locale?: Locale;
   title: string;
   description: string;
   eyebrow: string;
@@ -9,15 +13,16 @@ interface Props {
   updated?: string;
 }
 
-const { title, description, eyebrow, heading, updated } = Astro.props;
+const { page, locale = 'en', title, description, eyebrow, heading, updated } = Astro.props;
+const t = useDictionary(locale);
 ---
 
-<Layout title={title} description={description}>
+<Layout page={page} locale={locale} title={title} description={description}>
   <main class="wrap doc">
     <header class="doc-head">
       <p class="eyebrow">{eyebrow}</p>
       <h1>{heading}</h1>
-      {updated && <p class="doc-meta">Last updated: {updated}</p>}
+      {updated && <p class="doc-meta">{t.shell.lastUpdated}: {updated}</p>}
     </header>
     <div class="doc-body">
       <slot />

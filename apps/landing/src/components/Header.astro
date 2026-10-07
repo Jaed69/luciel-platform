@@ -1,27 +1,55 @@
 ---
-const links = [
-  { href: '/', label: 'Home' },
-  { href: '/projects/', label: 'Projects' },
-];
+import { useDictionary } from '../i18n';
+import { alternates, route } from '../i18n/routes';
+import type { Locale, PageKey } from '../i18n/routes';
 
-const current = Astro.url.pathname.replace(/\/?$/, '/');
+interface Props {
+  page: PageKey;
+  locale: Locale;
+}
+
+const { page, locale } = Astro.props;
+const t = useDictionary(locale);
+
+const links = [
+  { key: 'home', label: t.shell.nav.home },
+  { key: 'projects', label: t.shell.nav.projects },
+] as const;
+const versions = alternates(page);
 ---
 
-<header class="hud" aria-label="Status bar">
+<header class="hud" aria-label={t.shell.statusBar}>
   <div class="wrap">
-    <a href="/" class="brand">luciel<span>.</span>dev</a>
+    <a href={route('home', locale)} class="brand">luciel<span>.</span>dev</a>
     <span>LIM <b id="clock">--:--:--</b></span>
     <span>−12.0464 −77.0428</span>
-    <span>depth <b id="depth">0%</b></span>
-    <nav aria-label="Main">
+    <span>{t.shell.depth} <b id="depth">0%</b></span>
+    <nav aria-label={t.shell.nav.label}>
       <ul>
         {links.map((link) => (
           <li>
-            <a href={link.href} aria-current={current === link.href ? 'page' : undefined}>{link.label}</a>
+            <a href={route(link.key, locale)} aria-current={link.key === page ? 'page' : undefined}>{link.label}</a>
           </li>
         ))}
       </ul>
     </nav>
+    {versions.length > 1 && (
+      <nav class="lang" aria-label={t.shell.language.label}>
+        <ul>
+          {versions.map((version) => (
+            <li>
+              <a
+                href={version.path}
+                lang={version.locale}
+                hreflang={version.locale}
+                aria-label={t.shell.language.names[version.locale]}
+                aria-current={version.locale === locale ? 'true' : undefined}
+              >{version.locale.toUpperCase()}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    )}
   </div>
   <div class="depth-bar" aria-hidden="true"></div>
 </header>

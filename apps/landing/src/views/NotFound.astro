@@ -1,0 +1,32 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { useDictionary } from '../i18n';
+import { route } from '../i18n/routes';
+import type { Locale } from '../i18n/routes';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useDictionary(locale).notFound;
+---
+
+<Layout page="notFound" locale={locale} title={t.title} description={t.description}>
+  <main class="wrap lost">
+    <p class="eyebrow">{t.eyebrow}</p>
+    <h1>{t.heading}</h1>
+    <p class="lead">{t.lead}</p>
+    <p class="actions">
+      <a href={route('home', locale)}>{t.home}</a>
+      <a href={route('projects', locale)}>{t.projects}</a>
+    </p>
+  </main>
+</Layout>
+
+<style is:global>
+  .lost { display: grid; gap: 1.1rem; align-content: center; padding-block: clamp(3rem, 10vw, 7rem); width: 100%; }
+  .lost h1 { font-size: var(--step-3); font-weight: 800; line-height: 0.98; letter-spacing: -0.03em; }
+  .lost .lead { color: var(--color-muted); font-size: var(--step-1); }
+  .lost .actions { display: flex; flex-wrap: wrap; gap: 0.6rem 1.6rem; font-family: var(--font-mono); font-size: var(--step--1); }
+</style>

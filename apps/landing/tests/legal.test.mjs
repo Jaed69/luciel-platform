@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { DIST, CONTACT_EMAIL, escapeRe, htmlFiles, piiFindings, read } from './helpers.mjs';
+import { DIST, CONTACT_EMAIL, escapeRe, htmlFiles, htmlFilesFor, piiFindings, read } from './helpers.mjs';
 const EMAIL_RE = escapeRe(CONTACT_EMAIL);
 
 const rel = (p) => p.slice(DIST.length + 1);
@@ -19,8 +19,8 @@ test('privacy, terms and contact pages are built with an h1 and a main landmark'
   }
 });
 
-test('every page footer links to privacy, terms and contact', () => {
-  for (const file of htmlFiles()) {
+test('every English page footer links to privacy, terms and contact', () => {
+  for (const file of htmlFilesFor('en')) {
     const footer = read(file).match(/<footer class="foot"[\s\S]*?<\/footer>/)?.[0] ?? '';
     for (const href of ['/privacy/', '/terms/', '/contact/']) {
       assert.match(footer, new RegExp(`href="${href}"`), `${rel(file)}: footer missing ${href}`);
