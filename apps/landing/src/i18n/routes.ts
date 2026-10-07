@@ -10,12 +10,12 @@ export type PageKey = 'home' | 'projects' | 'privacy' | 'terms' | 'contact' | 'n
 
 /** A page may be missing in a locale; the switcher, nav and hreflang only list what exists. */
 export const routes: Record<PageKey, Partial<Record<Locale, string>>> = {
-  home: { en: '/' },
-  projects: { en: '/projects/' },
+  home: { en: '/', es: '/es/' },
+  projects: { en: '/projects/', es: '/es/proyectos/' },
   privacy: { en: '/privacy/' },
   terms: { en: '/terms/' },
   contact: { en: '/contact/' },
-  notFound: { en: '/404.html' },
+  notFound: { en: '/404.html', es: '/es/404/' },
 };
 
 export const htmlLang: Record<Locale, string> = { en: 'en', es: 'es' };
