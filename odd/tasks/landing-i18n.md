@@ -22,10 +22,10 @@ Offer luciel.dev in English and Spanish. The owner lives in Peru and works with 
 - Tests: `pnpm --filter @luciel/landing test`; strict TDD (RED before GREEN).
 
 ## Tasks
-- [ ] I1 — i18n plumbing: Astro i18n config, locale dictionaries, Layout `lang`/hreflang/
+- [x] I1 — i18n plumbing: Astro i18n config, locale dictionaries, Layout `lang`/hreflang/
       og:locale, header switcher, footer and nav localized; route map en↔es.
-- [ ] I2 — Spanish pages: home, projects, 404 (`/es/404` handling via nginx if needed).
-- [ ] I3 — Spanish legal pages: privacidad, terminos, contacto; sitemap covers both locales.
+- [x] I2 — Spanish pages: home, projects, 404 (`/es/404` handling via nginx if needed).
+- [x] I3 — Spanish legal pages: privacidad, terminos, contacto; sitemap covers both locales.
 
 ## Acceptance criteria
 - Every English page has a Spanish twin and both link to each other via hreflang + switcher.
@@ -38,5 +38,10 @@ Offer luciel.dev in English and Spanish. The owner lives in Peru and works with 
 ## Progress
 - 2026-10-06: document created; branch `feat/landing-i18n` from `fix/landing-review-followups`.
 
+- 2026-10-06: I1–I3 done (6f22d3d, 5faaf11, 23c3cc6). RED per task; GREEN 79/79. Parent re-ran tests
+  and the real Docker image: all en/es routes 200; unknown /es/ path serves the Spanish 404
+  (lang=es), unknown root path the English 404; hreflang en/es/x-default correct.
+  Note: Spanish 404 builds to /es/404/index.html (Astro only special-cases root 404).
+
 ## Next step
-I1–I3 via one delegated writer.
+User reviews Spanish copy (masculine job titles, usted in legal pages); then push + PR stacked on #35.
