@@ -1,5 +1,6 @@
 ---
 import DocPage from '../components/DocPage.astro';
+import { route } from '../i18n/routes';
 import type { Locale } from '../i18n/routes';
 
 interface Props {
@@ -68,7 +69,7 @@ const email = 'jhamil.pcardenas@luciel.dev';
     <h2>Contacto</h2>
     <p>
       Consultas sobre estos términos: <a href={`mailto:${email}`}>{email}</a>.
-      Consulte también la <a href="/es/privacidad/">Política de Privacidad</a>.
+      Consulte también la <a href={route('privacy', 'es')}>Política de Privacidad</a>.
     </p>
   </DocPage>
 ) : (
@@ -129,7 +130,7 @@ const email = 'jhamil.pcardenas@luciel.dev';
     <h2>Contact</h2>
     <p>
       Questions about these terms: <a href={`mailto:${email}`}>{email}</a>.
-      See also the <a href="/privacy/">Privacy Policy</a>.
+      See also the <a href={route('privacy', 'en')}>Privacy Policy</a>.
     </p>
   </DocPage>
 )}

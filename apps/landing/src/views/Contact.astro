@@ -1,5 +1,6 @@
 ---
 import DocPage from '../components/DocPage.astro';
+import { route } from '../i18n/routes';
 import type { Locale } from '../i18n/routes';
 
 interface Props {
@@ -24,9 +25,9 @@ const email = 'jhamil.pcardenas@luciel.dev';
 
     <h2>Motivos para escribir</h2>
     <ul>
-      <li>Consultas sobre mis <a href="/es/proyectos/">proyectos</a>.</li>
+      <li>Consultas sobre mis <a href={route('projects', 'es')}>proyectos</a>.</li>
       <li>Colaboraciones u oportunidades de trabajo.</li>
-      <li>Solicitudes de privacidad (acceso, rectificación, cancelación u oposición); consulte la <a href="/es/privacidad/">Política de Privacidad</a>.</li>
+      <li>Solicitudes de privacidad (acceso, rectificación, cancelación u oposición); consulte la <a href={route('privacy', 'es')}>Política de Privacidad</a>.</li>
     </ul>
 
     <p>El código y los issues están en <a href="https://github.com/Jaed69">GitHub</a>.</p>
@@ -45,9 +46,9 @@ const email = 'jhamil.pcardenas@luciel.dev';
 
     <h2>What to write about</h2>
     <ul>
-      <li>Questions about my <a href="/projects/">projects</a>.</li>
+      <li>Questions about my <a href={route('projects', 'en')}>projects</a>.</li>
       <li>Collaboration or work opportunities.</li>
-      <li>Privacy requests (access, rectification, cancellation or opposition); see the <a href="/privacy/">Privacy Policy</a>.</li>
+      <li>Privacy requests (access, rectification, cancellation or opposition); see the <a href={route('privacy', 'en')}>Privacy Policy</a>.</li>
     </ul>
 
     <p>Code and issues live on <a href="https://github.com/Jaed69">GitHub</a>.</p>
