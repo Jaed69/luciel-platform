@@ -1,0 +1,55 @@
+---
+import DocPage from '../components/DocPage.astro';
+import type { Locale } from '../i18n/routes';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const email = 'jhamil.pcardenas@luciel.dev';
+---
+
+{locale === 'es' ? (
+  <DocPage
+    page="contact"
+    locale="es"
+    title="Contacto | luciel.dev"
+    description="Cómo comunicarse conmigo para consultas sobre proyectos, colaboración o solicitudes de privacidad."
+    eyebrow="Contacto"
+    heading="Contacto"
+  >
+    <p>La mejor forma de comunicarse conmigo es por correo electrónico:</p>
+    <p><a href={`mailto:${email}`}>{email}</a></p>
+
+    <h2>Motivos para escribir</h2>
+    <ul>
+      <li>Consultas sobre mis <a href="/es/proyectos/">proyectos</a>.</li>
+      <li>Colaboraciones u oportunidades de trabajo.</li>
+      <li>Solicitudes de privacidad (acceso, rectificación, cancelación u oposición); consulte la <a href="/es/privacidad/">Política de Privacidad</a>.</li>
+    </ul>
+
+    <p>El código y los issues están en <a href="https://github.com/Jaed69">GitHub</a>.</p>
+  </DocPage>
+) : (
+  <DocPage
+    page="contact"
+    locale="en"
+    title="Contact | luciel.dev"
+    description="How to get in touch about projects, collaboration or privacy requests."
+    eyebrow="Contact"
+    heading="Contact"
+  >
+    <p>The best way to reach me is email:</p>
+    <p><a href={`mailto:${email}`}>{email}</a></p>
+
+    <h2>What to write about</h2>
+    <ul>
+      <li>Questions about my <a href="/projects/">projects</a>.</li>
+      <li>Collaboration or work opportunities.</li>
+      <li>Privacy requests (access, rectification, cancellation or opposition); see the <a href="/privacy/">Privacy Policy</a>.</li>
+    </ul>
+
+    <p>Code and issues live on <a href="https://github.com/Jaed69">GitHub</a>.</p>
+  </DocPage>
+)}

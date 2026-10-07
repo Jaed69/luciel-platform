@@ -1,0 +1,135 @@
+---
+import DocPage from '../components/DocPage.astro';
+import type { Locale } from '../i18n/routes';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const email = 'jhamil.pcardenas@luciel.dev';
+---
+
+{locale === 'es' ? (
+  <DocPage
+    page="terms"
+    locale="es"
+    title="Términos de Uso | luciel.dev"
+    description="Los términos que se aplican al usar luciel.dev y su contenido."
+    eyebrow="Legal"
+    heading="Términos de Uso"
+    updated="6 de octubre de 2026"
+  >
+    <p>
+      Al utilizar luciel.dev usted acepta estos términos. El sitio es operado por Jhamil Peña, Lima, Perú.
+      Si no está de acuerdo, le pido que no utilice el sitio.
+    </p>
+
+    <h2>Uso del sitio</h2>
+    <p>
+      El sitio y su contenido se ofrecen como información general sobre mi trabajo y mis proyectos. Puede
+      navegarlo y enlazarlo. No intente interrumpir el servicio, buscar vulnerabilidades sin autorización ni
+      utilizarlo con fines ilícitos.
+    </p>
+
+    <h2>Propiedad intelectual</h2>
+    <p>
+      Salvo que se indique lo contrario, el texto y el diseño de este sitio son &copy; Jhamil Peña. El código
+      fuente es visible en el repositorio público <a href="https://github.com/Jaed69/luciel-platform">luciel-platform</a>
+      en GitHub, pero no está licenciado para su reutilización, a menos que allí se indique una licencia.
+      Los nombres y marcas de terceros pertenecen a sus respectivos propietarios.
+    </p>
+
+    <h2>Sin garantía</h2>
+    <p>
+      El sitio y su contenido se proporcionan «tal cual» y «según disponibilidad», sin garantías de ningún
+      tipo. No garantizo que el contenido sea completo, exacto o actual, ni que el sitio esté disponible sin
+      interrupciones.
+    </p>
+
+    <h2>Limitación de responsabilidad</h2>
+    <p>
+      En la medida permitida por la ley, no soy responsable de ninguna pérdida o daño derivado del uso del
+      sitio, de la imposibilidad de usarlo o de haber confiado en su contenido.
+    </p>
+
+    <h2>Enlaces externos</h2>
+    <p>
+      El sitio enlaza a sitios web de terceros y a otras aplicaciones en subdominios de luciel.dev, que
+      pueden tener sus propios términos. No soy responsable de su contenido ni de sus prácticas.
+    </p>
+
+    <h2>Cambios en estos términos</h2>
+    <p>Puedo actualizar estos términos. La fecha que aparece al inicio indica la revisión más reciente; el uso continuado implica que usted acepta los cambios.</p>
+
+    <h2>Ley aplicable</h2>
+    <p>Estos términos se rigen por las leyes del Perú.</p>
+
+    <h2>Contacto</h2>
+    <p>
+      Consultas sobre estos términos: <a href={`mailto:${email}`}>{email}</a>.
+      Consulte también la <a href="/es/privacidad/">Política de Privacidad</a>.
+    </p>
+  </DocPage>
+) : (
+  <DocPage
+    page="terms"
+    locale="en"
+    title="Terms of Use | luciel.dev"
+    description="The terms that apply when you use luciel.dev and its content."
+    eyebrow="Legal"
+    heading="Terms of Use"
+    updated="October 6, 2026"
+  >
+    <p>
+      By using luciel.dev you agree to these terms. The site is operated by Jhamil Peña, Lima, Peru.
+      If you do not agree, please do not use the site.
+    </p>
+
+    <h2>Use of the site</h2>
+    <p>
+      The site and its content are provided for general information about my work and projects. You may
+      browse and link to it. Do not attempt to disrupt the service, probe it for vulnerabilities without
+      permission, or use it for unlawful purposes.
+    </p>
+
+    <h2>Intellectual property</h2>
+    <p>
+      Unless stated otherwise, the text and design of this site are &copy; Jhamil Peña. The source code is
+      visible in the public <a href="https://github.com/Jaed69/luciel-platform">luciel-platform</a> repository
+      on GitHub, but it is not licensed for reuse unless a license is stated there. Third-party names and
+      trademarks belong to their owners.
+    </p>
+
+    <h2>No warranty</h2>
+    <p>
+      The site and its content are provided "as is" and "as available", without warranties of any kind. I do
+      not guarantee that the content is complete, accurate or current, or that the site will be available
+      without interruption.
+    </p>
+
+    <h2>Limitation of liability</h2>
+    <p>
+      To the extent permitted by law, I am not liable for any loss or damage arising from your use of, or
+      inability to use, the site or from relying on its content.
+    </p>
+
+    <h2>External links</h2>
+    <p>
+      The site links to third-party websites and to other applications on luciel.dev subdomains, which may
+      have their own terms. I am not responsible for their content or practices.
+    </p>
+
+    <h2>Changes to these terms</h2>
+    <p>I may update these terms. The date at the top shows the latest revision; continued use means you accept the changes.</p>
+
+    <h2>Governing law</h2>
+    <p>These terms are governed by the laws of Peru.</p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions about these terms: <a href={`mailto:${email}`}>{email}</a>.
+      See also the <a href="/privacy/">Privacy Policy</a>.
+    </p>
+  </DocPage>
+)}

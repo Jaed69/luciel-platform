@@ -12,9 +12,9 @@ export type PageKey = 'home' | 'projects' | 'privacy' | 'terms' | 'contact' | 'n
 export const routes: Record<PageKey, Partial<Record<Locale, string>>> = {
   home: { en: '/', es: '/es/' },
   projects: { en: '/projects/', es: '/es/proyectos/' },
-  privacy: { en: '/privacy/' },
-  terms: { en: '/terms/' },
-  contact: { en: '/contact/' },
+  privacy: { en: '/privacy/', es: '/es/privacidad/' },
+  terms: { en: '/terms/', es: '/es/terminos/' },
+  contact: { en: '/contact/', es: '/es/contacto/' },
   notFound: { en: '/404.html', es: '/es/404/' },
 };
 
