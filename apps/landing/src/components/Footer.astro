@@ -1,17 +1,32 @@
 ---
+import { useDictionary } from '../i18n';
+import { route } from '../i18n/routes';
+import type { Locale } from '../i18n/routes';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useDictionary(locale);
+
 // Intentionally evaluated at build time: the static site is rebuilt on every deploy.
 const year = new Date().getFullYear();
+// Only link legal pages that exist in this locale.
 const links = [
-  { href: '/privacy/', label: 'Privacy' },
-  { href: '/terms/', label: 'Terms' },
-  { href: '/contact/', label: 'Contact' },
-];
+  { key: 'privacy', label: t.shell.legal.privacy },
+  { key: 'terms', label: t.shell.legal.terms },
+  { key: 'contact', label: t.shell.legal.contact },
+].flatMap((link) => {
+  const href = route(link.key as 'privacy' | 'terms' | 'contact', locale);
+  return href ? [{ href, label: link.label }] : [];
+});
 ---
 
 <footer class="foot">
   <div class="wrap">
     <span>&copy; {year} luciel.dev</span>
-    <nav aria-label="Legal">
+    <nav aria-label={t.shell.legal.label}>
       <ul>
         {links.map((link) => <li><a href={link.href}>{link.label}</a></li>)}
       </ul>

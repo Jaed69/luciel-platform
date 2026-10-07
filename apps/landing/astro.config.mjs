@@ -23,6 +23,12 @@ export default defineConfig({
   site: 'https://luciel.dev',
   output: 'static',
   outDir: './dist',
+  // English at the root, Spanish under /es/. Pages and their translated slugs are routed in src/i18n/routes.ts.
+  i18n: {
+    defaultLocale: 'en',
+    locales: ['en', 'es'],
+    routing: { prefixDefaultLocale: false },
+  },
   // Order matters: the sitemap integration must finish before rootSitemap copies its output.
   integrations: [mdx(), sitemap({ filter: (page) => !/\/404(\.html|\/)?$/.test(page) }), rootSitemap],
   // @tailwindcss/vite is a Vite plugin (not an Astro integration) — Tailwind v4.
