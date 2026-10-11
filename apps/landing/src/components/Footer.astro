@@ -1,10 +1,20 @@
 ---
 const year = new Date().getFullYear();
+const links = [
+  { href: '/privacy/', label: 'Privacy' },
+  { href: '/terms/', label: 'Terms' },
+  { href: '/contact/', label: 'Contact' },
+];
 ---
 
 <footer class="foot">
   <div class="wrap">
     <span>&copy; {year} luciel.dev</span>
+    <nav aria-label="Legal">
+      <ul>
+        {links.map((link) => <li><a href={link.href}>{link.label}</a></li>)}
+      </ul>
+    </nav>
     <a href="https://github.com/Jaed69" rel="me noopener">github.com/Jaed69</a>
   </div>
 </footer>

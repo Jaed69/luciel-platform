@@ -1,0 +1,37 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  eyebrow: string;
+  heading: string;
+  updated?: string;
+}
+
+const { title, description, eyebrow, heading, updated } = Astro.props;
+---
+
+<Layout title={title} description={description}>
+  <main class="wrap doc">
+    <header class="doc-head">
+      <p class="eyebrow">{eyebrow}</p>
+      <h1>{heading}</h1>
+      {updated && <p class="doc-meta">Last updated: {updated}</p>}
+    </header>
+    <div class="doc-body">
+      <slot />
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  .doc { padding-block: clamp(2.5rem, 7vw, 5rem) 3rem; width: 100%; }
+  .doc-head { display: grid; gap: 0.9rem; padding-bottom: 2rem; }
+  .doc-head h1 { font-size: var(--step-3); font-weight: 800; line-height: 0.98; letter-spacing: -0.03em; }
+  .doc-meta { color: var(--color-faint); font-family: var(--font-mono); font-size: var(--step--1); }
+  .doc-body { display: grid; gap: 1rem; max-width: 70ch; border-top: 1px solid var(--color-line); padding-top: 2rem; }
+  .doc-body h2 { font-size: var(--step-1); margin-top: 1.2rem; }
+  .doc-body p, .doc-body li { color: var(--color-muted); }
+  .doc-body ul { margin: 0; padding-left: 1.2rem; display: grid; gap: 0.4rem; }
+</style>

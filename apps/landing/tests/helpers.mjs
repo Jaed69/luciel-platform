@@ -32,3 +32,16 @@ export function resolveHref(href) {
   const index = join(DIST, path, 'index.html');
   return existsSync(index) ? index : null;
 }
+
+export const CONTACT_EMAIL = 'jhamil.pcardenas@luciel.dev';
+
+// Visible text findings that look like personal data. Exactly one email is allowed.
+export function piiFindings(html) {
+  const body = html
+    .replace(/<(script|style)[^]*?<\/\1>|<link[^>]*>|<meta[^>]*>/g, '')
+    .replaceAll(CONTACT_EMAIL, '');
+  const findings = [];
+  if (/[\w.+-]+@[\w-]+\.[\w.-]+/.test(body)) findings.push('email-like string');
+  if (/\+?\d[\d\s-]{7,}\d/.test(body)) findings.push('phone-like number');
+  return findings;
+}

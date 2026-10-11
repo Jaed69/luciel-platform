@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
-import { DIST, read } from './helpers.mjs';
+import { DIST, piiFindings, read } from './helpers.mjs';
 
 const home = () => read(join(DIST, 'index.html'));
 
@@ -32,10 +32,8 @@ test('home no longer says it is under construction', () => {
   assert.doesNotMatch(home(), /under construction/i);
 });
 
-test('home exposes no email address or phone number', () => {
-  const body = home().replace(/<(script|style)[^]*?<\/\1>|<link[^>]*>/g, '');
-  assert.doesNotMatch(body, /[\w.+-]+@[\w-]+\.[\w.-]+/, 'email-like string found');
-  assert.doesNotMatch(body, /\+?\d[\d\s-]{7,}\d/, 'phone-like number found');
+test('home exposes no email other than the published contact address, and no phone number', () => {
+  assert.deepEqual(piiFindings(home()), []);
 });
 
 test('home marks Home as the current nav link and not Projects', () => {
