@@ -35,11 +35,19 @@ export function resolveHref(href) {
 
 export const CONTACT_EMAIL = 'jhamil.pcardenas@luciel.dev';
 
-// Visible text findings that look like personal data. Exactly one email is allowed.
+export const escapeRe = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Only the standalone address is exempt: not glued to a preceding mailbox character
+// and not continued by a longer domain (".evil") or further mailbox/domain characters.
+const ALLOWED_EMAIL_RE = new RegExp(`(?<![\\w.+-])${escapeRe(CONTACT_EMAIL)}(?![\\w-]|\\.[\\w-])`, 'g');
+
+// Findings that look like personal data in markup and meta content. Exactly one email is allowed.
+// Skipped on purpose: script/style bodies and <link> tags (URLs). <meta> keeps only its content value.
 export function piiFindings(html) {
   const body = html
-    .replace(/<(script|style)[^]*?<\/\1>|<link[^>]*>|<meta[^>]*>/g, '')
-    .replaceAll(CONTACT_EMAIL, '');
+    .replace(/<(script|style)[^]*?<\/\1>|<link[^>]*>/g, '')
+    .replace(/<meta\b[^>]*>/g, (tag) => ` ${tag.match(/\bcontent="([^"]*)"/)?.[1] ?? ''} `)
+    .replace(ALLOWED_EMAIL_RE, '');
   const findings = [];
   if (/[\w.+-]+@[\w-]+\.[\w.-]+/.test(body)) findings.push('email-like string');
   if (/\+?\d[\d\s-]{7,}\d/.test(body)) findings.push('phone-like number');

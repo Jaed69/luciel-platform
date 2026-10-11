@@ -96,3 +96,27 @@ test('the site is dark only with an explicit body background', () => {
   assert.match(css, /color-scheme:\s*dark/);
   assert.match(css, /body\s*\{[^}]*background:/);
 });
+
+test('fonts come from package specifiers, not relative paths into node_modules', () => {
+  const srcDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+  const sources = readdirSync(srcDir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && /\.(css|astro)$/.test(e.name))
+    .map((e) => join(e.parentPath, e.name));
+  for (const file of sources) {
+    assert.doesNotMatch(readFileSync(file, 'utf8'), /\.\.\/node_modules\//, `${file}: relative path into node_modules`);
+  }
+});
+
+test('the display font family used by the tokens is declared by a built @font-face', () => {
+  const css = cssFiles().map((f) => readFileSync(f, 'utf8')).join('\n');
+  const family = css.match(/--font-display:\s*["']([^"']+)["']/)?.[1];
+  assert.ok(family, 'no --font-display token');
+  assert.match(css, new RegExp(`@font-face\s*\{[^}]*font-family:\s*["']?${family}["']?[;}]`), `no @font-face for ${family}`);
+});
+
+test('the depth readout is recomputed on scroll and on resize', () => {
+  const html = read(join(DIST, 'index.html'));
+  const script = html.match(/<script(?![^>]*\ssrc=)[^>]*>([^]*?)<\/script>/)?.[1] ?? '';
+  assert.match(script, /addEventListener\('scroll',\w+,\{passive:true\}\)/);
+  assert.match(script, /addEventListener\('resize',\w+,\{passive:true\}\)/);
+});
