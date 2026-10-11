@@ -1,0 +1,118 @@
+import type { Dictionary } from './dictionary';
+
+export const es: Dictionary = {
+  shell: {
+    skip: 'Saltar al contenido',
+    statusBar: 'Barra de estado',
+    depth: 'profundidad',
+    nav: { label: 'Principal', home: 'Inicio', projects: 'Proyectos' },
+    legal: { label: 'Legal', privacy: 'Privacidad', terms: 'Términos', contact: 'Contacto' },
+    language: { label: 'Idioma', names: { en: 'English', es: 'Español' } },
+    lastUpdated: 'Última actualización',
+    defaultDescription: 'luciel.dev: un portafolio productizado de herramientas web reales y funcionales.',
+  },
+  home: {
+    title: 'Jhamil Peña | luciel.dev',
+    description: 'Jhamil Peña, estudiante de Ciencias de la Computación en Lima. Un portafolio productizado de herramientas web reales y funcionales.',
+    role: ['Ingeniero de IA / ML', 'Ciencias de la Computación, UPC', 'Lima, Perú'],
+    thesis: {
+      before: 'Construyo herramientas que resuelven un problema real, cada una en su propio subdominio, sobre una infraestructura que puedo ',
+      em: 'reconstruir desde git',
+      after: '.',
+    },
+    about: [
+      'Soy estudiante de Ciencias de la Computación en la Universidad Peruana de Ciencias Aplicadas (UPC), en Lima, Perú, con enfoque en ciencia de datos, aprendizaje automático e IA generativa. Trabajo con Python (pandas, scikit-learn, PyTorch, TensorFlow), LangChain, SQL y Docker.',
+      'Actualmente desarrollo, junto con un compañero de clase y bajo la supervisión de la facultad, un sistema asistido por LLM sobre Amazon Bedrock que analiza grandes volúmenes de documentos no estructurados para el proceso de acreditación de la facultad. Utiliza un backend en FastAPI, PostgreSQL asíncrono, procesamiento por lotes en varias fases y prompt caching.',
+      'Antes realicé prácticas en Procesos y Tecnología para Wealth Management en Credicorp Capital (dashboards de Power BI, optimización de SQL, apoyo en la migración a Databricks/Spark y ETL con SSIS). También he liderado comunidades tecnológicas estudiantiles como Presidente de IEEE CIS UPC y Director de Proyecto en IEEE ComSoc UPC.',
+    ],
+    readouts: {
+      eyebrow: 'Indicadores',
+      heading: 'Medido, no proyectado.',
+      intro: 'Cada cifra indica de dónde proviene.',
+      items: [
+        { value: '1', label: 'cliente en producción', source: 'tours.luciel.dev' },
+        { value: '144', label: 'pruebas automatizadas en esa aplicación', source: '68 vitest · 76 pytest' },
+        { value: '~90%', label: 'menos tokens de system prompt con prompt caching', source: 'sistema de acreditación · CV' },
+        { value: '< 1 kB', label: 'de JavaScript de cliente en este sitio', source: 'un reloj y un contador de scroll' },
+      ],
+    },
+    work: {
+      eyebrow: 'Trabajo seleccionado',
+      heading: 'Sobre qué se ejecuta y qué cambió.',
+      facets: { context: 'Contexto', approach: 'Enfoque', system: 'Sistema', outcome: 'Resultado' },
+      source: 'Código ↗',
+      cases: [
+        {
+          name: 'tours',
+          status: 'Activo · solo con inicio de sesión',
+          context: 'Una agencia de turismo y hotel en Cusco llevaba sus ventas, comisiones y liquidaciones en Excel con macros de VBA, y las filas eliminadas no dejaban rastro.',
+          approach: 'Un libro contable de partida doble desde el primer día. Cada venta registra un asiento balanceado, verificado en Python dentro de la transacción.',
+          system: 'Frontend en <code>Next.js</code>, API en <code>FastAPI</code>, <code>SQLite</code> en modo WAL, acceso basado en roles y un registro de auditoría con valores anteriores y posteriores.',
+          outcome: 'En uso diario por un cliente real. No hay demo pública, por lo que el código fuente es la muestra.',
+        },
+        {
+          name: 'Asistente de acreditación',
+          status: 'En desarrollo · proyecto de la facultad',
+          context: 'El proceso de acreditación de la facultad requiere analizar y auditar grandes volúmenes de documentos no estructurados.',
+          approach: 'Un asistente LLM sobre Amazon Bedrock con sesiones por lotes en varias fases, monitoreo en vivo y recuperación automática ante fallos.',
+          system: '<code>FastAPI</code>, <code>PostgreSQL</code> asíncrono, autenticación basada en roles, límite de tasa persistente, respaldos en S3 y cifrado <code>AES-256-GCM</code>.',
+          outcome: 'El prompt caching redujo en cerca de un 90 % los tokens del system prompt en consultas repetidas. Desarrollado con un compañero de clase bajo la supervisión de la facultad.',
+        },
+      ],
+    },
+    trajectory: {
+      eyebrow: 'Trayectoria',
+      heading: 'De un café en Cusco a sistemas en producción.',
+      stops: [
+        { when: '2017 – 2022', title: 'Basílica Café', place: 'Cusco', text: 'Soluciones tecnológicas freelance: reportes automatizados de demanda para la gerencia y un ETL desde el sistema de ventas hacia una base de datos central.' },
+        { when: '2022 – actualidad', title: 'Ciencias de la Computación', place: 'UPC', text: 'Ciencia de datos, aprendizaje automático e IA generativa.' },
+        { when: 'Oct 2024 – Jun 2025', title: 'Presidente', place: 'IEEE CIS UPC', text: 'Lideré el portafolio de proyectos del capítulo y sus alianzas con la industria.' },
+        { when: 'Jul – Sep 2025', title: 'Director de Proyecto', place: 'IEEE ComSoc UPC', text: 'Lideré un equipo multidisciplinario que construyó un sistema de inventario IoT con arquitectura de microservicios.' },
+        { when: 'Oct 2025 – Mar 2026', title: 'Practicante', place: 'Credicorp Capital', text: 'Procesos y tecnología para Wealth Management: dashboards de Power BI, optimización de SQL, apoyo en la migración a Databricks y ETL con SSIS.' },
+        { when: 'Mar 2026 – actualidad', title: 'Desarrollador full-stack y de IA generativa', place: 'UPC', text: 'El asistente de acreditación descrito arriba.' },
+      ],
+    },
+    stack: {
+      eyebrow: 'Stack',
+      heading: 'Lo que utilizo.',
+      labels: ['ML y aprendizaje profundo', 'LLM', 'Datos', 'Sistemas'],
+    },
+    method: {
+      eyebrow: 'Método',
+      heading: 'Cómo funciona este sitio',
+      principles: [
+        { title: 'Herramientas reales, no demos', text: 'Cada proyecto es una herramienta funcional que resuelve un problema real, no una demo vacía.' },
+        { title: 'Un subdominio por herramienta', text: 'Cada herramienta vive en su propio subdominio, con contenido genuino escrito a su alrededor.' },
+        { title: 'Infraestructura reproducible', text: 'Todo se ejecuta sobre infraestructura versionada en git: Traefik y Docker Compose, un contenedor por aplicación.' },
+      ],
+    },
+    tools: {
+      eyebrow: 'Directorio',
+      heading: 'Herramientas',
+      live: 'Activo',
+      planned: 'Próximamente',
+      more: 'Ver los detalles en la página de Proyectos',
+    },
+  },
+  projects: {
+    title: 'Proyectos | luciel.dev',
+    description: 'Herramientas construidas y planificadas en luciel.dev: qué está activo, qué requiere inicio de sesión y qué sigue.',
+    eyebrow: 'Proyectos',
+    heading: 'Qué está activo y qué sigue.',
+    intro: { before: 'Cada herramienta vive en el monorepo ', after: ' y se ejecuta en su propio subdominio.' },
+    liveHeading: 'Activos',
+    plannedHeading: 'Planificados',
+    statuses: { live: 'Activo', planned: 'Planificado' },
+    loginRequired: 'requiere inicio de sesión',
+    source: 'Código en GitHub',
+  },
+  notFound: {
+    title: 'Página no encontrada | luciel.dev',
+    description: 'La página solicitada no existe.',
+    eyebrow: 'Error · 404',
+    heading: 'Página no encontrada',
+    lead: 'Esa dirección no existe en luciel.dev.',
+    home: 'Ir al inicio',
+    projects: 'Ver Proyectos',
+  },
+};

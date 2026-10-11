@@ -116,6 +116,9 @@ code, .chip {
 .hud nav a { color: var(--color-muted); text-decoration: none; padding-block: 0.2rem; }
 .hud nav a:hover { color: var(--color-amber); }
 .hud nav a[aria-current="page"] { color: var(--color-fg); text-decoration: underline; text-decoration-color: var(--color-amber); text-underline-offset: 6px; }
+.hud .lang ul { gap: 0.2rem; }
+.hud .lang a { padding: 0.2rem 0.4rem; border: 1px solid transparent; border-radius: 3px; }
+.hud .lang a[aria-current="true"] { color: var(--color-fg); border-color: var(--color-line); }
 .depth-bar {
   position: absolute; left: 0; bottom: -1px; height: 2px; width: 100%;
   background: linear-gradient(90deg, var(--color-rust), var(--color-amber), var(--color-ochre));

@@ -1,0 +1,159 @@
+---
+import DocPage from '../components/DocPage.astro';
+import type { Locale } from '../i18n/routes';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const email = 'jhamil.pcardenas@luciel.dev';
+---
+
+{locale === 'es' ? (
+  <DocPage
+    page="privacy"
+    locale="es"
+    title="Política de Privacidad | luciel.dev"
+    description="Qué datos recopila luciel.dev, con qué fin y cuáles son sus derechos bajo la Ley de Protección de Datos Personales del Perú."
+    eyebrow="Legal"
+    heading="Política de Privacidad"
+    updated="6 de octubre de 2026"
+  >
+    <p>
+      Esta política explica qué sucede con sus datos cuando visita luciel.dev. El sitio es operado por
+      Jhamil Peña, Lima, Perú («yo», «el operador»). Puede comunicarse conmigo en
+      <a href={`mailto:${email}`}>{email}</a>.
+    </p>
+
+    <h2>Qué es el sitio</h2>
+    <p>
+      luciel.dev es un sitio web estático construido con Astro. Se sirve desde un único servidor ARM de
+      Oracle Cloud detrás de un proxy inverso Traefik. En este sitio no hay cuentas de usuario, formularios
+      ni comentarios.
+    </p>
+
+    <h2>Datos recopilados</h2>
+    <p>
+      El proxy inverso conserva registros de acceso. Cada entrada puede incluir su dirección IP, la URL
+      solicitada, el agente de usuario de su navegador y una marca de tiempo. Utilizo estos registros
+      únicamente para operar y proteger el servicio, por ejemplo para diagnosticar errores y detectar abusos.
+      Se conservan solo el tiempo necesario para la operación y la seguridad, y los archivos de registro se
+      rotan por tamaño, de modo que las entradas más antiguas se descartan automáticamente.
+    </p>
+    <p>Si me escribe un correo electrónico, recibo su dirección de correo y el contenido de su mensaje, y los uso únicamente para responderle.</p>
+
+    <h2>Cookies, analítica y terceros en la actualidad</h2>
+    <ul>
+      <li>El sitio no establece cookies y no utiliza herramientas de analítica ni de seguimiento.</li>
+      <li>Las fuentes se alojan en el mismo servidor, por lo que cargar una página no genera solicitudes a terceros.</li>
+      <li>Un pequeño script en línea muestra un reloj y su posición de desplazamiento. No almacena ni envía nada.</li>
+    </ul>
+
+    <h2>Publicidad (prevista)</h2>
+    <p>
+      Tengo previsto solicitar Google AdSense. Hoy no está activo. Si se habilita, Google y sus socios
+      podrían utilizar cookies para mostrar anuncios basados en sus visitas anteriores a este y otros sitios
+      web. Puede consultar cómo Google utiliza los datos de los sitios que emplean sus servicios en
+      <a href="https://policies.google.com/technologies/ads">policies.google.com/technologies/ads</a>
+      y gestionar la personalización de anuncios en <a href="https://adssettings.google.com">adssettings.google.com</a>.
+      Antes de que se publique cualquier anuncio, esta política se actualizará y, cuando corresponda, se
+      añadirá un banner de consentimiento.
+    </p>
+
+    <h2>Enlaces externos y otros servicios</h2>
+    <p>
+      Este sitio enlaza a otros lugares, entre ellos GitHub y la aplicación independiente en tours.luciel.dev.
+      La aplicación tours es una herramienta con acceso solo mediante inicio de sesión, con su propio
+      tratamiento de datos para su cliente; no está cubierta por esta política. Otros sitios tienen sus
+      propias prácticas de privacidad.
+    </p>
+
+    <h2>Sus derechos</h2>
+    <p>
+      De acuerdo con la Ley de Protección de Datos Personales del Perú (Ley N.° 29733), usted tiene derecho
+      de acceso, rectificación, cancelación y oposición respecto de sus datos personales. Para ejercerlos,
+      escriba a <a href={`mailto:${email}`}>{email}</a>.
+    </p>
+
+    <h2>Menores de edad</h2>
+    <p>Este sitio no está dirigido a menores de edad y no recopilo conscientemente datos personales de ellos.</p>
+
+    <h2>Cambios</h2>
+    <p>
+      Puedo actualizar esta política a medida que el sitio cambie, por ejemplo cuando se habilite la
+      publicidad. La fecha que aparece al inicio indica la revisión más reciente.
+    </p>
+  </DocPage>
+) : (
+  <DocPage
+    page="privacy"
+    locale="en"
+    title="Privacy Policy | luciel.dev"
+    description="What data luciel.dev collects, why, and your rights under Peru's Personal Data Protection Law."
+    eyebrow="Legal"
+    heading="Privacy Policy"
+    updated="October 6, 2026"
+  >
+    <p>
+      This policy explains what happens to your data when you visit luciel.dev. The site is operated by
+      Jhamil Peña, Lima, Peru ("I", "the operator"). You can reach me at
+      <a href={`mailto:${email}`}>{email}</a>.
+    </p>
+
+    <h2>What the site is</h2>
+    <p>
+      luciel.dev is a static website built with Astro. It is served from a single Oracle Cloud ARM server
+      behind a Traefik reverse proxy. There are no user accounts, no forms and no comments on this site.
+    </p>
+
+    <h2>Data collected</h2>
+    <p>
+      The reverse proxy keeps access logs. Each entry can include your IP address, the URL you requested,
+      your browser's user agent and a timestamp. I use these logs only to operate and secure the service,
+      for example to diagnose errors and detect abuse. They are kept only as long as needed for operation
+      and security, and the log files are rotated by size so older entries are discarded automatically.
+    </p>
+    <p>If you email me, I receive your email address and the content of your message, and use them only to reply.</p>
+
+    <h2>Cookies, analytics and third parties today</h2>
+    <ul>
+      <li>The site sets no cookies and does not use analytics or tracking tools.</li>
+      <li>Fonts are hosted on the same server, so loading a page makes no requests to third parties.</li>
+      <li>A small inline script shows a clock and your scroll position. It stores nothing and sends nothing.</li>
+    </ul>
+
+    <h2>Advertising (planned)</h2>
+    <p>
+      I plan to apply for Google AdSense. It is not active today. If it is enabled, Google and its partners
+      may use cookies to serve ads based on your prior visits to this and other websites. You can learn how
+      Google uses data from sites that use its services at
+      <a href="https://policies.google.com/technologies/ads">policies.google.com/technologies/ads</a>
+      and manage ad personalization at <a href="https://adssettings.google.com">adssettings.google.com</a>.
+      Before any ads go live, this policy will be updated and a consent banner will be added where required.
+    </p>
+
+    <h2>External links and other services</h2>
+    <p>
+      This site links to other places, including GitHub and the separate application at tours.luciel.dev.
+      The tours application is a login-only tool with its own data handling for its client; it is not covered
+      by this policy. Other sites have their own privacy practices.
+    </p>
+
+    <h2>Your rights</h2>
+    <p>
+      Under Peru's Personal Data Protection Law (Law No. 29733), you have the right to access, rectification,
+      cancellation and opposition regarding your personal data. To exercise them, write to
+      <a href={`mailto:${email}`}>{email}</a>.
+    </p>
+
+    <h2>Children</h2>
+    <p>This site is not directed at children, and I do not knowingly collect personal data from them.</p>
+
+    <h2>Changes</h2>
+    <p>
+      I may update this policy as the site changes, for example when advertising is enabled. The date at the
+      top shows the latest revision.
+    </p>
+  </DocPage>
+)}

@@ -1,0 +1,118 @@
+import type { Dictionary } from './dictionary';
+
+export const en: Dictionary = {
+  shell: {
+    skip: 'Skip to content',
+    statusBar: 'Status bar',
+    depth: 'depth',
+    nav: { label: 'Main', home: 'Home', projects: 'Projects' },
+    legal: { label: 'Legal', privacy: 'Privacy', terms: 'Terms', contact: 'Contact' },
+    language: { label: 'Language', names: { en: 'English', es: 'Español' } },
+    lastUpdated: 'Last updated',
+    defaultDescription: 'luciel.dev: a productized portfolio of real, working web tools.',
+  },
+  home: {
+    title: 'Jhamil Peña | luciel.dev',
+    description: 'Jhamil Peña, Computer Science student in Lima. A productized portfolio of real, working web tools.',
+    role: ['AI / ML engineer', 'Computer Science, UPC', 'Lima, Peru'],
+    thesis: {
+      before: 'I build tools that solve a real problem, each on its own subdomain, on infrastructure I can ',
+      em: 'rebuild from git',
+      after: '.',
+    },
+    about: [
+      "I'm a Computer Science student at Universidad Peruana de Ciencias Aplicadas (UPC) in Lima, Peru, focused on data science, machine learning and generative AI. I work with Python (pandas, scikit-learn, PyTorch, TensorFlow), LangChain, SQL and Docker.",
+      "Right now I'm building, with a classmate and under faculty supervision, an LLM-assisted system on Amazon Bedrock that analyses large volumes of unstructured documents for the faculty's accreditation process. It uses a FastAPI backend, async PostgreSQL, multi-phase batch processing and prompt caching.",
+      'Before that I interned in Processes & Technology for Wealth Management at Credicorp Capital (Power BI dashboards, SQL optimization, Databricks/Spark migration support, SSIS ETL). I have also led student tech communities as President of IEEE CIS UPC and Project Director at IEEE ComSoc UPC.',
+    ],
+    readouts: {
+      eyebrow: 'Readouts',
+      heading: 'Measured, not projected.',
+      intro: 'Each figure names where it comes from.',
+      items: [
+        { value: '1', label: 'client running in production', source: 'tours.luciel.dev' },
+        { value: '144', label: 'automated tests on that app', source: '68 vitest · 76 pytest' },
+        { value: '~90%', label: 'fewer system-prompt tokens with prompt caching', source: 'accreditation system · CV' },
+        { value: '< 1 kB', label: 'client JavaScript on this site', source: 'a clock and a scroll counter' },
+      ],
+    },
+    work: {
+      eyebrow: 'Selected work',
+      heading: 'What it runs on, and what it changed.',
+      facets: { context: 'Context', approach: 'Approach', system: 'System', outcome: 'Outcome' },
+      source: 'Source ↗',
+      cases: [
+        {
+          name: 'tours',
+          status: 'Live · login only',
+          context: 'A tour agency and hotel in Cusco kept sales, commissions and settlements in Excel with VBA macros, and deleted rows left no trace.',
+          approach: 'A double-entry ledger from day one. Every sale posts a balanced entry, checked in Python inside the transaction.',
+          system: '<code>Next.js</code> front end, <code>FastAPI</code> API, <code>SQLite</code> in WAL mode, role-based access and an audit log with before and after values.',
+          outcome: 'In daily use by a real client. No public demo, so the source is the showcase.',
+        },
+        {
+          name: 'Accreditation assistant',
+          status: 'In development · faculty project',
+          context: "The faculty's accreditation process needs large volumes of unstructured documents analysed and audited.",
+          approach: 'An LLM assistant on Amazon Bedrock with multi-phase batch sessions, live monitoring and automatic recovery after failures.',
+          system: '<code>FastAPI</code>, async <code>PostgreSQL</code>, role-based auth, persistent rate limiting, S3 backups and <code>AES-256-GCM</code> encryption.',
+          outcome: 'Prompt caching cut system-prompt tokens by about 90% on repeated queries. Built with a classmate under faculty supervision.',
+        },
+      ],
+    },
+    trajectory: {
+      eyebrow: 'Trajectory',
+      heading: 'From a café in Cusco to production systems.',
+      stops: [
+        { when: '2017 – 2022', title: 'Basílica Café', place: 'Cusco', text: 'Freelance tech solutions: automated demand reports for management and an ETL from the sales system into a central database.' },
+        { when: '2022 – now', title: 'Computer Science', place: 'UPC', text: 'Data science, machine learning and generative AI.' },
+        { when: 'Oct 2024 – Jun 2025', title: 'President', place: 'IEEE CIS UPC', text: "Led the chapter's project portfolio and its industry partnerships." },
+        { when: 'Jul – Sep 2025', title: 'Project Director', place: 'IEEE ComSoc UPC', text: 'Led a multidisciplinary team building an IoT inventory system with a microservice architecture.' },
+        { when: 'Oct 2025 – Mar 2026', title: 'Intern', place: 'Credicorp Capital', text: 'Processes and technology for Wealth Management: Power BI dashboards, SQL optimisation, Databricks migration support and SSIS ETL.' },
+        { when: 'Mar 2026 – now', title: 'Full-stack & GenAI developer', place: 'UPC', text: 'The accreditation assistant above.' },
+      ],
+    },
+    stack: {
+      eyebrow: 'Stack',
+      heading: 'What I reach for.',
+      labels: ['ML & deep learning', 'LLMs', 'Data', 'Systems'],
+    },
+    method: {
+      eyebrow: 'Method',
+      heading: 'How this site works',
+      principles: [
+        { title: 'Real tools, not demos', text: 'Each project is a working tool that solves a real problem, not an empty demo.' },
+        { title: 'One subdomain per tool', text: 'Every tool lives on its own subdomain, with genuine content written around it.' },
+        { title: 'Reproducible infrastructure', text: 'Everything runs on infrastructure versioned in git: Traefik and Docker Compose, one container per app.' },
+      ],
+    },
+    tools: {
+      eyebrow: 'Directory',
+      heading: 'Tools',
+      live: 'Live',
+      planned: 'Coming soon',
+      more: 'See details on the Projects page',
+    },
+  },
+  projects: {
+    title: 'Projects | luciel.dev',
+    description: 'Tools built and planned on luciel.dev: what is live, what is login-only, and what is next.',
+    eyebrow: 'Projects',
+    heading: 'What is live, and what is next.',
+    intro: { before: 'Each tool lives in the ', after: ' monorepo and runs on its own subdomain.' },
+    liveHeading: 'Live',
+    plannedHeading: 'Planned',
+    statuses: { live: 'Live', planned: 'Planned' },
+    loginRequired: 'login required',
+    source: 'Source on GitHub',
+  },
+  notFound: {
+    title: 'Page not found | luciel.dev',
+    description: 'The page you were looking for does not exist.',
+    eyebrow: 'Error · 404',
+    heading: 'Page not found',
+    lead: 'That address does not exist on luciel.dev.',
+    home: 'Go to Home',
+    projects: 'See Projects',
+  },
+};

@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const DIST = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
@@ -53,3 +53,8 @@ export function piiFindings(html) {
   if (/\+?\d[\d\s-]{7,}\d/.test(body)) findings.push('phone-like number');
   return findings;
 }
+
+// Locale of a built page, from its path inside dist: `es/...` is Spanish, everything else English.
+export const localeOfFile = (file) => (file.slice(DIST.length + 1).split(sep)[0] === 'es' ? 'es' : 'en');
+
+export const htmlFilesFor = (locale) => htmlFiles().filter((file) => localeOfFile(file) === locale);

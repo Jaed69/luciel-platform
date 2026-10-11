@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DIST, htmlFiles, read } from './helpers.mjs';
+import { DIST, escapeRe, htmlFiles, read } from './helpers.mjs';
 
 const rel = (p) => p.slice(DIST.length + 1);
 const tokensPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'styles', 'tokens.css');
@@ -111,7 +111,7 @@ test('the display font family used by the tokens is declared by a built @font-fa
   const css = cssFiles().map((f) => readFileSync(f, 'utf8')).join('\n');
   const family = css.match(/--font-display:\s*["']([^"']+)["']/)?.[1];
   assert.ok(family, 'no --font-display token');
-  assert.match(css, new RegExp(`@font-face\s*\{[^}]*font-family:\s*["']?${family}["']?[;}]`), `no @font-face for ${family}`);
+  assert.match(css, new RegExp(String.raw`@font-face\s*\{[^}]*font-family:\s*["']?${escapeRe(family)}["']?[;}]`), `no @font-face for ${family}`);
 });
 
 test('the depth readout is recomputed on scroll and on resize', () => {

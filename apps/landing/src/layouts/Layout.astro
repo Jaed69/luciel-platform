@@ -7,39 +7,47 @@ import '@fontsource/jetbrains-mono/latin-400.css';
 import '@fontsource/jetbrains-mono/latin-500.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
+import { useDictionary } from '../i18n';
+import { alternates, route, htmlLang, ogLocale, DEFAULT_LOCALE } from '../i18n/routes';
+import type { Locale, PageKey } from '../i18n/routes';
 
 interface Props {
+  page: PageKey;
+  locale?: Locale;
   title?: string;
   description?: string;
   image?: string;
-  path?: string;
 }
 
-const {
-  title = 'luciel.dev',
-  description = 'luciel.dev: a productized portfolio of real, working web tools.',
-  image = '/og-default.png',
-  path = Astro.url.pathname,
-} = Astro.props;
+const { page, locale = DEFAULT_LOCALE, title = 'luciel.dev', image = '/og-default.png' } = Astro.props;
+const t = useDictionary(locale);
+const { description = t.shell.defaultDescription } = Astro.props;
 
-const canonical = new URL(path, Astro.site).href;
-const ogImage = new URL(image, Astro.site).href;
+const absolute = (path: string) => new URL(path, Astro.site).href;
+const canonical = absolute(route(page, locale) ?? '/');
+const ogImage = absolute(image);
+const versions = alternates(page);
+const otherLocales = versions.filter((version) => version.locale !== locale);
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={htmlLang[locale]}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
+    {versions.map((version) => <link rel="alternate" hreflang={version.locale} href={absolute(version.path)} />)}
+    <link rel="alternate" hreflang="x-default" href={absolute(route(page, DEFAULT_LOCALE) ?? '/')} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="luciel.dev" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
     <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={ogLocale[locale]} />
+    {otherLocales.map((version) => <meta property="og:locale:alternate" content={ogLocale[version.locale]} />)}
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
@@ -47,11 +55,11 @@ const ogImage = new URL(image, Astro.site).href;
     <meta name="color-scheme" content="dark" />
   </head>
   <body>
-    <a href="#main" class="skip">Skip to content</a>
-    <Header />
+    <a href="#main" class="skip">{t.shell.skip}</a>
+    <Header page={page} locale={locale} />
     <div id="main" tabindex="-1">
       <slot />
     </div>
-    <Footer />
+    <Footer locale={locale} />
   </body>
 </html>
