@@ -225,6 +225,9 @@ const readings = { surface: ['context', 'outcome'], depth: ['approach', 'system'
   .role { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-muted); }
   .role .dot { color: var(--signal-fill); }
   .hero-surface, .hero-depth { display: grid; gap: 2rem; padding-top: 0.6rem; }
+  /* The next block's top rule closes the facts table, so Depth needs less air (and no second rule) before it. */
+  :root[data-dimension="depth"] .hero { padding-bottom: 1.5rem; }
+  .facts div:last-child { border-bottom: 0; }
   .thesis { font-family: var(--font-display); font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.6rem); line-height: 1.2; max-width: 26ch; letter-spacing: -0.01em; }
   .thesis em { color: var(--color-signal); }
   .ctas { display: flex; flex-wrap: wrap; gap: 0.8rem; }

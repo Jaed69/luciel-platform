@@ -58,6 +58,17 @@ test('only the active dimension renders its reading, and the jump respects reduc
   assert.match(css, /prefers-reduced-motion:\s*reduce\)\s*\{[^}]*::view-transition-old\(root\)[^}]*\{[^}]*animation:\s*none/);
 });
 
+test('the D hint is hidden on devices without hover, where there is usually no keyboard', () => {
+  assert.match(builtCss(), /@media\s*\(hover:\s*none\)\s*\{[^}]*\.dim kbd\s*\{[^}]*display:\s*none/);
+});
+
+test('without JavaScript the switch is hidden instead of sitting there inert', () => {
+  for (const page of htmlFiles()) {
+    const head = read(page).match(/<head>([^]*?)<\/head>/)?.[1] ?? '';
+    assert.match(head, /<noscript><style>\.dim\{display:none\}<\/style><\/noscript>/, `${rel(page)}: no-JS fallback`);
+  }
+});
+
 test('nothing on the site is driven by scroll', () => {
   assert.doesNotMatch(builtCss(), /animation-timeline/, 'scroll-driven animation in CSS');
   for (const page of htmlFiles()) {
