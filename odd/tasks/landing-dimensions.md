@@ -17,10 +17,12 @@ Branch: `feat/landing-dimensions` · Delivery: ask-on-risk · Test runner: `pnpm
 
 - [x] T1 S1 — tokens for both dimensions, self-hosted fonts, contrast tests · inline · GREEN 80/80
 - [x] T2 S2 S3 S6 — dimension mechanism (pre-paint attribute, toggle, D key, view transition, CSS-hidden inactive reading) in the shell · inline · GREEN 84/84, inline JS ~990 B
-- [ ] T3 S4 S5 S6 — home content restructure with Surface/Depth readings, en/es copy, tests · inline
+- [x] T3 S4 S5 S6 — home content restructure with Surface/Depth readings, en/es copy, tests · inline · GREEN 89/89
 
 ## Log
 
 - L1 (2026-10-22) User: "Vamls a comenzar, queremos seri mejorando o mejor dicho panteter de verdad como debe ser la web de Luciel.dev, como en teoría es mi portafolio de proyectos, y la idea es que se muestren mis capacidades, ya sea con proyectos de plegadora, animación , 3d como web carísimas, con gráfico ,un súper ux o UI, que transmita un experiencia".
 - L2 Discovery decisions: two dimensions (Surface/Depth), identity A chosen, global switch, landing first then lab. User on the root package.json pnpm bump: "no se si el pack es importate si no no lo comites" → left uncommitted.
 - L3 Route: inline (no writer trigger: tasks depend on each other).
+- L4 T1–T3 done on `feat/landing-dimensions`, 89/89 tests green. Inline client JS ≈ 990 B (the "< 1 kB" readout stays true). Browser check pending: Claude in Chrome extension not connected; the switch's runtime behavior (click, D key, view transition, persistence) is covered only by static tests on the built HTML.
+- L5 Next: user review in a real browser, then the `/lab/acreditacion` feature.

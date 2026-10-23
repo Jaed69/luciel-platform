@@ -12,45 +12,81 @@ interface Props {
 const { locale } = Astro.props;
 const t = useDictionary(locale).home;
 
-// Not translated, so they live here once: accent colours, technology names, the public source link.
-const stopColors = Array(6).fill('signal');
+// Not translated, so they live here once: technology names and the public source links.
 const stackItems = [
   ['Python', 'pandas', 'scikit-learn', 'PyTorch', 'TensorFlow'],
   ['Amazon Bedrock', 'LangChain', 'prompt caching'],
   ['SQL', 'PostgreSQL', 'Databricks', 'Power BI'],
   ['FastAPI', 'Docker', 'Traefik', 'AWS'],
 ];
-const toursSource = 'https://github.com/Jaed69/luciel-platform/tree/main/apps/tours';
-const facets = ['context', 'approach', 'system', 'outcome'] as const;
+const repo = 'https://github.com/Jaed69/luciel-platform';
+const toursSource = `${repo}/tree/main/apps/tours`;
 const sourceLinks = [toursSource, undefined];
 const statusClass = ['live', 'build'];
+// Each case reads as problem → result on the surface, and as approach → system underneath.
+const readings = { surface: ['context', 'outcome'], depth: ['approach', 'system'] } as const;
 ---
 
 <Layout page="home" locale={locale} title={t.title} description={t.description}>
   <main class="wrap">
+    {/* Every block offers two readings (data-reading); tokens.css renders only the active dimension's. */}
     <section id="intro" class="hero" aria-labelledby="name">
-      <h1 id="name">Jhamil<br /><span class="last">Peña</span></h1>
+      <h1 id="name">Jhamil <span class="last">Peña</span></h1>
       <div class="role">
         <span>{t.role[0]}</span><span class="dot" aria-hidden="true">●</span>
         <span>{t.role[1]}</span><span class="dot" aria-hidden="true">●</span>
         <span>{t.role[2]}</span>
       </div>
-      <p class="thesis">{t.thesis.before}<em>{t.thesis.em}</em>{t.thesis.after}</p>
-      <div class="about">
-        {t.about.map((paragraph) => <p>{paragraph}</p>)}
+      <div data-reading="surface" class="hero-surface">
+        <p class="thesis">{t.thesis.before}<em>{t.thesis.em}</em>{t.thesis.after}</p>
+        <p class="ctas">
+          <a href="#lab" class="btn primary">{t.jump.lab}</a>
+          <a href="#work" class="btn">{t.jump.work}</a>
+        </p>
+      </div>
+      <div data-reading="depth" class="hero-depth">
+        <div class="head">
+          <p class="eyebrow">{t.build.eyebrow}</p>
+          <h2>{t.build.heading}</h2>
+        </div>
+        <dl class="facts">
+          {t.build.facts.map((fact) => (
+            <div><dt>{fact.label}</dt><dd>{fact.value}</dd></div>
+          ))}
+        </dl>
       </div>
     </section>
 
-    <section class="block" aria-labelledby="proof">
-      <div class="head">
-        <p class="eyebrow">{t.readouts.eyebrow}</p>
-        <h2 id="proof">{t.readouts.heading}</h2>
-        <p>{t.readouts.intro}</p>
+    <section id="lab" class="block" aria-labelledby="lab-h">
+      <div data-reading="surface" class="lab">
+        <div class="lab-door">
+          <div class="head">
+            <p class="eyebrow">{t.lab.eyebrow}</p>
+            <h2 id="lab-h">{t.lab.heading}</h2>
+            <p>{t.lab.lead}</p>
+          </div>
+          <div class="sheet" aria-hidden="true">
+            <span class="page"></span>
+          </div>
+          <p class="lab-foot"><span class="status build">{t.lab.status}</span><span>{t.lab.privacy}</span></p>
+        </div>
+        <ul class="lab-next">
+          {t.lab.next.map((item) => (
+            <li><h3>{item.name}</h3><p>{item.text}</p><span class="status">{t.lab.status}</span></li>
+          ))}
+        </ul>
       </div>
-      <div class="readouts">
-        {t.readouts.items.map((item) => (
-          <div class="readout"><span class="val">{item.value}</span><span class="lbl">{item.label}</span><span class="src">{item.source}</span></div>
-        ))}
+      <div data-reading="depth" class="pipeline">
+        <div class="head">
+          <p class="eyebrow">{t.lab.pipeline.eyebrow}</p>
+          <h2>{t.lab.pipeline.heading}</h2>
+        </div>
+        <ol class="nodes">
+          {t.lab.pipeline.steps.map((step, index) => (
+            <li><span class="n">{String(index + 1).padStart(2, '0')}</span><b>{step.name}</b><span>{step.text}</span></li>
+          ))}
+        </ol>
+        <p class="note">{t.lab.pipeline.note}</p>
       </div>
     </section>
 
@@ -63,28 +99,38 @@ const statusClass = ['live', 'build'];
         {t.work.cases.map((item, index) => (
           <article class="case">
             <header><h3>{item.name}</h3><span class={`status ${statusClass[index]}`}>{item.status}</span></header>
-            <div class="facets">
-              {facets.map((facet) => (
-                <div class="facet">
-                  <span class="eyebrow">{t.work.facets[facet]}</span>
-                  {facet === 'system' ? <p set:html={item.system} /> : <p>{item[facet]}</p>}
-                </div>
-              ))}
-            </div>
-            {sourceLinks[index] && <footer><a href={sourceLinks[index]}>{t.work.source}</a></footer>}
+            {Object.entries(readings).map(([dimension, facets]) => (
+              <div class="facets" data-reading={dimension}>
+                {facets.map((facet) => (
+                  <div class="facet">
+                    <span class="eyebrow">{t.work.facets[facet]}</span>
+                    {facet === 'system' ? <p set:html={item.system} /> : <p>{item[facet]}</p>}
+                  </div>
+                ))}
+              </div>
+            ))}
+            {sourceLinks[index] && <footer data-reading="depth"><a href={sourceLinks[index]}>{t.work.source}</a></footer>}
           </article>
         ))}
       </div>
     </section>
 
-    <section class="block" id="trajectory" aria-labelledby="traj-h">
+    {/* About: the person on the surface, the measurements and tools underneath. */}
+    <section class="block" id="trajectory" data-reading="surface" aria-labelledby="traj-h">
+      <div class="head">
+        <p class="eyebrow">{t.aboutHeading.eyebrow}</p>
+        <h2 id="traj-h">{t.aboutHeading.heading}</h2>
+      </div>
+      <div class="about">
+        {t.about.map((paragraph) => <p>{paragraph}</p>)}
+      </div>
       <div class="head">
         <p class="eyebrow">{t.trajectory.eyebrow}</p>
-        <h2 id="traj-h">{t.trajectory.heading}</h2>
+        <h3 class="sub">{t.trajectory.heading}</h3>
       </div>
       <ol class="track">
-        {t.trajectory.stops.map((stop, index) => (
-          <li class="stop" style={`--c: var(--color-${stopColors[index]})`}>
+        {t.trajectory.stops.map((stop) => (
+          <li class="stop">
             <span class="when">{stop.when}</span>
             <div class="body">
               <h3><span>{stop.title}</span>, {stop.place}</h3>
@@ -95,7 +141,20 @@ const statusClass = ['live', 'build'];
       </ol>
     </section>
 
-    <section class="block" id="stack" aria-labelledby="stack-h">
+    <section class="block" data-reading="depth" aria-labelledby="proof">
+      <div class="head">
+        <p class="eyebrow">{t.readouts.eyebrow}</p>
+        <h2 id="proof">{t.readouts.heading}</h2>
+        <p>{t.readouts.intro}</p>
+      </div>
+      <div class="readouts">
+        {t.readouts.items.map((item) => (
+          <div class="readout"><span class="val">{item.value}</span><span class="lbl">{item.label}</span><span class="src">{item.source}</span></div>
+        ))}
+      </div>
+    </section>
+
+    <section class="block" id="stack" data-reading="depth" aria-labelledby="stack-h">
       <div class="head">
         <p class="eyebrow">{t.stack.eyebrow}</p>
         <h2 id="stack-h">{t.stack.heading}</h2>
@@ -110,7 +169,7 @@ const statusClass = ['live', 'build'];
       </div>
     </section>
 
-    <section id="philosophy" class="block" aria-labelledby="philosophy-heading">
+    <section id="philosophy" class="block" data-reading="surface" aria-labelledby="philosophy-heading">
       <div class="head">
         <p class="eyebrow">{t.method.eyebrow}</p>
         <h2 id="philosophy-heading">{t.method.heading}</h2>
@@ -125,7 +184,7 @@ const statusClass = ['live', 'build'];
       </ul>
     </section>
 
-    <section id="tools" class="block" aria-labelledby="tools-heading">
+    <section id="tools" class="block" data-reading="depth" aria-labelledby="tools-heading">
       <div class="head">
         <p class="eyebrow">{t.tools.eyebrow}</p>
         <h2 id="tools-heading">{t.tools.heading}</h2>
@@ -140,62 +199,132 @@ const statusClass = ['live', 'build'];
       </ul>
       <p class="more"><a href={route('projects', locale)}>{t.tools.more}</a></p>
     </section>
+
+    <section id="closing" class="block closing" aria-labelledby="closing-h">
+      <p class="eyebrow">{t.closing.eyebrow}</p>
+      <div data-reading="surface" class="head">
+        <h2 id="closing-h">{t.closing.heading}</h2>
+        <p>{t.closing.lead}</p>
+        <p class="ctas"><a href={route('contact', locale)} class="btn primary">{t.closing.contact}</a></p>
+      </div>
+      <div data-reading="depth" class="head">
+        <h2>{t.closing.depthHeading}</h2>
+        <p>{t.closing.depthLead}</p>
+        <p class="ctas"><a href={repo} class="btn">{t.closing.source}</a></p>
+      </div>
+    </section>
   </main>
 </Layout>
 
 <style is:global>
   /* ---------- hero ---------- */
-  .hero { padding-block: clamp(3rem, 8vw, 6.5rem) 3rem; display: grid; gap: 1.6rem; }
-  .hero h1 { font-size: var(--step-3); font-weight: var(--display-weight); line-height: 0.95; letter-spacing: -0.035em; }
-  .hero h1 .last { color: var(--color-signal); }
+  .hero { padding-block: clamp(3.5rem, 10vw, 7.5rem) 4rem; display: grid; gap: 1.6rem; }
+  .hero h1 { font-size: var(--step-3); line-height: 0.95; }
+  .hero h1 .last { font-style: italic; color: var(--color-signal); }
+  :root[data-dimension="depth"] .hero h1 .last { font-style: normal; }
   .role { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-muted); }
-  .role .dot { color: var(--color-live); }
-  .thesis { font-size: var(--step-1); max-width: 34ch; font-family: var(--font-display); line-height: 1.35; }
-  .thesis em { font-style: normal; color: var(--color-signal); }
-  .about { display: grid; gap: 1rem; max-width: 62ch; color: var(--color-muted); padding-top: 1rem; }
+  .role .dot { color: var(--signal-fill); }
+  .hero-surface, .hero-depth { display: grid; gap: 2rem; padding-top: 0.6rem; }
+  .thesis { font-family: var(--font-display); font-size: clamp(1.6rem, 1.2rem + 1.6vw, 2.6rem); line-height: 1.2; max-width: 26ch; letter-spacing: -0.01em; }
+  .thesis em { color: var(--color-signal); }
+  .ctas { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+  .btn {
+    display: inline-flex; align-items: center; min-height: 44px; padding: 0 1.3rem; border-radius: 999px;
+    border: 1px solid var(--color-fg); color: var(--color-fg); text-decoration: none; font-weight: 500;
+    transition: background-color 240ms ease-out, color 240ms ease-out, transform 240ms ease-out;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn.primary { background: var(--color-fg); color: var(--color-bg); }
+  .facts { margin: 0; display: grid; border-top: 1px solid var(--color-line); font-family: var(--font-mono); font-size: var(--step--1); }
+  .facts div { display: grid; grid-template-columns: 9rem 1fr; gap: 1rem; padding-block: 0.7rem; border-bottom: 1px solid var(--color-line); }
+  .facts dt { color: var(--color-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+  .facts dd { margin: 0; color: var(--color-fg); }
+  @media (max-width: 600px) { .facts div { grid-template-columns: 1fr; gap: 0.2rem; } }
 
-  /* ---------- readouts ---------- */
-  .readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 1px; background: var(--color-line); border: 1px solid var(--color-line); }
-  .readout { background: var(--color-surface); padding: 1.2rem 1.1rem; display: grid; gap: 0.35rem; align-content: start; }
-  .readout .val { font-family: var(--font-mono); font-size: var(--step-2); font-variant-numeric: tabular-nums; line-height: 1; }
-  .readout:nth-child(1) .val { color: var(--color-signal); }
-  .readout:nth-child(2) .val { color: var(--color-signal); }
-  .readout:nth-child(3) .val { color: var(--color-signal); }
-  .readout:nth-child(4) .val { color: var(--color-signal); }
-  .readout .lbl { font-size: var(--step--1); }
-  .readout .src { color: var(--color-faint); font-family: var(--font-mono); font-size: 0.75rem; }
+  /* ---------- lab door ---------- */
+  .lab { display: grid; gap: 1.4rem; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); align-items: start; }
+  .lab-door {
+    display: grid; gap: 1.4rem; padding: clamp(1.2rem, 3vw, 2rem); border-radius: 12px;
+    background: var(--color-surface); border: 1px solid var(--color-line); box-shadow: var(--shadow-lift);
+  }
+  .lab-door h2 { font-size: var(--step-2); }
+  .sheet {
+    display: grid; place-items: center; height: 9rem; border: 1.5px dashed var(--color-muted); border-radius: 10px;
+    color: var(--color-fg); background: var(--color-bg);
+  }
+  /* A sheet of paper with a folded corner, drawn in CSS so no geometry ends up in the markup. */
+  .sheet .page {
+    width: 2.6rem; height: 3.3rem; border: 1.5px solid currentColor; border-radius: 3px;
+    background: linear-gradient(currentColor, currentColor) 0.45rem 1.5rem / 1.4rem 1.5px no-repeat,
+      linear-gradient(currentColor, currentColor) 0.45rem 2rem / 1rem 1.5px no-repeat, var(--color-surface);
+    clip-path: polygon(0 0, 70% 0, 100% 22%, 100% 100%, 0 100%);
+  }
+  .lab-foot { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; color: var(--color-muted); font-size: 0.92rem; }
+  .lab-next { list-style: none; margin: 0; padding: 0; display: grid; gap: 1rem; }
+  .lab-next li { display: grid; gap: 0.4rem; justify-items: start; padding: 1.2rem; border: 1px dashed var(--color-line); border-radius: 10px; }
+  .lab-next h3 { font-size: var(--step-1); }
+  .lab-next p { color: var(--color-muted); font-size: 0.95rem; }
+
+  .pipeline { display: grid; gap: 1.8rem; }
+  .pipeline h2 { font-size: clamp(1.1rem, 0.8rem + 1.6vw, 2rem); }
+  .nodes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1.4rem; }
+  .nodes li {
+    position: relative; display: grid; gap: 0.4rem; align-content: start; padding: 1rem; border-radius: 10px;
+    background: var(--color-surface); border: 1px solid var(--color-line); font-family: var(--font-mono); font-size: var(--step--1);
+  }
+  .nodes li + li::before { content: ""; position: absolute; top: 50%; right: 100%; width: 1.4rem; height: 2px; background: var(--signal-fill); }
+  .nodes .n { color: var(--color-faint); }
+  .nodes b { font-weight: 500; font-size: var(--step-0); color: var(--color-signal); }
+  .nodes span:last-child { color: var(--color-muted); }
+  .pipeline .note { color: var(--color-muted); font-family: var(--font-mono); font-size: var(--step--1); max-width: 70ch; }
+  @media (max-width: 860px) {
+    .nodes { grid-template-columns: 1fr; gap: 1rem; }
+    .nodes li + li::before { top: auto; bottom: 100%; right: auto; left: 1.5rem; width: 2px; height: 1rem; }
+  }
 
   /* ---------- work ---------- */
-  .cases { display: grid; gap: 1.2rem; }
+  .cases { display: grid; gap: 1.4rem; }
 
-  /* ---------- trajectory ---------- */
+  /* ---------- about and trajectory ---------- */
+  .about { display: grid; gap: 1rem; max-width: 64ch; color: var(--color-muted); }
+  .sub { font-size: var(--step-1); }
   .track { position: relative; display: grid; gap: 0; padding: 0 0 0 1.6rem; margin: 0; list-style: none; }
-  .track::before { content: ""; position: absolute; left: 5px; top: 0.4rem; bottom: 0.4rem; width: 2px; background: var(--color-line); }
+  .track::before { content: ""; position: absolute; left: 5px; top: 0.4rem; bottom: 0.4rem; width: 1px; background: var(--color-line); }
   .stop { position: relative; display: grid; grid-template-columns: 9.5rem 1fr; gap: 0.3rem 1.4rem; padding-block: 1rem; }
   .stop::before {
-    content: ""; position: absolute; left: calc(-1.6rem + 1px); top: 1.45rem; width: 10px; height: 10px;
-    border-radius: 50%; background: var(--c, var(--color-signal)); box-shadow: 0 0 0 4px var(--color-bg);
+    content: ""; position: absolute; left: calc(-1.6rem + 1px); top: 1.45rem; width: 9px; height: 9px;
+    border-radius: 50%; background: var(--signal-fill); box-shadow: 0 0 0 4px var(--color-bg);
   }
   .stop .when { font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-muted); font-variant-numeric: tabular-nums; padding-top: 0.15rem; }
-  .stop h3 { font-size: var(--step-1); font-weight: 600; }
-  .stop h3 span { color: var(--c, var(--color-signal)); }
+  .stop h3 { font-size: var(--step-1); }
+  .stop h3 span { font-style: italic; }
   .stop p { color: var(--color-muted); max-width: 62ch; }
   .stop .body { display: grid; gap: 0.3rem; min-width: 0; }
   @media (max-width: 600px) { .stop { grid-template-columns: 1fr; } }
 
-  /* ---------- stack ---------- */
+  /* ---------- readouts ---------- */
+  .readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 1px; background: var(--color-line); border: 1px solid var(--color-line); border-radius: 10px; overflow: hidden; }
+  .readout { background: var(--color-surface); padding: 1.2rem 1.1rem; display: grid; gap: 0.35rem; align-content: start; }
+  .readout .val { font-family: var(--font-mono); font-size: var(--step-2); font-variant-numeric: tabular-nums; line-height: 1; color: var(--color-signal); }
+  .readout .lbl { font-size: var(--step--1); }
+  .readout .src { color: var(--color-faint); font-family: var(--font-mono); font-size: 0.75rem; }
+
+  /* ---------- stack, method and tools ---------- */
   .stack { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 1.4rem 2rem; }
   .stack > div { display: grid; gap: 0.5rem; min-width: 0; align-content: start; }
-
-  /* ---------- philosophy and tools ---------- */
   .principles { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: 1.4rem 2rem; }
-  .principles h3 { font-size: var(--step-1); font-weight: 600; }
+  .principles h3 { font-size: var(--step-1); }
   .principles p { color: var(--color-muted); margin-top: 0.3rem; }
   .tool-list { list-style: none; margin: 0; padding: 0; border-block: 1px solid var(--color-line); }
   .tool-list li { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding-block: 0.8rem; }
   .tool-list li + li { border-top: 1px solid var(--color-line); }
-  .tool-list .name { font-family: var(--font-display); font-size: var(--step-1); font-weight: 600; }
+  .tool-list .name { font-family: var(--font-display); font-size: var(--step-1); }
   .tool-list .tag { font-family: var(--font-mono); font-size: var(--step--1); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-muted); }
   .tool-list .tag.is-live { color: var(--color-live); }
   .more { font-family: var(--font-mono); font-size: var(--step--1); }
+
+  /* ---------- closing ---------- */
+  .closing { padding-block: 5rem 6rem; }
+  .closing .head { gap: 1rem; }
+  .closing h2 { font-size: var(--step-3); line-height: 1; max-width: 16ch; }
 </style>
