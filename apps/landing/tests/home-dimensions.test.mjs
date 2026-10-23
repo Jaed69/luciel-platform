@@ -18,15 +18,15 @@ test('every reading on the site is either surface or depth', () => {
 
 test('the hero states the thesis on the surface and how the site is built underneath', () => {
   const expected = {
-    en: { thesis: 'a use in the real world', build: 'This page, from below', js: '&lt; 1 kB: a clock and the dimension switch' },
-    es: { thesis: 'utilidad en el mundo real', build: 'Esta página, por dentro', js: '&lt; 1 kB: un reloj y el selector de dimensión' },
+    en: { thesis: 'a use in the real world', build: 'This page, from below', js: '&lt; 2 kB per page: a clock, the dimension switch and the lab replay' },
+    es: { thesis: 'utilidad en el mundo real', build: 'Esta página, por dentro', js: '&lt; 2 kB por página: un reloj, el selector de dimensión y la reproducción del laboratorio' },
   };
   for (const [locale, file] of Object.entries(HOMES)) {
     const hero = section(read(file), 'id="intro"');
     const [surface] = readingsOf(hero, 'surface');
     const depth = hero.match(/<div[^>]*data-reading="depth"[^]*<\/dl>/)?.[0] ?? '';
     assert.ok(surface?.includes(`<em>${expected[locale].thesis}</em>`), `${locale}: thesis`);
-    assert.match(surface, /href="#lab"/);
+    assert.match(surface, new RegExp(`href="${locale === 'en' ? '/lab/accreditation/' : '/es/lab/acreditacion/'}"`), `${locale}: hero opens the lab`);
     assert.match(surface, /href="#work"/);
     assert.ok(depth.includes(expected[locale].build), `${locale}: build eyebrow`);
     assert.equal((depth.match(/<dt>/g) ?? []).length, 5, `${locale}: five build facts`);
@@ -34,7 +34,7 @@ test('the hero states the thesis on the surface and how the site is built undern
   }
 });
 
-test('the lab door has both readings, says it is coming, and links nowhere yet', () => {
+test('the lab door has both readings and opens the lab; only the next experiments are coming', () => {
   for (const [locale, file] of Object.entries(HOMES)) {
     const lab = section(read(file), 'id="lab"');
     assert.ok(lab, `${locale}: no #lab section`);
@@ -43,7 +43,8 @@ test('the lab door has both readings, says it is coming, and links nowhere yet',
     assert.match(lab, locale === 'en' ? /Coming soon/ : /Próximamente/);
     assert.equal((lab.match(/<ol class="nodes">[^]*?<\/ol>/)?.[0].match(/<li>/g) ?? []).length, 5, `${locale}: five pipeline steps`);
     assert.match(lab, locale === 'en' ? /Planned:/ : /Planificado:/, `${locale}: the pipeline is labelled as planned`);
-    assert.doesNotMatch(lab, /<a /, `${locale}: the lab does not exist yet, so nothing links to it`);
+    const links = [...lab.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => m[1]);
+    assert.deepEqual(links, [locale === 'en' ? '/lab/accreditation/' : '/es/lab/acreditacion/'], `${locale}: the door links only to the lab`);
   }
 });
 

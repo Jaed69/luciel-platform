@@ -40,7 +40,7 @@ const readings = { surface: ['context', 'outcome'], depth: ['approach', 'system'
       <div data-reading="surface" class="hero-surface">
         <p class="thesis">{t.thesis.before}<em>{t.thesis.em}</em>{t.thesis.after}</p>
         <p class="ctas">
-          <a href="#lab" class="btn primary">{t.jump.lab}</a>
+          <a href={route('lab', locale)} class="btn primary">{t.jump.lab}</a>
           <a href="#work" class="btn">{t.jump.work}</a>
         </p>
       </div>
@@ -68,7 +68,7 @@ const readings = { surface: ['context', 'outcome'], depth: ['approach', 'system'
           <div class="sheet" aria-hidden="true">
             <span class="page"></span>
           </div>
-          <p class="lab-foot"><span class="status build">{t.lab.status}</span><span>{t.lab.privacy}</span></p>
+          <p class="lab-foot"><a href={route('lab', locale)} class="btn primary">{t.lab.open}</a><span>{t.lab.privacy}</span></p>
         </div>
         <ul class="lab-next">
           {t.lab.next.map((item) => (

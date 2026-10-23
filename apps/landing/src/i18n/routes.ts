@@ -6,12 +6,13 @@ export const LOCALES = ['en', 'es'] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = 'en';
 
-export type PageKey = 'home' | 'projects' | 'privacy' | 'terms' | 'contact' | 'notFound';
+export type PageKey = 'home' | 'projects' | 'lab' | 'privacy' | 'terms' | 'contact' | 'notFound';
 
 /** A page may be missing in a locale; the switcher, nav and hreflang only list what exists. */
 export const routes: Record<PageKey, Partial<Record<Locale, string>>> = {
   home: { en: '/', es: '/es/' },
   projects: { en: '/projects/', es: '/es/proyectos/' },
+  lab: { en: '/lab/accreditation/', es: '/es/lab/acreditacion/' },
   privacy: { en: '/privacy/', es: '/es/privacidad/' },
   terms: { en: '/terms/', es: '/es/terminos/' },
   contact: { en: '/contact/', es: '/es/contacto/' },

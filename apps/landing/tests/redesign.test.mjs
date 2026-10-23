@@ -43,14 +43,15 @@ test('every page has the HUD rail with the clock and the dimension switch', () =
   }
 });
 
-test('inline client script stays under 1 kB per page and nothing is loaded externally', () => {
+// The home readout promises "< 2 kB of client JavaScript on any page"; this keeps that claim true.
+test('inline client script stays under 2 kB per page and nothing is loaded externally', () => {
   for (const page of htmlFiles()) {
     const html = read(page);
     assert.doesNotMatch(html, /<script[^>]*\ssrc=/, `${rel(page)}: external script`);
     const bytes = [...html.matchAll(/<script(?![^>]*\ssrc=)[^>]*>([^]*?)<\/script>/g)]
       .map((m) => Buffer.byteLength(m[1]))
       .reduce((a, b) => a + b, 0);
-    assert.ok(bytes < 1024, `${rel(page)}: ${bytes} bytes of inline script`);
+    assert.ok(bytes < 2048, `${rel(page)}: ${bytes} bytes of inline script`);
   }
 });
 

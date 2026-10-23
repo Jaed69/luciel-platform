@@ -1,0 +1,254 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { useDictionary } from '../i18n';
+import type { Locale } from '../i18n/routes';
+import { STEPS, criteria, samples } from '../data/lab';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = useDictionary(locale).labPage;
+const pad = (n: number) => String(n).padStart(2, '0');
+const label = (id: string) => criteria.find((c) => c.id === id)?.label[locale] ?? id;
+---
+
+<Layout page="lab" locale={locale} title={t.title} description={t.description}>
+  <main class="wrap">
+    {/*
+      One run, two readings. The inline script below only sets data-sample, data-step (0–5) and data-state
+      (idle | running | done) on #lab; everything else, in both dimensions, is CSS reading those attributes.
+      So switching dimension mid-run lands on the same step.
+    */}
+    <div id="lab" class="lab-app" data-state="idle" data-sample={samples[0].id} data-step="0" data-msgs={JSON.stringify(t.status)}>
+      <header class="lab-head">
+        <p class="eyebrow">{t.eyebrow}</p>
+        <h1>{t.heading.before}<em>{t.heading.em}</em></h1>
+        <p class="lead">{t.lead}</p>
+      </header>
+      <p id="lab-status" class="sr" role="status" aria-live="polite">{t.status[0]}</p>
+
+      <div class="lab-grid">
+        <section class="controls" aria-labelledby="pick-h">
+          <h2 id="pick-h" class="eyebrow">{t.samples}</h2>
+          <div class="picks">
+            {samples.map((sample, index) => (
+              <button type="button" class="pick" data-pick={sample.id} aria-pressed={index === 0 ? 'true' : 'false'}>
+                <span class="sheet" aria-hidden="true"></span>
+                <span class="pick-text"><b>{sample.title[locale]}</b><span>{sample.pages} {t.pages} · {sample.file}</span></span>
+              </button>
+            ))}
+          </div>
+          <div class="own" aria-disabled="true">
+            <b>{t.own.title}</b>
+            <span>{t.own.text}</span>
+          </div>
+          <button type="button" id="run" class="btn primary run">
+            <span class="when-idle">{t.run}</span><span class="when-running">{t.running}</span><span class="when-done">{t.again}</span>
+          </button>
+          <p class="fine">{t.illustrative}</p>
+        </section>
+
+        <section data-reading="surface" class="receipt" aria-label={samples[0].title[locale]}>
+          {samples.map((sample) => (
+            <p class="doc" data-s={sample.id}>{sample.title[locale]}<span>{sample.pages} {t.pages}</span></p>
+          ))}
+          <ol class="steps">
+            {t.steps.map((step, index) => (
+              <li class={`st st-${index + 1}`}><span class="dot" aria-hidden="true"></span>{step}</li>
+            ))}
+          </ol>
+        </section>
+
+        <section data-reading="depth" class="machine" aria-label={t.depth.eyebrow}>
+          <p class="eyebrow">{t.depth.eyebrow}</p>
+          <ol class="pipe">
+            {STEPS.map((step, index) => (
+              <li class={`node node-${index + 1}`}>
+                <span class="n">{pad(index + 1)}</span><b>{step}</b>
+                {samples.map((sample) => <span class="paper" data-s={sample.id} aria-hidden="true">{sample.file}</span>)}
+              </li>
+            ))}
+          </ol>
+          <div class="panels">
+            <div class="panel">
+              <span class="eyebrow">{t.depth.stream}</span>
+              <div class="stream">
+                <span class="ln-idle">{t.depth.idle}</span>
+                {samples.map((sample) => sample.log.map((line, index) => <code class={`ln at-${index + 1}`} data-s={sample.id}>{line}</code>))}
+              </div>
+            </div>
+            <div class="panel">
+              <span class="eyebrow">{t.depth.inspector}</span>
+              <div class="inspect">
+                <code class="in-idle">{'{ }'}</code>
+                {samples.map((sample) => sample.inspect.map((line, index) => <code class={`in at-${index + 1}`} data-s={sample.id}>{line}</code>))}
+              </div>
+            </div>
+          </div>
+          <p class="bar">
+            {[0, 1, 2, 3, 4, 5].map((step) => <span class={`depth-at d-${step}`}>depth {pad(step)} / 05</span>)}
+            <span>{t.depth.replay}</span>
+          </p>
+        </section>
+      </div>
+
+      <section class="results" aria-labelledby="results-h">
+        <h2 id="results-h">{t.results.heading}</h2>
+        {samples.map((sample) => (
+          <table data-s={sample.id}>
+            <caption class="sr">{sample.title[locale]}</caption>
+            <thead><tr><th scope="col">{t.results.criterion}</th><th scope="col">{t.results.verdict}</th><th scope="col">{t.results.source}</th></tr></thead>
+            <tbody>
+              {sample.findings.map((finding) => (
+                <tr>
+                  <th scope="row"><span class="cid">{finding.criterion}</span> {label(finding.criterion)}<span class="note">{finding.note[locale]}</span></th>
+                  <td><span class={`verdict v-${finding.verdict}`}>{t.verdicts[finding.verdict]}</span></td>
+                  <td class="src">{finding.page ? `${t.results.page} ${pad(finding.page)}` : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ))}
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<script is:inline>(()=>{const a=document.getElementById('lab'),b=document.getElementById('run'),o=document.getElementById('lab-status'),m=JSON.parse(a.dataset.msgs),P=[...a.querySelectorAll('[data-pick]')],busy=()=>a.dataset.state=='running';P.forEach(p=>p.onclick=()=>{if(busy())return;a.dataset.sample=p.dataset.pick;a.dataset.state='idle';a.dataset.step=0;o.textContent=m[0];P.forEach(q=>q.setAttribute('aria-pressed',q==p))});b.onclick=()=>{if(busy())return;let s=0;a.dataset.state='running';const t=()=>{a.dataset.step=++s;o.textContent=m[s];setTimeout(s<5?t:()=>{a.dataset.state='done';o.textContent=m[6]},1100)};t()}})();</script>
+
+<style is:global>
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .lab-app { display: grid; gap: 2.4rem; padding-block: clamp(2.5rem, 7vw, 5rem) 5rem; }
+  .lab-head { display: grid; gap: 1rem; }
+  .lab-head h1 { font-size: var(--step-3); line-height: 1; max-width: 18ch; }
+  .lab-head h1 em { color: var(--color-signal); }
+  :root[data-dimension="depth"] .lab-head h1 em { font-style: normal; }
+  .lab-head .lead { color: var(--color-muted); max-width: 62ch; font-size: var(--step-1); line-height: 1.45; }
+  .lab-grid { display: grid; gap: 1.6rem; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: start; }
+  @media (max-width: 900px) { .lab-grid { grid-template-columns: 1fr; } }
+
+  /* ---------- controls (shared by both dimensions) ---------- */
+  .controls { display: grid; gap: 1rem; }
+  .picks { display: grid; gap: 0.6rem; }
+  .pick {
+    display: flex; gap: 0.9rem; align-items: center; min-height: 44px; padding: 0.8rem 1rem; text-align: left; cursor: pointer;
+    border: 1px solid var(--color-line); border-radius: 10px; background: var(--color-surface); color: var(--color-fg); font: inherit;
+    transition: border-color 240ms ease-out, transform 240ms ease-out;
+  }
+  .pick:hover { transform: translateY(-1px); }
+  .pick[aria-pressed="true"] { border-color: var(--color-fg); box-shadow: var(--shadow-lift); }
+  .pick-text { display: grid; gap: 0.15rem; min-width: 0; }
+  .pick-text b { font-weight: 500; }
+  .pick-text span { color: var(--color-muted); font-family: var(--font-mono); font-size: var(--step--1); overflow-wrap: anywhere; }
+  .pick .sheet {
+    flex: none; width: 1.7rem; height: 2.2rem; border: 1.5px solid currentColor; border-radius: 3px; background: var(--color-bg);
+    clip-path: polygon(0 0, 70% 0, 100% 22%, 100% 100%, 0 100%);
+  }
+  .own { display: grid; gap: 0.2rem; padding: 0.8rem 1rem; border: 1.5px dashed var(--color-line); border-radius: 10px; color: var(--color-muted); font-size: 0.92rem; }
+  .own b { color: var(--color-fg); font-weight: 500; }
+  .run { justify-self: start; border: 0; cursor: pointer; font: inherit; font-weight: 500; }
+  .run > span { display: none; }
+  .lab-app[data-state="idle"] .run .when-idle,
+  .lab-app[data-state="running"] .run .when-running,
+  .lab-app[data-state="done"] .run .when-done { display: inline; }
+  .lab-app[data-state="running"] .run { opacity: 0.6; cursor: progress; }
+  .fine { color: var(--color-faint); font-size: var(--step--1); }
+
+  /* Only the chosen sample's pieces render. */
+  .lab-app:not([data-sample="syllabus"]) [data-s="syllabus"],
+  .lab-app:not([data-sample="evidence"]) [data-s="evidence"],
+  .lab-app:not([data-sample="cv"]) [data-s="cv"] { display: none !important; }
+
+  /* ---------- Surface: the receipt ---------- */
+  .receipt { display: grid; gap: 1.2rem; padding: clamp(1.2rem, 3vw, 1.8rem); border-radius: 12px; background: var(--color-surface); border: 1px solid var(--color-line); box-shadow: var(--shadow-lift); }
+  .receipt .doc { font-family: var(--font-display); font-size: var(--step-1); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  .receipt .doc span { font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-muted); }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.8rem; }
+  .st { display: flex; gap: 0.8rem; align-items: center; color: var(--color-muted); }
+  .st .dot { flex: none; width: 1.3rem; height: 1.3rem; border-radius: 50%; border: 1.5px solid var(--color-line); box-sizing: border-box; }
+  /* active step */
+  .lab-app[data-step="1"] .st-1, .lab-app[data-step="2"] .st-2, .lab-app[data-step="3"] .st-3,
+  .lab-app[data-step="4"] .st-4, .lab-app[data-step="5"][data-state="running"] .st-5 { color: var(--color-fg); font-weight: 500; }
+  .lab-app[data-step="1"] .st-1 .dot, .lab-app[data-step="2"] .st-2 .dot, .lab-app[data-step="3"] .st-3 .dot,
+  .lab-app[data-step="4"] .st-4 .dot, .lab-app[data-step="5"][data-state="running"] .st-5 .dot { border: 2px solid var(--signal-fill); }
+  /* finished steps */
+  .lab-app[data-step="2"] .st-1, .lab-app[data-step="3"] :is(.st-1, .st-2), .lab-app[data-step="4"] :is(.st-1, .st-2, .st-3),
+  .lab-app[data-step="5"] :is(.st-1, .st-2, .st-3, .st-4), .lab-app[data-state="done"] .st-5 { color: var(--color-fg); }
+  .lab-app[data-step="2"] .st-1 .dot, .lab-app[data-step="3"] :is(.st-1, .st-2) .dot, .lab-app[data-step="4"] :is(.st-1, .st-2, .st-3) .dot,
+  .lab-app[data-step="5"] :is(.st-1, .st-2, .st-3, .st-4) .dot, .lab-app[data-state="done"] .st-5 .dot { background: var(--color-fg); border-color: var(--color-fg); }
+
+  /* ---------- Depth: the machine ---------- */
+  .machine { display: grid; gap: 1.2rem; min-width: 0; }
+  .pipe { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; }
+  .node {
+    position: relative; display: grid; gap: 0.3rem; align-content: start; padding: 0.8rem; min-height: 6.5rem; border-radius: 10px;
+    border: 1px dashed var(--color-line); font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-faint);
+    transition: border-color 240ms linear, background-color 240ms linear;
+  }
+  .node + .node::before { content: ""; position: absolute; top: 1.4rem; right: 100%; width: 1rem; height: 2px; background: var(--color-line); }
+  .node b { font-weight: 500; font-size: var(--step-0); }
+  .node .paper {
+    display: none; margin-top: 0.4rem; padding: 0.35rem 0.5rem; border-radius: 3px; background: #f3eee4; color: #1c1a17;
+    font-size: 0.68rem; overflow-wrap: anywhere; box-shadow: 0 10px 24px rgb(0 0 0 / 0.5); transform: rotate(-3deg);
+  }
+  /* active node: highlighted, and the paper sits on it */
+  .lab-app[data-step="1"] .node-1, .lab-app[data-step="2"] .node-2, .lab-app[data-step="3"] .node-3,
+  .lab-app[data-step="4"] .node-4, .lab-app[data-step="5"] .node-5 {
+    border: 1px solid var(--signal-fill); background: var(--color-surface); color: var(--color-fg);
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--signal-fill) 14%, transparent);
+  }
+  .lab-app[data-step="1"] .node-1 .paper, .lab-app[data-step="2"] .node-2 .paper, .lab-app[data-step="3"] .node-3 .paper,
+  .lab-app[data-step="4"] .node-4 .paper, .lab-app[data-step="5"] .node-5 .paper { display: block; }
+  /* finished nodes and the traces between them */
+  .lab-app[data-step="2"] .node-1, .lab-app[data-step="3"] :is(.node-1, .node-2), .lab-app[data-step="4"] :is(.node-1, .node-2, .node-3),
+  .lab-app[data-step="5"] :is(.node-1, .node-2, .node-3, .node-4) { border-style: solid; color: var(--color-fg); }
+  .lab-app[data-step="2"] .node-2::before, .lab-app[data-step="3"] :is(.node-2, .node-3)::before,
+  .lab-app[data-step="4"] :is(.node-2, .node-3, .node-4)::before, .lab-app[data-step="5"] :is(.node-2, .node-3, .node-4, .node-5)::before { background: var(--signal-fill); }
+  .lab-app[data-state="done"] .node-5 { box-shadow: none; }
+  @media (max-width: 700px) {
+    .pipe { grid-template-columns: 1fr; gap: 0.8rem; }
+    .node { min-height: 0; }
+    .node + .node::before { top: auto; bottom: 100%; right: auto; left: 1.2rem; width: 2px; height: 0.8rem; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .node .paper { animation: paper-drop 420ms cubic-bezier(0.2, 0.7, 0.2, 1); }
+    @keyframes paper-drop { from { transform: translateY(-10px) rotate(-8deg); } }
+  }
+
+  .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1rem; }
+  .panel { display: grid; gap: 0.6rem; align-content: start; padding: 1rem; border-radius: 10px; background: var(--color-surface); border: 1px solid var(--color-line); min-width: 0; }
+  .stream, .inspect { display: grid; gap: 0.25rem; font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-muted); min-height: 7.5rem; align-content: start; }
+  .stream code, .inspect code { background: none; padding: 0; color: inherit; font-size: inherit; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ln, .in { display: none; }
+  .lab-app:not([data-step="0"]) :is(.ln-idle, .in-idle) { display: none; }
+  .lab-app[data-step="1"] .ln.at-1, .lab-app[data-step="2"] .ln:is(.at-1, .at-2), .lab-app[data-step="3"] .ln:is(.at-1, .at-2, .at-3),
+  .lab-app[data-step="4"] .ln:is(.at-1, .at-2, .at-3, .at-4), .lab-app[data-step="5"] .ln { display: block; }
+  .lab-app[data-step="1"] .ln.at-1, .lab-app[data-step="2"] .ln.at-2, .lab-app[data-step="3"] .ln.at-3,
+  .lab-app[data-step="4"] .ln.at-4, .lab-app[data-step="5"] .ln.at-5 { color: var(--color-fg); }
+  .lab-app[data-step="1"] .in.at-1, .lab-app[data-step="2"] .in.at-2, .lab-app[data-step="3"] .in.at-3,
+  .lab-app[data-step="4"] .in.at-4, .lab-app[data-step="5"] .in.at-5 { display: block; color: var(--color-signal); }
+  .bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.4rem 1rem; font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-faint); border-top: 1px solid var(--color-line); padding-top: 0.8rem; }
+  .depth-at { display: none; }
+  .lab-app[data-step="0"] .d-0, .lab-app[data-step="1"] .d-1, .lab-app[data-step="2"] .d-2,
+  .lab-app[data-step="3"] .d-3, .lab-app[data-step="4"] .d-4, .lab-app[data-step="5"] .d-5 { display: inline; color: var(--color-fg); }
+
+  /* ---------- results (both dimensions, once the run is done) ---------- */
+  .results { display: none; gap: 1rem; }
+  .lab-app[data-state="done"] .results { display: grid; }
+  .results h2 { font-size: var(--step-2); }
+  .results table { width: 100%; border-collapse: collapse; }
+  .results th, .results td { text-align: left; vertical-align: top; padding: 0.8rem 0.6rem; border-bottom: 1px solid var(--color-line); }
+  .results thead th { font-family: var(--font-mono); font-size: var(--step--1); font-weight: 400; color: var(--color-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+  .results tbody th { font-weight: 500; }
+  .results .cid { font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-faint); margin-right: 0.3rem; }
+  .results .note { display: block; font-weight: 400; color: var(--color-muted); font-size: 0.92rem; margin-top: 0.2rem; }
+  .results .src { font-family: var(--font-mono); font-size: var(--step--1); white-space: nowrap; }
+  .verdict { font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.55rem; border: 1px solid currentColor; border-radius: 999px; white-space: nowrap; }
+  .v-met { color: var(--color-live); }
+  .v-partial, .v-missing { color: var(--color-signal); }
+  .v-missing { background: color-mix(in oklab, var(--signal-fill) 12%, transparent); }
+  .v-na { color: var(--color-muted); }
+  @media (max-width: 600px) { .results thead { display: none; } .results tr { display: grid; grid-template-columns: 1fr auto; gap: 0.3rem 0.8rem; border-bottom: 1px solid var(--color-line); padding-block: 0.8rem; } .results th, .results td { border: 0; padding: 0; } .results tbody th { grid-column: 1 / -1; } }
+</style>
