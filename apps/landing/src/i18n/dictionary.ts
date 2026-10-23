@@ -49,6 +49,7 @@ export interface Dictionary {
     build: Section & { facts: { label: string; value: string }[] };
     lab: Section & {
       lead: string;
+      open: string;
       status: string;
       privacy: string;
       next: { name: string; text: string }[];
@@ -68,6 +69,26 @@ export interface Dictionary {
     method: Section & { principles: { title: string; text: string }[] };
     tools: Section & { live: string; planned: string; more: string };
     closing: Section & { lead: string; contact: string; depthHeading: string; depthLead: string; source: string };
+  };
+  labPage: {
+    title: string;
+    description: string;
+    eyebrow: string;
+    heading: { before: string; em: string };
+    lead: string;
+    samples: string;
+    pages: string;
+    own: { title: string; text: string };
+    run: string;
+    again: string;
+    running: string;
+    illustrative: string;
+    steps: [string, string, string, string, string];
+    /** aria-live messages: idle, one per step, then done. */
+    status: [string, string, string, string, string, string, string];
+    results: { heading: string; criterion: string; verdict: string; source: string; page: string };
+    verdicts: { met: string; partial: string; missing: string; na: string };
+    depth: { eyebrow: string; stream: string; inspector: string; idle: string; replay: string };
   };
   projects: {
     title: string;

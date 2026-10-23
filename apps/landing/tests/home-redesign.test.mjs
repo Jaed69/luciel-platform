@@ -13,8 +13,8 @@ test('home shows the readouts', () => {
   assert.match(readouts, />144</);
   assert.match(readouts, /68 vitest · 76 pytest/);
   assert.match(readouts, /~90%/);
-  assert.match(readouts, /(&lt;|<) 1 kB/);
-  assert.match(readouts, /client JavaScript on this site/);
+  assert.match(readouts, /(&lt;|<) 2 kB/);
+  assert.match(readouts, /client JavaScript on any page of this site/);
   assert.doesNotMatch(readouts, />0 kB</);
 });
 

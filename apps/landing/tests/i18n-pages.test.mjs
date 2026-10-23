@@ -92,7 +92,7 @@ test('Spanish home keeps the same figures as the English home', () => {
   for (const fact of ['tours.luciel.dev', '>144<', '68 vitest · 76 pytest', '~90%']) {
     assert.ok(readouts.includes(fact), `readouts missing ${fact}`);
   }
-  assert.match(readouts, /(&lt;|<) 1 kB/);
+  assert.match(readouts, /(&lt;|<) 2 kB/);
   assert.match(readouts, /JavaScript de cliente/);
 });
 
