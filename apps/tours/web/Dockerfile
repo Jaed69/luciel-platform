@@ -7,7 +7,7 @@ ENV PNPM_CONFIG_STRICT_DEP_BUILDS=false \
     pnpm_config_store_dir=/pnpm/store
 WORKDIR /app
 # Node 26 no longer bundles corepack: install the pnpm pinned in root package.json (packageManager) via npm.
-RUN npm install -g pnpm@11.9.0
+RUN npm install -g pnpm@12.11.2
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Download deps from the lockfile alone (cached layer + BuildKit store cache at /pnpm/store, set via
 # pnpm_config_store_dir: pnpm 11 ignores npm_config_store_dir), then link them with the manifests.
