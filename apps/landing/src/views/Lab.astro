@@ -50,7 +50,7 @@ const label = (id: string) => criteria.find((c) => c.id === id)?.label[locale] ?
           <p class="fine">{t.illustrative}</p>
         </section>
 
-        <section data-reading="surface" class="receipt" aria-label={samples[0].title[locale]}>
+        <section data-reading="surface" class="receipt">
           {samples.map((sample) => (
             <p class="doc" data-s={sample.id}>{sample.title[locale]}<span>{sample.pages} {t.pages}</span></p>
           ))}
