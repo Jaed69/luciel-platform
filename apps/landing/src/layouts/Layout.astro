@@ -30,7 +30,7 @@ const otherLocales = versions.filter((version) => version.locale !== locale);
 ---
 
 <!doctype html>
-<html lang={htmlLang[locale]}>
+<html lang={htmlLang[locale]} data-dimension="surface">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -52,6 +52,8 @@ const otherLocales = versions.filter((version) => version.locale !== locale);
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
     <meta name="color-scheme" content="light dark" />
+    {/* Pre-paint: restore the visitor's dimension before the first frame, so the wrong one never flashes. */}
+    <script is:inline>try{localStorage.dim=='depth'&&(document.documentElement.dataset.dimension='depth')}catch(e){}</script>
   </head>
   <body>
     <a href="#main" class="skip">{t.shell.skip}</a>

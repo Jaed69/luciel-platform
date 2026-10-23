@@ -30,7 +30,8 @@ export interface Dictionary {
   shell: {
     skip: string;
     statusBar: string;
-    depth: string;
+    /** The global Surface/Depth switch. `toggle` is the button name; it stays fixed while aria-pressed flips. */
+    dimension: { surface: string; depth: string; toggle: string };
     nav: { label: string; home: string; projects: string };
     legal: { label: string; privacy: string; terms: string; contact: string };
     language: { label: string; names: Record<Locale, string> };

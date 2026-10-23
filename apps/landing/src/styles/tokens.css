@@ -144,6 +144,33 @@ code, .chip {
 .hud .lang a { padding: 0.2rem 0.4rem; border: 1px solid transparent; border-radius: 3px; }
 .hud .lang a[aria-current="true"] { color: var(--color-fg); border-color: var(--color-line); }
 
+/* ---------- dimension switch ---------- */
+.dim {
+  display: inline-flex; align-items: center; gap: 2px; min-height: 40px; padding: 3px; cursor: pointer;
+  border: 1px solid var(--color-line); border-radius: 999px; background: var(--color-surface);
+  font: 500 var(--step--1) / 1 var(--font-body); color: var(--color-muted);
+}
+.dim .side { padding: 0.55rem 0.85rem; border-radius: 999px; }
+.dim kbd { font-family: var(--font-mono); font-size: 0.72rem; margin-inline: 0.4rem 0.5rem; padding: 0.1rem 0.4rem; border: 1px solid var(--color-line); border-radius: 4px; }
+:root:not([data-dimension="depth"]) .dim .s,
+:root[data-dimension="depth"] .dim .d { background: var(--color-fg); color: var(--color-bg); }
+
+/* Every page may offer two readings of a block; only the active dimension's is rendered (and so focusable/announced). */
+:root:not([data-dimension="depth"]) [data-reading="depth"],
+:root[data-dimension="depth"] [data-reading="surface"] { display: none; }
+
+/* The jump: the new dimension grows as a circle from the switch while the old one lifts away like paper. */
+@keyframes dim-reveal {
+  from { clip-path: circle(0 at var(--vx, 100%) var(--vy, 0)); }
+  to { clip-path: circle(150vmax at var(--vx, 100%) var(--vy, 0)); }
+}
+@keyframes dim-lift { to { transform: translateY(-14px) scale(0.985); filter: brightness(0.82); } }
+::view-transition-old(root) { animation: dim-lift 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+::view-transition-new(root) { animation: dim-reveal 720ms cubic-bezier(0.7, 0, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
+
 /* ---------- footer ---------- */
 .foot { padding-block: 2.5rem 3rem; color: var(--color-faint); font-family: var(--font-mono); font-size: var(--step--1); border-top: 1px solid var(--color-line); }
 .foot .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; }

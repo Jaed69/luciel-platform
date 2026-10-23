@@ -20,10 +20,9 @@ const versions = alternates(page);
 
 <header class="hud" aria-label={t.shell.statusBar}>
   <div class="wrap">
-    <a href={route('home', locale)} class="brand">luciel<span>.</span>dev</a>
+    <a href={route('home', locale)} class="brand">luciel<span>.dev</span></a>
     <span>LIM <b id="clock">--:--:--</b></span>
     <span>−12.0464 −77.0428</span>
-    <span>{t.shell.depth} <b id="depth">0%</b></span>
     <nav aria-label={t.shell.nav.label}>
       <ul>
         {links.map((link) => (
@@ -50,14 +49,17 @@ const versions = alternates(page);
         </ul>
       </nav>
     )}
+    <button type="button" id="dim" class="dim" aria-label={t.shell.dimension.toggle} aria-pressed="false">
+      <span class="side s" aria-hidden="true">{t.shell.dimension.surface}</span>
+      <span class="side d" aria-hidden="true">{t.shell.dimension.depth}</span>
+      <kbd aria-hidden="true">D</kbd>
+    </button>
   </div>
-  <div class="depth-bar" aria-hidden="true"></div>
 </header>
 
-<script is:inline>
-  (()=>{const c=document.getElementById('clock'),d=document.getElementById('depth'),
-  f=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Lima',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}),
-  t=()=>{c.textContent=f.format(new Date())},
-  s=()=>{const m=document.documentElement.scrollHeight-innerHeight;d.textContent=(m>0?Math.round(scrollY/m*100):0)+'%'};
-  t();setInterval(t,1000);addEventListener('scroll',s,{passive:true});addEventListener('resize',s,{passive:true});s()})();
-</script>
+{/*
+  Clock + dimension switch. The pre-paint half lives in Layout's <head>; this half flips html[data-dimension],
+  remembers it, and wraps the flip in a view transition (a circle growing from the button) unless motion is reduced.
+  D toggles too, except while typing, on key repeat or with a modifier held.
+*/}
+<script is:inline>(()=>{const r=document.documentElement,c=document.getElementById('clock'),b=document.getElementById('dim'),f=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Lima',timeStyle:'medium',hourCycle:'h23'}),t=()=>{c.textContent=f.format(new Date())},p=()=>b.setAttribute('aria-pressed',r.dataset.dimension=='depth'),g=()=>{const n=r.dataset.dimension=='depth'?'surface':'depth',k=b.getBoundingClientRect(),s=()=>{r.dataset.dimension=n;try{localStorage.dim=n}catch(e){}p()};r.style.setProperty('--vx',k.x+k.width/2+'px');r.style.setProperty('--vy',k.y+k.height/2+'px');document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches?document.startViewTransition(s):s()};b.onclick=g;addEventListener('keydown',e=>{!/^d$/i.test(e.key)||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.target.closest('input,textarea,select,[contenteditable]')||g()});t();setInterval(t,1000);p()})();</script>

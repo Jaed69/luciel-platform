@@ -16,7 +16,7 @@ Branch: `feat/landing-dimensions` · Delivery: ask-on-risk · Test runner: `pnpm
 ## Tasks
 
 - [x] T1 S1 — tokens for both dimensions, self-hosted fonts, contrast tests · inline · GREEN 80/80
-- [ ] T2 S2 S3 S6 — dimension mechanism (pre-paint attribute, toggle, D key, view transition, inert) in the shell · inline
+- [x] T2 S2 S3 S6 — dimension mechanism (pre-paint attribute, toggle, D key, view transition, CSS-hidden inactive reading) in the shell · inline · GREEN 84/84, inline JS ~990 B
 - [ ] T3 S4 S5 S6 — home content restructure with Surface/Depth readings, en/es copy, tests · inline
 
 ## Log

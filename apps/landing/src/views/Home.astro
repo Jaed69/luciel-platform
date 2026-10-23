@@ -181,15 +181,6 @@ const statusClass = ['live', 'build'];
   .stop h3 span { color: var(--c, var(--color-signal)); }
   .stop p { color: var(--color-muted); max-width: 62ch; }
   .stop .body { display: grid; gap: 0.3rem; min-width: 0; }
-  @supports (animation-timeline: view()) {
-    @media (prefers-reduced-motion: no-preference) {
-      /* visible at rest; the dot swells and the title warms as each stop crosses the middle of the screen */
-      .stop::before { animation: pulse linear both; animation-timeline: view(); animation-range: cover 30% cover 55%; }
-      .stop h3 span { animation: warm linear both; animation-timeline: view(); animation-range: cover 25% cover 50%; }
-      @keyframes pulse { from { transform: scale(0.6); } to { transform: scale(1.25); } }
-      @keyframes warm { from { color: var(--color-muted); } to { color: var(--c, var(--color-signal)); } }
-    }
-  }
   @media (max-width: 600px) { .stop { grid-template-columns: 1fr; } }
 
   /* ---------- stack ---------- */

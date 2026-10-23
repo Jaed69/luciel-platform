@@ -4,7 +4,7 @@ export const en: Dictionary = {
   shell: {
     skip: 'Skip to content',
     statusBar: 'Status bar',
-    depth: 'depth',
+    dimension: { surface: 'Surface', depth: 'Depth', toggle: 'Depth dimension' },
     nav: { label: 'Main', home: 'Home', projects: 'Projects' },
     legal: { label: 'Legal', privacy: 'Privacy', terms: 'Terms', contact: 'Contact' },
     language: { label: 'Language', names: { en: 'English', es: 'Español' } },
@@ -33,7 +33,7 @@ export const en: Dictionary = {
         { value: '1', label: 'client running in production', source: 'tours.luciel.dev' },
         { value: '144', label: 'automated tests on that app', source: '68 vitest · 76 pytest' },
         { value: '~90%', label: 'fewer system-prompt tokens with prompt caching', source: 'accreditation system · CV' },
-        { value: '< 1 kB', label: 'client JavaScript on this site', source: 'a clock and a scroll counter' },
+        { value: '< 1 kB', label: 'client JavaScript on this site', source: 'a clock and the dimension switch' },
       ],
     },
     work: {

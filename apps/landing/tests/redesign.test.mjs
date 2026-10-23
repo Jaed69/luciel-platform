@@ -32,12 +32,12 @@ test('the built CSS self-hosts the three font families with local woff2 files', 
   }
 });
 
-test('every page has the HUD rail with clock and depth readouts', () => {
+test('every page has the HUD rail with the clock and the dimension switch', () => {
   for (const page of htmlFiles()) {
     const html = read(page);
     assert.match(html, /<header[^>]*class="[^"]*\bhud\b/, `${rel(page)}: HUD header`);
     assert.match(html, /id="clock"/, `${rel(page)}: clock element`);
-    assert.match(html, /id="depth"/, `${rel(page)}: depth element`);
+    assert.match(html, /<button type="button" id="dim"/, `${rel(page)}: dimension switch`);
     assert.match(html, /−12\.0464 −77\.0428/, `${rel(page)}: coordinates`);
     assert.match(html, /America\/Lima/, `${rel(page)}: Lima time zone`);
   }
@@ -122,11 +122,4 @@ test('the display font family of each dimension is declared by a built @font-fac
   for (const family of families) {
     assert.match(css, new RegExp(String.raw`@font-face\s*\{[^}]*font-family:\s*["']?${escapeRe(family)}["']?[;}]`), `no @font-face for ${family}`);
   }
-});
-
-test('the depth readout is recomputed on scroll and on resize', () => {
-  const html = read(join(DIST, 'index.html'));
-  const script = html.match(/<script(?![^>]*\ssrc=)[^>]*>([^]*?)<\/script>/)?.[1] ?? '';
-  assert.match(script, /addEventListener\('scroll',\w+,\{passive:true\}\)/);
-  assert.match(script, /addEventListener\('resize',\w+,\{passive:true\}\)/);
 });
