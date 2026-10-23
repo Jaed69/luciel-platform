@@ -1,10 +1,9 @@
 ---
 import '../styles/tokens.css';
-import '@fontsource-variable/bricolage-grotesque/index.css';
-import '@fontsource/ibm-plex-sans/latin-400.css';
-import '@fontsource/ibm-plex-sans/latin-500.css';
-import '@fontsource/jetbrains-mono/latin-400.css';
-import '@fontsource/jetbrains-mono/latin-500.css';
+import '@fontsource-variable/newsreader/opsz.css';
+import '@fontsource-variable/newsreader/opsz-italic.css';
+import '@fontsource-variable/geist/index.css';
+import '@fontsource-variable/geist-mono/index.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { useDictionary } from '../i18n';
@@ -52,7 +51,7 @@ const otherLocales = versions.filter((version) => version.locale !== locale);
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
   </head>
   <body>
     <a href="#main" class="skip">{t.shell.skip}</a>

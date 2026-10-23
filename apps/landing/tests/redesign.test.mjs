@@ -23,7 +23,7 @@ const cssFiles = (dir = DIST) =>
 
 test('the built CSS self-hosts the three font families with local woff2 files', () => {
   const css = cssFiles().map((f) => readFileSync(f, 'utf8')).join('\n');
-  for (const family of ['Bricolage Grotesque', 'IBM Plex Sans', 'JetBrains Mono']) {
+  for (const family of ['Newsreader Variable', 'Geist Variable', 'Geist Mono Variable']) {
     assert.match(css, new RegExp(`@font-face\\s*\\{[^}]*font-family:\\s*["']?${family}`), `no @font-face for ${family}`);
   }
   assert.doesNotMatch(css, /url\(\s*["']?https?:/, 'font or asset loaded from a remote URL');
@@ -65,10 +65,16 @@ test('nothing is hidden at rest with opacity 0', () => {
   }
 });
 
-const hex = (name) => {
-  const css = readFileSync(tokensPath, 'utf8');
-  const m = css.match(new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})`));
-  assert.ok(m, `token --color-${name} not found`);
+// Each dimension declares its own palette: Surface on :root, Depth on :root[data-dimension="depth"].
+const DIMENSIONS = { surface: /:root\s*\{([^}]*)\}/, depth: /:root\[data-dimension="depth"\]\s*\{([^}]*)\}/ };
+const block = (dimension) => {
+  const m = readFileSync(tokensPath, 'utf8').match(DIMENSIONS[dimension]);
+  assert.ok(m, `no token block for ${dimension}`);
+  return m[1];
+};
+const hex = (name, dimension) => {
+  const m = block(dimension).match(new RegExp(`--color-${name}:\\s*(#[0-9a-fA-F]{6})`));
+  assert.ok(m, `token --color-${name} not found in ${dimension}`);
   return m[1];
 };
 const lum = (h) => {
@@ -81,20 +87,22 @@ const contrast = (a, b) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 
-test('text tokens reach 4.5:1 on the ground and on surfaces', () => {
+test('text tokens reach 4.5:1 on the ground and on surfaces in both dimensions', () => {
   assert.ok(existsSync(tokensPath));
-  for (const bg of ['bg', 'surface', 'raise']) {
-    for (const fg of ['fg', 'muted', 'faint', 'amber', 'rust', 'ochre', 'moss', 'wine', 'sage']) {
-      const ratio = contrast(hex(fg), hex(bg));
-      assert.ok(ratio >= 4.5, `${fg} on ${bg} is ${ratio.toFixed(2)}:1`);
+  for (const dimension of Object.keys(DIMENSIONS)) {
+    for (const bg of ['bg', 'surface', 'raise']) {
+      for (const fg of ['fg', 'muted', 'faint', 'signal', 'live']) {
+        const ratio = contrast(hex(fg, dimension), hex(bg, dimension));
+        assert.ok(ratio >= 4.5, `${dimension}: ${fg} on ${bg} is ${ratio.toFixed(2)}:1`);
+      }
     }
   }
 });
 
-test('the site is dark only with an explicit body background', () => {
-  const css = readFileSync(tokensPath, 'utf8');
-  assert.match(css, /color-scheme:\s*dark/);
-  assert.match(css, /body\s*\{[^}]*background:/);
+test('Surface is light, Depth is dark, and the body has an explicit background', () => {
+  assert.match(block('surface'), /color-scheme:\s*light/);
+  assert.match(block('depth'), /color-scheme:\s*dark/);
+  assert.match(readFileSync(tokensPath, 'utf8'), /body\s*\{[^}]*background:/);
 });
 
 test('fonts come from package specifiers, not relative paths into node_modules', () => {
@@ -107,11 +115,13 @@ test('fonts come from package specifiers, not relative paths into node_modules',
   }
 });
 
-test('the display font family used by the tokens is declared by a built @font-face', () => {
+test('the display font family of each dimension is declared by a built @font-face', () => {
   const css = cssFiles().map((f) => readFileSync(f, 'utf8')).join('\n');
-  const family = css.match(/--font-display:\s*["']([^"']+)["']/)?.[1];
-  assert.ok(family, 'no --font-display token');
-  assert.match(css, new RegExp(String.raw`@font-face\s*\{[^}]*font-family:\s*["']?${escapeRe(family)}["']?[;}]`), `no @font-face for ${family}`);
+  const families = [...css.matchAll(/--font-display:\s*["']([^"']+)["']/g)].map((m) => m[1]);
+  assert.ok(new Set(families).size >= 2, 'each dimension should set its own --font-display');
+  for (const family of families) {
+    assert.match(css, new RegExp(String.raw`@font-face\s*\{[^}]*font-family:\s*["']?${escapeRe(family)}["']?[;}]`), `no @font-face for ${family}`);
+  }
 });
 
 test('the depth readout is recomputed on scroll and on resize', () => {

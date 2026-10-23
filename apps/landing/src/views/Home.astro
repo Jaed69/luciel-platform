@@ -13,7 +13,7 @@ const { locale } = Astro.props;
 const t = useDictionary(locale).home;
 
 // Not translated, so they live here once: accent colours, technology names, the public source link.
-const stopColors = ['wine', 'ochre', 'sage', 'moss', 'rust', 'amber'];
+const stopColors = Array(6).fill('signal');
 const stackItems = [
   ['Python', 'pandas', 'scikit-learn', 'PyTorch', 'TensorFlow'],
   ['Amazon Bedrock', 'LangChain', 'prompt caching'],
@@ -146,22 +146,22 @@ const statusClass = ['live', 'build'];
 <style is:global>
   /* ---------- hero ---------- */
   .hero { padding-block: clamp(3rem, 8vw, 6.5rem) 3rem; display: grid; gap: 1.6rem; }
-  .hero h1 { font-size: var(--step-3); font-weight: 800; line-height: 0.95; letter-spacing: -0.035em; }
-  .hero h1 .last { color: var(--color-amber); }
+  .hero h1 { font-size: var(--step-3); font-weight: var(--display-weight); line-height: 0.95; letter-spacing: -0.035em; }
+  .hero h1 .last { color: var(--color-signal); }
   .role { display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-muted); }
-  .role .dot { color: var(--color-moss); }
+  .role .dot { color: var(--color-live); }
   .thesis { font-size: var(--step-1); max-width: 34ch; font-family: var(--font-display); line-height: 1.35; }
-  .thesis em { font-style: normal; color: var(--color-ochre); }
+  .thesis em { font-style: normal; color: var(--color-signal); }
   .about { display: grid; gap: 1rem; max-width: 62ch; color: var(--color-muted); padding-top: 1rem; }
 
   /* ---------- readouts ---------- */
   .readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr)); gap: 1px; background: var(--color-line); border: 1px solid var(--color-line); }
   .readout { background: var(--color-surface); padding: 1.2rem 1.1rem; display: grid; gap: 0.35rem; align-content: start; }
   .readout .val { font-family: var(--font-mono); font-size: var(--step-2); font-variant-numeric: tabular-nums; line-height: 1; }
-  .readout:nth-child(1) .val { color: var(--color-amber); }
-  .readout:nth-child(2) .val { color: var(--color-sage); }
-  .readout:nth-child(3) .val { color: var(--color-ochre); }
-  .readout:nth-child(4) .val { color: var(--color-rust); }
+  .readout:nth-child(1) .val { color: var(--color-signal); }
+  .readout:nth-child(2) .val { color: var(--color-signal); }
+  .readout:nth-child(3) .val { color: var(--color-signal); }
+  .readout:nth-child(4) .val { color: var(--color-signal); }
   .readout .lbl { font-size: var(--step--1); }
   .readout .src { color: var(--color-faint); font-family: var(--font-mono); font-size: 0.75rem; }
 
@@ -174,11 +174,11 @@ const statusClass = ['live', 'build'];
   .stop { position: relative; display: grid; grid-template-columns: 9.5rem 1fr; gap: 0.3rem 1.4rem; padding-block: 1rem; }
   .stop::before {
     content: ""; position: absolute; left: calc(-1.6rem + 1px); top: 1.45rem; width: 10px; height: 10px;
-    border-radius: 50%; background: var(--c, var(--color-amber)); box-shadow: 0 0 0 4px var(--color-bg);
+    border-radius: 50%; background: var(--c, var(--color-signal)); box-shadow: 0 0 0 4px var(--color-bg);
   }
   .stop .when { font-family: var(--font-mono); font-size: var(--step--1); color: var(--color-muted); font-variant-numeric: tabular-nums; padding-top: 0.15rem; }
   .stop h3 { font-size: var(--step-1); font-weight: 600; }
-  .stop h3 span { color: var(--c, var(--color-amber)); }
+  .stop h3 span { color: var(--c, var(--color-signal)); }
   .stop p { color: var(--color-muted); max-width: 62ch; }
   .stop .body { display: grid; gap: 0.3rem; min-width: 0; }
   @supports (animation-timeline: view()) {
@@ -187,7 +187,7 @@ const statusClass = ['live', 'build'];
       .stop::before { animation: pulse linear both; animation-timeline: view(); animation-range: cover 30% cover 55%; }
       .stop h3 span { animation: warm linear both; animation-timeline: view(); animation-range: cover 25% cover 50%; }
       @keyframes pulse { from { transform: scale(0.6); } to { transform: scale(1.25); } }
-      @keyframes warm { from { color: var(--color-muted); } to { color: var(--c, var(--color-amber)); } }
+      @keyframes warm { from { color: var(--color-muted); } to { color: var(--c, var(--color-signal)); } }
     }
   }
   @media (max-width: 600px) { .stop { grid-template-columns: 1fr; } }
@@ -205,6 +205,6 @@ const statusClass = ['live', 'build'];
   .tool-list li + li { border-top: 1px solid var(--color-line); }
   .tool-list .name { font-family: var(--font-display); font-size: var(--step-1); font-weight: 600; }
   .tool-list .tag { font-family: var(--font-mono); font-size: var(--step--1); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-muted); }
-  .tool-list .tag.is-live { color: var(--color-moss); }
+  .tool-list .tag.is-live { color: var(--color-live); }
   .more { font-family: var(--font-mono); font-size: var(--step--1); }
 </style>
