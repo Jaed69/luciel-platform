@@ -4,7 +4,7 @@ export const en: Dictionary = {
   shell: {
     skip: 'Skip to content',
     statusBar: 'Status bar',
-    depth: 'depth',
+    dimension: { surface: 'Surface', depth: 'Depth', toggle: 'Depth dimension' },
     nav: { label: 'Main', home: 'Home', projects: 'Projects' },
     legal: { label: 'Legal', privacy: 'Privacy', terms: 'Terms', contact: 'Contact' },
     language: { label: 'Language', names: { en: 'English', es: 'Español' } },
@@ -16,10 +16,46 @@ export const en: Dictionary = {
     description: 'Jhamil Peña, Computer Science student in Lima. A productized portfolio of real, working web tools.',
     role: ['AI / ML engineer', 'Computer Science, UPC', 'Lima, Peru'],
     thesis: {
-      before: 'I build tools that solve a real problem, each on its own subdomain, on infrastructure I can ',
-      em: 'rebuild from git',
-      after: '.',
+      before: 'Technology is worth nothing until it finds ',
+      em: 'a use in the real world',
+      after: '. I build AI that does.',
     },
+    jump: { lab: 'Enter the lab', work: 'Selected work' },
+    build: {
+      eyebrow: 'This page, from below',
+      heading: 'Built to be rebuilt from git.',
+      facts: [
+        { label: 'output', value: 'static HTML, rendered by Astro at build time' },
+        { label: 'client js', value: '< 1 kB: a clock and the dimension switch' },
+        { label: 'fonts', value: 'self-hosted, nothing loaded from another domain' },
+        { label: 'runtime', value: 'nginx in its own container, behind Traefik' },
+        { label: 'deploy', value: 'rebuilt from the repository on every release' },
+      ],
+    },
+    lab: {
+      eyebrow: 'The lab',
+      heading: 'Hundreds of documents. Audited in minutes.',
+      lead: 'The accreditation assistant, as something you can try: drop a document and get back an audit that points to its sources.',
+      status: 'Coming soon',
+      privacy: 'It will run in your browser. Your file never leaves your device.',
+      next: [
+        { name: 'Ask about my work', text: 'A small model, running on your device, that knows what is on this site.' },
+        { name: 'Chess against a model', text: 'A board, an opponent, and the reasoning behind each move.' },
+      ],
+      pipeline: {
+        eyebrow: 'The lab, from below',
+        heading: 'read → convert → analyze → audit → report',
+        steps: [
+          { name: 'read', text: 'the PDF is split into pages' },
+          { name: 'convert', text: 'scans become text, tables are kept' },
+          { name: 'analyze', text: 'an LLM works through it in phases' },
+          { name: 'audit', text: 'each criterion is checked against the text' },
+          { name: 'report', text: 'every finding points to its page' },
+        ],
+        note: 'Planned: inference in the browser with WebGPU and a WASM fallback; sample documents first, your own file as an option.',
+      },
+    },
+    aboutHeading: { eyebrow: 'About', heading: 'Who is behind it.' },
     about: [
       "I'm a Computer Science student at Universidad Peruana de Ciencias Aplicadas (UPC) in Lima, Peru, focused on data science, machine learning and generative AI. I work with Python (pandas, scikit-learn, PyTorch, TensorFlow), LangChain, SQL and Docker.",
       "Right now I'm building, with a classmate and under faculty supervision, an LLM-assisted system on Amazon Bedrock that analyses large volumes of unstructured documents for the faculty's accreditation process. It uses a FastAPI backend, async PostgreSQL, multi-phase batch processing and prompt caching.",
@@ -33,7 +69,7 @@ export const en: Dictionary = {
         { value: '1', label: 'client running in production', source: 'tours.luciel.dev' },
         { value: '144', label: 'automated tests on that app', source: '68 vitest · 76 pytest' },
         { value: '~90%', label: 'fewer system-prompt tokens with prompt caching', source: 'accreditation system · CV' },
-        { value: '< 1 kB', label: 'client JavaScript on this site', source: 'a clock and a scroll counter' },
+        { value: '< 1 kB', label: 'client JavaScript on this site', source: 'a clock and the dimension switch' },
       ],
     },
     work: {
@@ -92,6 +128,15 @@ export const en: Dictionary = {
       live: 'Live',
       planned: 'Coming soon',
       more: 'See details on the Projects page',
+    },
+    closing: {
+      eyebrow: 'Contact',
+      heading: 'Got a process that eats hours?',
+      lead: 'Tell me what it looks like today. If AI can take it off your plate, I will show you how.',
+      contact: 'Get in touch',
+      depthHeading: 'Read the source.',
+      depthLead: 'Everything on this site, and the tools it lists, lives in one public monorepo.',
+      source: 'github.com/Jaed69/luciel-platform ↗',
     },
   },
   projects: {

@@ -30,7 +30,8 @@ export interface Dictionary {
   shell: {
     skip: string;
     statusBar: string;
-    depth: string;
+    /** The global Surface/Depth switch. `toggle` is the button name; it stays fixed while aria-pressed flips. */
+    dimension: { surface: string; depth: string; toggle: string };
     nav: { label: string; home: string; projects: string };
     legal: { label: string; privacy: string; terms: string; contact: string };
     language: { label: string; names: Record<Locale, string> };
@@ -42,6 +43,19 @@ export interface Dictionary {
     description: string;
     role: [string, string, string];
     thesis: { before: string; em: string; after: string };
+    /** Hero calls to action (same-page anchors). */
+    jump: { lab: string; work: string };
+    /** Depth reading of the hero: how this site itself is built. Every fact must stay true. */
+    build: Section & { facts: { label: string; value: string }[] };
+    lab: Section & {
+      lead: string;
+      status: string;
+      privacy: string;
+      next: { name: string; text: string }[];
+      /** Depth reading: the pipeline the lab will show. Planned, and labelled as such. */
+      pipeline: Section & { steps: { name: string; text: string }[]; note: string };
+    };
+    aboutHeading: Section;
     about: [string, string, string];
     readouts: Section & { intro: string; items: { value: string; label: string; source: string }[] };
     work: Section & {
@@ -53,6 +67,7 @@ export interface Dictionary {
     stack: Section & { labels: [string, string, string, string] };
     method: Section & { principles: { title: string; text: string }[] };
     tools: Section & { live: string; planned: string; more: string };
+    closing: Section & { lead: string; contact: string; depthHeading: string; depthLead: string; source: string };
   };
   projects: {
     title: string;

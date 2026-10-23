@@ -1,43 +1,62 @@
 /*
-  "Autumn dark" design tokens for the luciel.dev landing (Tailwind v4 @theme).
-  Dark only: an espresso ground with desaturated autumn accents. Each accent has one job.
-  Text colours were checked at >= 4.5:1 on bg, surface and raise (tests/redesign.test.mjs).
+  "Paper & Machine" design tokens for the luciel.dev landing.
+  Two dimensions share one grid, one body face and one signal accent; only the material changes.
+  Surface (default) is paper: light, editorial, Newsreader display. Depth is the machine: dark, Geist Mono display.
+  The active dimension is html[data-dimension]. Text colours are checked at >= 4.5:1 on bg, surface and raise
+  in both dimensions (tests/redesign.test.mjs).
 */
 @import "tailwindcss";
 
-@theme static {
-  /* ground: espresso, never pure black */
-  --color-bg: #16110e;
-  --color-surface: #1e1712;
-  --color-raise: #271f19;
-  --color-line: #3a2f26;
-
-  /* text */
-  --color-fg: #efe4d4;
-  --color-muted: #b5a58f;
-  --color-faint: #9a8b77;
-
-  /* accents */
-  --color-amber: #e2a250; /* primary, links */
-  --color-rust: #d97a52; /* labels */
-  --color-ochre: #d4b260; /* code */
-  --color-moss: #98a46a; /* live */
-  --color-wine: #c4707a; /* origin */
-  --color-sage: #7fa898; /* cool counterpoint */
-
-  --font-display: "Bricolage Grotesque Variable", "Segoe UI", system-ui, sans-serif;
-  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
-}
-
+/* ---------- Surface: paper ---------- */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
+  --color-bg: #f3eee4;
+  --color-surface: #fbf8f2;
+  --color-raise: #e9e2d5;
+  --color-line: #d8cfbf;
+
+  --color-fg: #1c1a17;
+  --color-muted: #5b554c;
+  --color-faint: #635c52;
+  --color-signal: #a8350b; /* text-safe accent on paper */
+  --color-live: #3f6b2a;
+
+  --signal-fill: #ff6a2b; /* the one accent both dimensions share; fills and marks only */
+  --shadow-lift: 0 1px 0 var(--color-line), 0 18px 40px -24px rgb(28 26 23 / 0.35);
+
+  --font-display: "Newsreader Variable", Georgia, "Times New Roman", serif;
+  --font-body: "Geist Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --display-weight: 400;
+  --display-tracking: -0.02em;
+
   --step--1: clamp(0.78rem, 0.76rem + 0.1vw, 0.84rem);
   --step-0: clamp(0.98rem, 0.95rem + 0.15vw, 1.06rem);
   --step-1: clamp(1.2rem, 1.1rem + 0.4vw, 1.4rem);
-  --step-2: clamp(1.6rem, 1.4rem + 0.9vw, 2.2rem);
-  --step-3: clamp(2.6rem, 2rem + 3vw, 5.2rem);
+  --step-2: clamp(1.7rem, 1.45rem + 1vw, 2.4rem);
+  --step-3: clamp(2.8rem, 2rem + 3.4vw, 5.6rem);
   --gutter: clamp(16px, 4vw, 48px);
+}
+
+/* ---------- Depth: machine ---------- */
+:root[data-dimension="depth"] {
+  color-scheme: dark;
+  --color-bg: #0d1014;
+  --color-surface: #151a21;
+  --color-raise: #1b212a;
+  --color-line: #2a323d;
+
+  --color-fg: #e8e4da;
+  --color-muted: #9aa3ae;
+  --color-faint: #8a939e;
+  --color-signal: #ff6a2b;
+  --color-live: #8bc48a;
+
+  --shadow-lift: 0 0 0 1px var(--color-line), 0 18px 40px -24px rgb(0 0 0 / 0.8);
+
+  --font-display: "Geist Mono Variable", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --display-weight: 400;
+  --display-tracking: -0.04em;
 }
 
 /* ---------- base ---------- */
@@ -53,15 +72,18 @@ body {
   flex-direction: column;
 }
 #main { flex: 1; }
-a { color: var(--color-amber); text-underline-offset: 3px; }
-a:focus-visible { outline: 2px solid var(--color-amber); outline-offset: 3px; border-radius: 2px; }
-h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
-h2 { font-size: var(--step-2); font-weight: 600; letter-spacing: -0.01em; }
+a { color: var(--color-signal); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--color-signal); outline-offset: 3px; border-radius: 2px; }
+h1, h2, h3 {
+  font-family: var(--font-display); font-weight: var(--display-weight); letter-spacing: var(--display-tracking);
+  text-wrap: balance; margin: 0;
+}
+h2 { font-size: var(--step-2); line-height: 1.08; }
 p { margin: 0; }
-.wrap { max-width: 1080px; margin-inline: auto; padding-inline: var(--gutter); }
+.wrap { max-width: 1160px; margin-inline: auto; padding-inline: var(--gutter); }
 .skip {
   position: absolute; left: -9999px; top: 0; z-index: 20;
-  background: var(--color-amber); color: var(--color-bg); padding: 0.5rem 1rem; text-decoration: none;
+  background: var(--color-fg); color: var(--color-bg); padding: 0.5rem 1rem; text-decoration: none;
 }
 .skip:focus { left: var(--gutter); top: 0.5rem; }
 
@@ -70,36 +92,38 @@ p { margin: 0; }
   font-family: var(--font-mono); font-size: var(--step--1); letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--color-faint);
 }
-.head { display: grid; gap: 0.5rem; }
+.head { display: grid; gap: 0.6rem; }
 .head p { color: var(--color-muted); max-width: 60ch; }
-section.block { padding-block: 3.5rem; border-top: 1px solid var(--color-line); display: grid; gap: 1.6rem; }
+section.block { padding-block: 4rem; border-top: 1px solid var(--color-line); display: grid; gap: 1.8rem; }
 code, .chip {
-  font-family: var(--font-mono); font-size: 0.82em; color: var(--color-ochre);
+  font-family: var(--font-mono); font-size: 0.82em; color: var(--color-fg);
   background: var(--color-raise); padding: 0.05rem 0.35rem; border-radius: 3px;
 }
 .chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
-.chips .chip { color: var(--color-fg); }
 
-.case { border: 1px solid var(--color-line); background: var(--color-surface); padding: clamp(1.1rem, 3vw, 1.8rem); display: grid; gap: 1.1rem; }
+.case {
+  border: 1px solid var(--color-line); background: var(--color-surface); border-radius: 10px;
+  box-shadow: var(--shadow-lift); padding: clamp(1.1rem, 3vw, 1.9rem); display: grid; gap: 1.1rem;
+}
 .case header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1rem; align-items: baseline; }
-.case h2, .case h3 { font-size: var(--step-2); font-weight: 700; letter-spacing: -0.02em; }
+.case h2, .case h3 { font-size: var(--step-2); }
 .status {
   font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
   padding: 0.2rem 0.55rem; border: 1px solid currentColor; border-radius: 999px; color: var(--color-muted);
 }
-.status.live { color: var(--color-moss); }
-.status.build { color: var(--color-ochre); }
+.status.live { color: var(--color-live); }
+.status.build { color: var(--color-signal); }
 .facets { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: 1rem 1.6rem; }
 @media (min-width: 720px) { .facets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .facet { display: grid; gap: 0.3rem; min-width: 0; }
-.facet .eyebrow { color: var(--color-rust); }
+.facet .eyebrow { color: var(--color-signal); }
 .facet p { color: var(--color-muted); font-size: 0.95rem; }
 .case footer { display: flex; flex-wrap: wrap; gap: 0.6rem 1.4rem; font-family: var(--font-mono); font-size: var(--step--1); }
 
 /* ---------- HUD rail ---------- */
 .hud {
   position: sticky; top: 0; z-index: 10;
-  background: color-mix(in oklab, var(--color-bg) 88%, transparent);
+  background: color-mix(in oklab, var(--color-bg) 90%, transparent);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid var(--color-line);
   padding-block: 0.55rem;
@@ -110,28 +134,44 @@ code, .chip {
   font-variant-numeric: tabular-nums;
 }
 .hud b { color: var(--color-fg); font-weight: 500; }
-.hud .brand { color: var(--color-fg); text-decoration: none; margin-right: auto; }
-.hud .brand span { color: var(--color-rust); }
+.hud .brand { font-family: var(--font-display); font-size: 1.15rem; color: var(--color-fg); text-decoration: none; margin-right: auto; }
+.hud .brand span { color: var(--color-signal); }
 .hud nav ul { display: flex; gap: 1rem; list-style: none; margin: 0; padding: 0; }
 .hud nav a { color: var(--color-muted); text-decoration: none; padding-block: 0.2rem; }
-.hud nav a:hover { color: var(--color-amber); }
-.hud nav a[aria-current="page"] { color: var(--color-fg); text-decoration: underline; text-decoration-color: var(--color-amber); text-underline-offset: 6px; }
+.hud nav a:hover { color: var(--color-fg); }
+.hud nav a[aria-current="page"] { color: var(--color-fg); text-decoration: underline; text-decoration-color: var(--signal-fill); text-underline-offset: 6px; }
 .hud .lang ul { gap: 0.2rem; }
 .hud .lang a { padding: 0.2rem 0.4rem; border: 1px solid transparent; border-radius: 3px; }
 .hud .lang a[aria-current="true"] { color: var(--color-fg); border-color: var(--color-line); }
-.depth-bar {
-  position: absolute; left: 0; bottom: -1px; height: 2px; width: 100%;
-  background: linear-gradient(90deg, var(--color-rust), var(--color-amber), var(--color-ochre));
-  transform-origin: left; transform: scaleX(0.02);
+
+/* ---------- dimension switch ---------- */
+.dim {
+  display: inline-flex; align-items: center; gap: 2px; min-height: 40px; padding: 3px; cursor: pointer;
+  border: 1px solid var(--color-line); border-radius: 999px; background: var(--color-surface);
+  font: 500 var(--step--1) / 1 var(--font-body); color: var(--color-muted);
 }
-@supports (animation-timeline: scroll()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .depth-bar { animation: grow linear both; animation-timeline: scroll(root); }
-    @keyframes grow { from { transform: scaleX(0.02); } to { transform: scaleX(1); } }
-  }
+.dim .side { padding: 0.55rem 0.85rem; border-radius: 999px; }
+.dim kbd { font-family: var(--font-mono); font-size: 0.72rem; margin-inline: 0.4rem 0.5rem; padding: 0.1rem 0.4rem; border: 1px solid var(--color-line); border-radius: 4px; }
+:root:not([data-dimension="depth"]) .dim .s,
+:root[data-dimension="depth"] .dim .d { background: var(--color-fg); color: var(--color-bg); }
+
+/* Every page may offer two readings of a block; only the active dimension's is rendered (and so focusable/announced). */
+:root:not([data-dimension="depth"]) [data-reading="depth"],
+:root[data-dimension="depth"] [data-reading="surface"] { display: none; }
+
+/* The jump: the new dimension grows as a circle from the switch while the old one lifts away like paper. */
+@keyframes dim-reveal {
+  from { clip-path: circle(0 at var(--vx, 100%) var(--vy, 0)); }
+  to { clip-path: circle(150vmax at var(--vx, 100%) var(--vy, 0)); }
+}
+@keyframes dim-lift { to { transform: translateY(-14px) scale(0.985); filter: brightness(0.82); } }
+::view-transition-old(root) { animation: dim-lift 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+::view-transition-new(root) { animation: dim-reveal 720ms cubic-bezier(0.7, 0, 0.2, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 }
 
 /* ---------- footer ---------- */
-.foot { padding-block: 2.5rem 3rem; color: var(--color-faint); font-family: var(--font-mono); font-size: var(--step--1); }
+.foot { padding-block: 2.5rem 3rem; color: var(--color-faint); font-family: var(--font-mono); font-size: var(--step--1); border-top: 1px solid var(--color-line); }
 .foot .wrap { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; justify-content: space-between; }
 .foot nav ul { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; list-style: none; margin: 0; padding: 0; }
