@@ -58,7 +58,7 @@ test('Spanish privacy policy covers logs, cookies, AdSense as planned, Ley N.° 
   assert.match(t, /rectificación/i);
   assert.match(t, /cancelación/i);
   assert.match(t, /oposición/i);
-  assert.match(t, /Última actualización: 6 de octubre de 2026/);
+  assert.match(t, /Última actualización: 24 de octubre de 2026/);
   assert.match(html, /href="https:\/\/policies\.google\.com\/technologies\/ads"/);
   assert.match(html, /href="https:\/\/adssettings\.google\.com"/);
   assert.match(html, new RegExp(`mailto:${EMAIL_RE}`));
