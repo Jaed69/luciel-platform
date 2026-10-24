@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { htmlFiles, read, resolveHref, DIST } from './helpers.mjs';
+import { routes, ogPages } from '../src/i18n/routes.ts';
 
 const rel = (p) => p.slice(DIST.length + 1);
 
@@ -51,6 +52,18 @@ test('every same-page #fragment link points to an element with that id', () => {
     for (const [, frag] of html.matchAll(/\shref="#([^"]*)"/g)) {
       if (frag === '') continue;
       assert.ok(ids.has(frag), `${rel(page)}: href="#${frag}" has no target id`);
+    }
+  }
+});
+
+test('shareable pages carry their own Open Graph card per locale; the rest fall back to the default', () => {
+  const ogImage = (html) => html.match(/<meta property="og:image" content="https:\/\/[^"\/]+(\/[^"]*)"/)?.[1];
+  for (const [page, paths] of Object.entries(routes)) {
+    for (const [locale, path] of Object.entries(paths)) {
+      const file = resolveHref(path);
+      assert.ok(file, `${page}/${locale}: ${path} is not built`);
+      const expected = ogPages.includes(page) ? `/og/${page}.${locale}.jpg` : '/og-default.jpg';
+      assert.equal(ogImage(read(file)), expected, `${page}/${locale}: og:image`);
     }
   }
 });

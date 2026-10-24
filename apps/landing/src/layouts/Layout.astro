@@ -7,7 +7,7 @@ import '@fontsource-variable/geist-mono/index.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { useDictionary } from '../i18n';
-import { alternates, route, htmlLang, ogLocale, DEFAULT_LOCALE } from '../i18n/routes';
+import { alternates, route, htmlLang, ogLocale, ogPages, DEFAULT_LOCALE } from '../i18n/routes';
 import type { Locale, PageKey } from '../i18n/routes';
 
 interface Props {
@@ -18,7 +18,8 @@ interface Props {
   image?: string;
 }
 
-const { page, locale = DEFAULT_LOCALE, title = 'luciel.dev', image = '/og-default.png' } = Astro.props;
+const { page, locale = DEFAULT_LOCALE, title = 'luciel.dev' } = Astro.props;
+const { image = ogPages.includes(page) ? `/og/${page}.${locale}.jpg` : '/og-default.jpg' } = Astro.props;
 const t = useDictionary(locale);
 const { description = t.shell.defaultDescription } = Astro.props;
 
