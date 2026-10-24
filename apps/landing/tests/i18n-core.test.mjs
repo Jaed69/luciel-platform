@@ -120,12 +120,17 @@ test('the language switcher links to the equivalent page, marks the current lang
 });
 
 test('header nav labels follow the page language', () => {
-  for (const { page, locale, file, path } of builtPages) {
+  for (const { locale, file, path } of builtPages) {
     const dict = locale === 'es' ? es : en;
     const nav = headerOf(read(file)).match(/<nav aria-label="[^"]*">[\s\S]*?<\/nav>/)?.[0] ?? '';
-    assert.match(nav, new RegExp(`>${escapeRe(dict.shell.nav.home)}<`), `${path}: nav home label`);
-    assert.match(nav, new RegExp(`>${escapeRe(dict.shell.nav.projects)}<`), `${path}: nav projects label`);
-    assert.match(nav, new RegExp(`href="${escapeRe(route('home', locale))}"`), `${path}: nav home href`);
-    assert.match(nav, new RegExp(`href="${escapeRe(route('projects', locale) ?? '')}"`), `${path}: nav projects href`);
+    const links = [
+      [`${route('home', locale)}#work`, dict.shell.nav.work],
+      [route('lab', locale), dict.shell.nav.lab],
+      [route('projects', locale), dict.shell.nav.projects],
+      [route('contact', locale), dict.shell.nav.contact],
+    ];
+    for (const [href, label] of links) {
+      assert.match(nav, new RegExp(`<a href="${escapeRe(href)}"[^>]*>${escapeRe(label)}</a>`), `${path}: nav ${label}`);
+    }
   }
 });

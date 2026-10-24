@@ -56,11 +56,12 @@ test('Spanish pages use the Spanish nav and skip link', () => {
   for (const html of [home(), projectsPage(), notFound()]) {
     const header = headerOf(html);
     assert.match(header, /<nav aria-label="Principal"/);
-    assert.match(header, /<a href="\/es\/"[^>]*>Inicio<\/a>/);
+    assert.match(header, /<a href="\/es\/#work"[^>]*>Trabajo<\/a>/);
     assert.match(header, /<a href="\/es\/proyectos\/"[^>]*>Proyectos<\/a>/);
+    assert.match(header, /<a href="\/es\/contacto\/"[^>]*>Contacto<\/a>/);
     assert.match(header, /profundidad/);
     assert.match(html, /Saltar al contenido/);
-    assert.match(html, /<a href="\/es\/" class="brand"/);
+    assert.match(html, /<a href="\/es\/" class="brand" aria-label="luciel\.dev, inicio"/);
   }
 });
 
@@ -104,10 +105,10 @@ test('Spanish home lists every project with its status and links to the Spanish 
   assert.match(tools, /href="\/es\/proyectos\/"/);
 });
 
-test('Spanish home marks Inicio as the current page and exposes no stray PII', () => {
-  const header = headerOf(home());
-  assert.match(header, /<a[^>]*href="\/es\/"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/es\/"/);
-  assert.doesNotMatch(header, /<a[^>]*href="\/es\/proyectos\/"[^>]*aria-current="page"/);
+test('Spanish home marks no main-nav link as current and exposes no stray PII', () => {
+  const nav = headerOf(home()).match(/<nav aria-label="Principal">[\s\S]*?<\/nav>/)?.[0] ?? '';
+  assert.match(nav, /<a href="\/es\/#work">Trabajo<\/a>/);
+  assert.doesNotMatch(nav, /aria-current="page"/);
   assert.deepEqual(piiFindings(home()), []);
 });
 
