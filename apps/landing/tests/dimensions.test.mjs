@@ -58,6 +58,31 @@ test('only the active dimension renders its reading, and the jump respects reduc
   assert.match(css, /prefers-reduced-motion:\s*reduce\)\s*\{[^}]*::view-transition-old\(root\)[^}]*\{[^}]*animation:\s*none/);
 });
 
+test('the switch always names both dimensions, with a thumb under the active one', () => {
+  for (const page of htmlFiles()) {
+    const button = read(page).match(/<button[^>]*id="dim"[^>]*>[^]*?<\/button>/)?.[0] ?? '';
+    assert.match(button, /<span class="pair" aria-hidden="true"><span class="thumb"><\/span><span class="side s">[^<]+<\/span><span class="side d">[^<]+<\/span><\/span>/, `${rel(page)}: paired sides`);
+  }
+  assert.match(builtCss(), /:root\[data-dimension=["']?depth["']?\] \.dim \.thumb\{transform:translateX?\(100%\)\}/);
+});
+
+test('the jump scans the new dimension in behind one line that moves on the mask clock', () => {
+  for (const page of htmlFiles()) {
+    const html = read(page);
+    assert.equal((html.match(/<span class="scan" aria-hidden="true"><\/span>/g) ?? []).length, 1, `${rel(page)}: one scan line`);
+    assert.match(html, /<\/header>\s*<span class="scan"/, `${rel(page)}: the line sits outside the blurred header`);
+  }
+  const script = scripts(read(join(DIST, 'index.html'))).find((s) => s.includes("getElementById('dim')"));
+  // The root's class must not be the line's own class, or the .scan rule would hide the whole page.
+  assert.match(script, /r\.classList\.add\('scanning'\)/);
+  assert.match(script, /\.finished\.then\(\(\)=>r\.classList\.remove\('scanning'\)\)/);
+  const css = builtCss();
+  assert.match(css, /:root\.scanning \.scan\{display:block\}/);
+  assert.match(css, /@keyframes dim-scan-in\{0%\{[^}]*mask-position:0 100%\}to\{[^}]*mask-position:0 0\}\}/);
+  assert.match(css, /@keyframes dim-scan-down\{0%\{top:0\}to\{top:calc\(100vh - 2px\)\}\}/, 'the line moves by top, on the main thread with the mask');
+  assert.match(css, /::view-transition-old\(root\)\{mix-blend-mode:normal;animation:none\}/, 'the old page holds still');
+});
+
 test('the D hint is hidden on devices without hover, where there is usually no keyboard', () => {
   assert.match(builtCss(), /@media\s*\(hover:\s*none\)\s*\{[^}]*\.dim kbd\s*\{[^}]*display:\s*none/);
 });

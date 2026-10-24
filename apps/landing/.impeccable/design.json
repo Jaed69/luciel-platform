@@ -543,12 +543,12 @@
       {
         "name": "ease-settle",
         "value": "cubic-bezier(0.2, 0.7, 0.2, 1)",
-        "purpose": "Default easing: knob, text-action underline, card lift, paper settle, cell lift, old-page lift."
+        "purpose": "Default easing: switch thumb, text-action underline, card lift, paper settle, cell lift."
       },
       {
         "name": "ease-reveal",
-        "value": "cubic-bezier(0.7, 0, 0.2, 1)",
-        "purpose": "The new dimension growing as a circle from the switch."
+        "value": "cubic-bezier(0.6, 0, 0.2, 1)",
+        "purpose": "The scan line crossing the viewport and the new dimension unmasked behind it."
       },
       {
         "name": "color-fade",
@@ -556,19 +556,14 @@
         "purpose": "Color and background changes, button lift."
       },
       {
-        "name": "knob",
+        "name": "thumb",
         "value": "320ms",
-        "purpose": "Switch knob slide and hero underline draw."
+        "purpose": "Switch thumb slide and hero underline draw."
       },
       {
-        "name": "dim-lift",
-        "value": "520ms",
-        "purpose": "Old dimension lifts away: translateY(-14px) scale(0.985) brightness(0.82)."
-      },
-      {
-        "name": "dim-reveal",
-        "value": "720ms",
-        "purpose": "New dimension clip-path circle from the switch to 150vmax."
+        "name": "dim-scan",
+        "value": "640ms",
+        "purpose": "Old page holds still; a 2 px signal line moves by top while the new dimension is unmasked behind it, top to bottom into Depth, reversed back to Surface."
       },
       {
         "name": "settle",
@@ -670,9 +665,9 @@
       "name": "Dimension Switch",
       "kind": "custom",
       "refersTo": "dimension-switch",
-      "description": "Global Surface / Depth toggle: pill track, sliding knob, active side in ink, D key hint.",
-      "html": "<button class=\"ds-dim\" type=\"button\" aria-pressed=\"false\"><span class=\"ds-track\"><span class=\"ds-knob\"></span></span><span><span class=\"ds-on\">Surface</span> / Depth</span><kbd class=\"ds-kbd\">D</kbd></button>",
-      "css": ".ds-dim { display: inline-flex; align-items: center; gap: 0.6rem; min-height: 40px; padding: 0; border: 0; background: none; cursor: pointer; font: 400 0.8rem/1 \"Roboto Flex Variable\", \"Segoe UI\", system-ui, sans-serif; color: var(--color-muted, #5b554c); } .ds-track { position: relative; width: 2.4em; height: 1.3em; border-radius: 999px; background: var(--color-fg, #1c1a17); } .ds-knob { position: absolute; top: 0.15em; left: 0.15em; width: 1em; height: 1em; border-radius: 50%; background: var(--color-bg, #f8f8f7); transition: transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1); } .ds-dim[aria-pressed=\"true\"] .ds-knob, .ds-dim:hover .ds-knob { transform: translateX(1.1em); } .ds-on { color: var(--color-fg, #1c1a17); } .ds-kbd { font-family: \"Geist Mono Variable\", ui-monospace, Consolas, monospace; font-size: 0.72rem; margin-inline: 0.4rem 0.5rem; padding: 0.1rem 0.4rem; border: 1px solid var(--color-line, #dcdad6); border-radius: 4px; } .ds-dim:focus-visible { outline: 2px solid var(--color-signal, #a8350b); outline-offset: 3px; border-radius: 2px; }"
+      "description": "Global Surface / Depth toggle: a paired capsule naming both sides, an ink thumb under the active one, D key hint.",
+      "html": "<button class=\"ds-dim\" type=\"button\" aria-pressed=\"false\"><span class=\"ds-pair\"><span class=\"ds-thumb\"></span><span class=\"ds-side ds-on\">Surface</span><span class=\"ds-side\">Depth</span></span><kbd class=\"ds-kbd\">D</kbd></button>",
+      "css": ".ds-dim { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 40px; padding: 0; border: 0; background: none; cursor: pointer; } .ds-pair { position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; padding: 2px; border: 1px solid var(--color-line, #dcdad6); border-radius: 999px; font: 450 0.8rem/1 \"Roboto Flex Variable\", \"Segoe UI\", system-ui, sans-serif; } .ds-thumb { position: absolute; inset: 2px auto 2px 2px; width: calc((100% - 4px) / 2); border-radius: 999px; background: var(--color-fg, #1c1a17); transition: transform 320ms cubic-bezier(0.2, 0.7, 0.2, 1); } .ds-dim[aria-pressed=\"true\"] .ds-thumb { transform: translateX(100%); } .ds-side { position: relative; padding: 0.45em 0.85em; border-radius: 999px; text-align: center; color: var(--color-muted, #5b554c); transition: color 240ms ease-out; } .ds-on { color: var(--color-bg, #f8f8f7); } .ds-kbd { font-family: \"Geist Mono Variable\", ui-monospace, Consolas, monospace; font-size: 0.72rem; padding: 0.1rem 0.4rem; border: 1px solid var(--color-line, #dcdad6); border-radius: 4px; } .ds-dim:focus-visible { outline: 2px solid var(--color-signal, #a8350b); outline-offset: 3px; border-radius: 999px; }"
     },
     {
       "name": "Work Case",
