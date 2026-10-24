@@ -254,7 +254,7 @@ Depth is mostly photographic and material, with soft, long, low-opacity ambient 
 
 ## Shapes
 
-Corners scale with what the object is: 3 px for inline code, chips and locale links; 4 px for the key hint; 8 px for glass cards and the paper sheet (6 comp px for the small booking cells); 10 px for Depth tiles (pipeline nodes, readouts); 18 px for panels (work cases, lab door, closing stage); full pills for buttons, the switch track and status capsules. Borders are 1 px hairlines in the line color, or translucent white on glass and studio panels. The identity mark is the winged L, a single-path silhouette that inherits `currentColor`; its haloed form adds a tilted ellipse (-6 degrees) on the stem axis.
+Corners scale with what the object is: 3 px for inline code and chips; 4 px for the key hint; 8 px for glass cards and the paper sheet (6 comp px for the small booking cells); 10 px for Depth tiles (pipeline nodes, readouts); 18 px for panels (work cases, lab door, closing stage); full pills for buttons, the paired controls (language and dimension) and status capsules. Borders are 1 px hairlines in the line color, or translucent white on glass and studio panels. The identity mark is the winged L, a single-path silhouette that inherits `currentColor`; its haloed form adds a tilted ellipse (-6 degrees) on the stem axis.
 
 ## Components
 
@@ -276,12 +276,13 @@ Corners scale with what the object is: 3 px for inline code, chips and locale li
 - **Style:** mono at 0.82em on the raise fill, 3 px corner. Depth stack groups only.
 
 ### Navigation
-- **Rail:** sticky, translucent ground over blur 6 px, mono 0.78 to 0.84rem muted links; the current page is ink with a signal-orange underline offset 6 px; locale links EN / ES, the active one boxed in a hairline.
-- **Over the hero (home):** absolute, transparent, Roboto Flex at 19 comp px in hero ink, nav centered, locales separated by a soft slash; hover underlines.
-- **Brand:** the plain winged L at 1.6em (38 comp px over the hero, 28 px on phones) beside "luciel.dev".
+- **Rail:** sticky, translucent ground over blur 6 px, mono 0.78 to 0.84rem muted links; the current page is ink with a signal-orange underline offset 6 px; then the two paired controls.
+- **Over the hero (home):** absolute, transparent, Roboto Flex at 19 comp px in hero ink, nav centered; hover underlines. The paired controls take a translucent white hairline over a faint shade (rgb 30 28 26 / 0.18), and their active side is filled in hero ink with studio-ink type (#1e1c1a).
+- **Brand:** the plain winged L at 1.6em (38 comp px over the hero, 28 px on phones) beside "luciel.dev". Below 520 px the brand shows only the mark (the link is still named home), so the mark and both paired controls share the first row and the page links take the second.
+- **Paired controls:** the language links (EN / ES) and the Dimension Switch share one form: a capsule with a 1 px hairline and a 2 px inset, Roboto Flex 450 at the rail's small step, each side padded 0.45em by 0.85em, and the active side filled in ink with ground-colored type. The language capsule marks the page you are on; it links, so nothing slides.
 
 ### Dimension Switch
-A text button: a pill track in ink with a ground-colored knob that slides 1.1em over 320 ms, the labels "Surface / Depth" with the active side in ink, and a D key hint hidden on touch screens and over the hero. Flipping wraps the change in a view transition: the old page lifts away like paper (520 ms, up 14 px, scale 0.985, dimmed) while the new one grows as a circle from the switch (720 ms). Without JavaScript the switch is not offered.
+A paired control whose two sides are always named, "Surface" and "Depth", on equal columns. An ink thumb sits under the side in force and slides to the other over 320 ms (cubic-bezier 0.2, 0.7, 0.2, 1); hovering names the other side in ink. Its accessible name is the action, and aria-pressed tells Depth. A D key hint follows it, hidden on touch screens, below 520 px and over the hero. Flipping wraps the change in a view transition that reads as a scan: the old page holds still while a 2 px signal-orange line crosses the viewport and the new dimension is unmasked behind it (640 ms, cubic-bezier 0.6, 0, 0.2, 1), top to bottom into Depth and bottom to top back to Surface. The line moves by `top`, not a transform, so it stays on the mask's main-thread clock. Reduced motion is a hard cut. Without JavaScript the switch is not offered.
 
 ### Winged L Mark
 - **A (plain):** used below 64 px: the header, `favicon.svg` (ink #1e1c1a, light #f1f0ee under a dark color scheme), the 180 px touch icon.

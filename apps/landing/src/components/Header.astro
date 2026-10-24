@@ -57,17 +57,18 @@ const over = page === 'home';
       </nav>
     )}
     <button type="button" id="dim" class="dim" aria-label={t.shell.dimension.toggle} aria-pressed="false">
-      <span class="track" aria-hidden="true"><span class="knob"></span></span>
-      <span class="sides" aria-hidden="true"><span class="side s">{t.shell.dimension.surface}</span> / <span class="side d">{t.shell.dimension.depth}</span></span>
+      <span class="pair" aria-hidden="true"><span class="thumb"></span><span class="side s">{t.shell.dimension.surface}</span><span class="side d">{t.shell.dimension.depth}</span></span>
       <kbd aria-hidden="true">D</kbd>
     </button>
   </div>
 </header>
+{/* The scan line drawn across the page while the dimension changes; outside the header, whose blur would trap a fixed child. */}
+<span class="scan" aria-hidden="true"></span>
 
 {/*
   Dimension switch. The pre-paint half lives in Layout's <head>; this half flips html[data-dimension],
-  remembers it, and wraps the flip in a view transition (a circle growing from the button) unless motion is reduced.
+  remembers it, and wraps the flip in a view transition (the new dimension is scanned in line by line) unless motion is reduced.
   D toggles too, except while typing, on key repeat or with a modifier held.
   The language links store the chosen language in a lang cookie, so nginx stops redirecting / by Accept-Language.
 */}
-<script is:inline>(()=>{const r=document.documentElement,b=document.getElementById('dim'),p=()=>b.setAttribute('aria-pressed',r.dataset.dimension=='depth'),g=()=>{const n=r.dataset.dimension=='depth'?'surface':'depth',k=b.getBoundingClientRect(),s=()=>{r.dataset.dimension=n;try{localStorage.dim=n}catch(e){}p()};r.style.setProperty('--vx',k.x+k.width/2+'px');r.style.setProperty('--vy',k.y+k.height/2+'px');document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches?document.startViewTransition(s):s()};b.onclick=g;addEventListener('keydown',e=>{!/^d$/i.test(e.key)||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.target.closest('input,textarea,select,[contenteditable]')||g()});document.querySelectorAll('.lang a').forEach(a=>a.onclick=()=>{document.cookie='lang='+a.lang+';path=/;max-age=31536000;samesite=lax'});p()})();</script>
+<script is:inline>(()=>{const r=document.documentElement,b=document.getElementById('dim'),p=()=>b.setAttribute('aria-pressed',r.dataset.dimension=='depth'),g=()=>{const n=r.dataset.dimension=='depth'?'surface':'depth',s=()=>{r.dataset.dimension=n;try{localStorage.dim=n}catch(e){}p()};document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches?document.startViewTransition(()=>{s();r.classList.add('scanning')}).finished.then(()=>r.classList.remove('scanning')):s()};b.onclick=g;addEventListener('keydown',e=>{!/^d$/i.test(e.key)||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.target.closest('input,textarea,select,[contenteditable]')||g()});document.querySelectorAll('.lang a').forEach(a=>a.onclick=()=>{document.cookie='lang='+a.lang+';path=/;max-age=31536000;samesite=lax'});p()})();</script>
