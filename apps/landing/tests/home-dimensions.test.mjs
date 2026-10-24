@@ -16,19 +16,19 @@ test('every reading on the site is either surface or depth', () => {
   }
 });
 
-test('the hero states the thesis on the surface and how the site is built underneath', () => {
+test('the hero names the person and the job, opens the lab, and shows how the site is built underneath', () => {
   const expected = {
-    en: { thesis: 'a use in the real world', build: 'This page, from below', js: '&lt; 2 kB per page: a clock, the dimension switch and the lab replay' },
-    es: { thesis: 'utilidad en el mundo real', build: 'Esta página, por dentro', js: '&lt; 2 kB por página: un reloj, el selector de dimensión y la reproducción del laboratorio' },
+    en: { lead: 'I turn manual processes into systems that run.', lab: '/lab/accreditation/', contact: '/contact/', build: 'Built to be rebuilt from git.', js: '&lt; 2 kB per page: the dimension switch and the lab replay' },
+    es: { lead: 'Convierto procesos manuales en sistemas que funcionan.', lab: '/es/lab/acreditacion/', contact: '/es/contacto/', build: 'Hecha para reconstruirse desde git.', js: '&lt; 2 kB por página: el selector de dimensión y la reproducción del laboratorio' },
   };
   for (const [locale, file] of Object.entries(HOMES)) {
     const hero = section(read(file), 'id="intro"');
-    const [surface] = readingsOf(hero, 'surface');
+    const stage = hero.slice(0, hero.indexOf('data-reading="depth"'));
     const depth = hero.match(/<div[^>]*data-reading="depth"[^]*<\/dl>/)?.[0] ?? '';
-    assert.ok(surface?.includes(`<em>${expected[locale].thesis}</em>`), `${locale}: thesis`);
-    assert.match(surface, new RegExp(`href="${locale === 'en' ? '/lab/accreditation/' : '/es/lab/acreditacion/'}"`), `${locale}: hero opens the lab`);
-    assert.match(surface, /href="#work"/);
-    assert.ok(depth.includes(expected[locale].build), `${locale}: build eyebrow`);
+    assert.match(stage, /<h1[^>]*>Jhamil Peña<\/h1>/, `${locale}: name`);
+    assert.ok(stage.includes(expected[locale].lead), `${locale}: lead`);
+    assert.match(stage, new RegExp(`<p class="actions"><a href="${expected[locale].lab}">[^<]+</a><a href="${expected[locale].contact}">`), `${locale}: the hero opens the lab and contact`);
+    assert.ok(depth.includes(expected[locale].build), `${locale}: build heading`);
     assert.equal((depth.match(/<dt>/g) ?? []).length, 5, `${locale}: five build facts`);
     assert.ok(depth.includes(expected[locale].js), `${locale}: client JS fact matches the readout`);
   }
@@ -75,5 +75,37 @@ test('the closing invites contact on the surface and points to the source undern
     const [depth] = readingsOf(closing, 'depth');
     assert.ok(surface?.includes(`href="${contact[locale]}"`), `${locale}: contact link on the surface`);
     assert.ok(depth?.includes('href="https://github.com/Jaed69/luciel-platform"'), `${locale}: repo link underneath`);
+  }
+});
+
+test('home sections are named by their headings alone, with the approved copy', () => {
+  const expected = {
+    en: { work: 'Two systems, built for real use.', about: 'Who builds this.', lab: 'pick a sample document' },
+    es: { work: 'Dos sistemas, hechos para uso real.', about: 'Quién construye esto.', lab: 'elige un documento de ejemplo' },
+  };
+  for (const [locale, file] of Object.entries(HOMES)) {
+    const html = read(file);
+    assert.doesNotMatch(html, /<p class="eyebrow">/, `${locale}: no eyebrow labels on the home`);
+    assert.match(section(html, 'id="work"'), new RegExp(`<h2 id="work-h"[^>]*>${expected[locale].work}</h2>`), `${locale}: work heading`);
+    assert.ok(section(html, 'id="trajectory"').includes(expected[locale].about), `${locale}: about heading`);
+    assert.ok(section(html, 'id="lab"').includes(expected[locale].lab), `${locale}: the lab offers sample documents, not uploads`);
+  }
+});
+
+test('the lab door shows the sample audit it replays, each finding with the page it came from', () => {
+  const expected = {
+    en: { first: 'Learning outcomes are stated', verdicts: ['Met', 'Met', 'Met', 'Missing', 'Partial', 'Partial'] },
+    es: { first: 'Los resultados de aprendizaje están declarados', verdicts: ['Cumple', 'Cumple', 'Cumple', 'Falta', 'Parcial', 'Parcial'] },
+  };
+  for (const [locale, file] of Object.entries(HOMES)) {
+    const lab = section(read(file), 'id="lab"');
+    const door = lab.slice(lab.indexOf('data-reading="surface"'), lab.indexOf('data-reading="depth"'));
+    assert.ok(door.includes('syllabus-data-structures.pdf'), `${locale}: the sample file is named`);
+    const rows = door.match(/<ol class="receipt"[^]*?<\/ol>/)?.[0].match(/<li[^]*?<\/li>/g) ?? [];
+    assert.equal(rows.length, 6, `${locale}: one row per criterion`);
+    assert.ok(rows[0].includes(expected[locale].first), `${locale}: criteria are named in full`);
+    assert.deepEqual(rows.map((row) => row.match(/class="verdict[^"]*">([^<]+)</)?.[1]), expected[locale].verdicts, `${locale}: verdicts in order`);
+    assert.deepEqual(rows.map((row) => row.match(/class="src">([^<]*)</)?.[1]), ['p. 1', 'p. 2', 'p. 3', '—', 'p. 6', 'p. 1'], `${locale}: each finding points to its page`);
+    assert.doesNotMatch(door, /class="sheet"/, `${locale}: no drawn placeholder sheet`);
   }
 });

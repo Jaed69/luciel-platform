@@ -18,7 +18,6 @@ interface Stop {
 }
 
 interface Section {
-  eyebrow: string;
   heading: string;
 }
 
@@ -32,7 +31,8 @@ export interface Dictionary {
     statusBar: string;
     /** The global Surface/Depth switch. `toggle` is the button name; it stays fixed while aria-pressed flips. */
     dimension: { surface: string; depth: string; toggle: string };
-    nav: { label: string; home: string; projects: string };
+    /** `home` names the brand link; the visible links are the home's work section, the lab, projects and contact. */
+    nav: { label: string; home: string; work: string; lab: string; projects: string; contact: string };
     legal: { label: string; privacy: string; terms: string; contact: string };
     language: { label: string; names: Record<Locale, string> };
     lastUpdated: string;
@@ -43,6 +43,17 @@ export interface Dictionary {
     description: string;
     role: [string, string, string];
     thesis: { before: string; em: string; after: string };
+    /**
+     * The image-led first viewport. Every card states a whole fact; `booking` is one fictitious tour booking,
+     * the fields the paper stack turns into, so the demo reads as data and never as real client records.
+     */
+    hero: {
+      role: string;
+      lead: string;
+      actions: { lab: string; contact: string };
+      cards: { tours: string; lab: string; caching: { name: string; text: string } };
+      booking: { label: string; fields: { label: string; value: string }[] };
+    };
     /** Hero calls to action (same-page anchors). */
     jump: { lab: string; work: string };
     /** Depth reading of the hero: how this site itself is built. Every fact must stay true. */

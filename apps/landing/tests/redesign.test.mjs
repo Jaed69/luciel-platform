@@ -21,9 +21,9 @@ const cssFiles = (dir = DIST) =>
     return e.isDirectory() ? cssFiles(p) : e.name.endsWith('.css') ? [p] : [];
   });
 
-test('the built CSS self-hosts the three font families with local woff2 files', () => {
+test('the built CSS self-hosts the body and mono font families with local woff2 files', () => {
   const css = cssFiles().map((f) => readFileSync(f, 'utf8')).join('\n');
-  for (const family of ['Newsreader Variable', 'Geist Variable', 'Geist Mono Variable']) {
+  for (const family of ['Roboto Flex Variable', 'Geist Mono Variable']) {
     assert.match(css, new RegExp(`@font-face\\s*\\{[^}]*font-family:\\s*["']?${family}`), `no @font-face for ${family}`);
   }
   assert.doesNotMatch(css, /url\(\s*["']?https?:/, 'font or asset loaded from a remote URL');
@@ -32,14 +32,14 @@ test('the built CSS self-hosts the three font families with local woff2 files', 
   }
 });
 
-test('every page has the HUD rail with the clock and the dimension switch', () => {
+test('every page has the HUD rail with the dimension switch, and no clock or coordinates', () => {
   for (const page of htmlFiles()) {
     const html = read(page);
     assert.match(html, /<header[^>]*class="[^"]*\bhud\b/, `${rel(page)}: HUD header`);
-    assert.match(html, /id="clock"/, `${rel(page)}: clock element`);
     assert.match(html, /<button type="button" id="dim"/, `${rel(page)}: dimension switch`);
-    assert.match(html, /−12\.0464 −77\.0428/, `${rel(page)}: coordinates`);
-    assert.match(html, /America\/Lima/, `${rel(page)}: Lima time zone`);
+    assert.doesNotMatch(html, /id="clock"/, `${rel(page)}: clock element`);
+    assert.doesNotMatch(html, /−12\.0464|−77\.0428/, `${rel(page)}: coordinates`);
+    assert.doesNotMatch(html, /America\/Lima/, `${rel(page)}: Lima time zone`);
   }
 });
 

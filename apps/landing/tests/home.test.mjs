@@ -36,8 +36,10 @@ test('home exposes no email other than the published contact address, and no pho
   assert.deepEqual(piiFindings(home()), []);
 });
 
-test('home marks Home as the current nav link and not Projects', () => {
+test('home links the brand home and marks no main-nav link as the current page', () => {
   const header = home().match(/<header[\s\S]*?<\/header>/)?.[0] ?? '';
-  assert.match(header, /<a[^>]*href="\/"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/"/);
-  assert.doesNotMatch(header, /<a[^>]*href="\/projects\/"[^>]*aria-current="page"|<a[^>]*aria-current="page"[^>]*href="\/projects\/"/);
+  assert.match(header, /<a href="\/" class="brand" aria-label="luciel\.dev, home"/);
+  const nav = header.match(/<nav aria-label="Main">[\s\S]*?<\/nav>/)?.[0] ?? '';
+  assert.match(nav, /<a href="\/#work">Work<\/a>/);
+  assert.doesNotMatch(nav, /aria-current="page"/);
 });

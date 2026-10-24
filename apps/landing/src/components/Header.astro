@@ -1,4 +1,5 @@
 ---
+import Mark from './Mark.astro';
 import { useDictionary } from '../i18n';
 import { alternates, route } from '../i18n/routes';
 import type { Locale, PageKey } from '../i18n/routes';
@@ -11,23 +12,29 @@ interface Props {
 const { page, locale } = Astro.props;
 const t = useDictionary(locale);
 
+// Work is a section of the home, so it is never the current page; the other three are pages of their own.
 const links = [
-  { key: 'home', label: t.shell.nav.home },
-  { key: 'projects', label: t.shell.nav.projects },
+  { key: 'work', href: `${route('home', locale)}#work`, label: t.shell.nav.work },
+  { key: 'lab', href: route('lab', locale), label: t.shell.nav.lab },
+  { key: 'projects', href: route('projects', locale), label: t.shell.nav.projects },
+  { key: 'contact', href: route('contact', locale), label: t.shell.nav.contact },
 ] as const;
 const versions = alternates(page);
+// On the home the rail sits over the hero image instead of above the page.
+const over = page === 'home';
 ---
 
-<header class="hud" aria-label={t.shell.statusBar}>
+<header class:list={['hud', over && 'over']} aria-label={t.shell.statusBar}>
   <div class="wrap">
-    <a href={route('home', locale)} class="brand">luciel<span>.dev</span></a>
-    <span>LIM <b id="clock">--:--:--</b></span>
-    <span>−12.0464 −77.0428</span>
+    <a href={route('home', locale)} class="brand" aria-label={t.shell.nav.home}>
+      <Mark />
+      <span>luciel.dev</span>
+    </a>
     <nav aria-label={t.shell.nav.label}>
       <ul>
         {links.map((link) => (
           <li>
-            <a href={route(link.key, locale)} aria-current={link.key === page ? 'page' : undefined}>{link.label}</a>
+            <a href={link.href} aria-current={link.key === page ? 'page' : undefined}>{link.label}</a>
           </li>
         ))}
       </ul>
@@ -50,16 +57,16 @@ const versions = alternates(page);
       </nav>
     )}
     <button type="button" id="dim" class="dim" aria-label={t.shell.dimension.toggle} aria-pressed="false">
-      <span class="side s" aria-hidden="true">{t.shell.dimension.surface}</span>
-      <span class="side d" aria-hidden="true">{t.shell.dimension.depth}</span>
+      <span class="track" aria-hidden="true"><span class="knob"></span></span>
+      <span class="sides" aria-hidden="true"><span class="side s">{t.shell.dimension.surface}</span> / <span class="side d">{t.shell.dimension.depth}</span></span>
       <kbd aria-hidden="true">D</kbd>
     </button>
   </div>
 </header>
 
 {/*
-  Clock + dimension switch. The pre-paint half lives in Layout's <head>; this half flips html[data-dimension],
+  Dimension switch. The pre-paint half lives in Layout's <head>; this half flips html[data-dimension],
   remembers it, and wraps the flip in a view transition (a circle growing from the button) unless motion is reduced.
   D toggles too, except while typing, on key repeat or with a modifier held.
 */}
-<script is:inline>(()=>{const r=document.documentElement,c=document.getElementById('clock'),b=document.getElementById('dim'),f=new Intl.DateTimeFormat('en-GB',{timeZone:'America/Lima',timeStyle:'medium',hourCycle:'h23'}),t=()=>{c.textContent=f.format(new Date())},p=()=>b.setAttribute('aria-pressed',r.dataset.dimension=='depth'),g=()=>{const n=r.dataset.dimension=='depth'?'surface':'depth',k=b.getBoundingClientRect(),s=()=>{r.dataset.dimension=n;try{localStorage.dim=n}catch(e){}p()};r.style.setProperty('--vx',k.x+k.width/2+'px');r.style.setProperty('--vy',k.y+k.height/2+'px');document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches?document.startViewTransition(s):s()};b.onclick=g;addEventListener('keydown',e=>{!/^d$/i.test(e.key)||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.target.closest('input,textarea,select,[contenteditable]')||g()});t();setInterval(t,1000);p()})();</script>
+<script is:inline>(()=>{const r=document.documentElement,b=document.getElementById('dim'),p=()=>b.setAttribute('aria-pressed',r.dataset.dimension=='depth'),g=()=>{const n=r.dataset.dimension=='depth'?'surface':'depth',k=b.getBoundingClientRect(),s=()=>{r.dataset.dimension=n;try{localStorage.dim=n}catch(e){}p()};r.style.setProperty('--vx',k.x+k.width/2+'px');r.style.setProperty('--vy',k.y+k.height/2+'px');document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches?document.startViewTransition(s):s()};b.onclick=g;addEventListener('keydown',e=>{!/^d$/i.test(e.key)||e.ctrlKey||e.metaKey||e.altKey||e.repeat||e.target.closest('input,textarea,select,[contenteditable]')||g()});p()})();</script>

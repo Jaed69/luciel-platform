@@ -19,6 +19,9 @@ export const routes: Record<PageKey, Partial<Record<Locale, string>>> = {
   notFound: { en: '/404.html', es: '/es/404/' },
 };
 
+/** Pages worth sharing get their own Open Graph card, rendered by scripts/og/render.mjs; the rest use /og-default.jpg. */
+export const ogPages: readonly PageKey[] = ['home', 'projects', 'lab', 'contact'];
+
 export const htmlLang: Record<Locale, string> = { en: 'en', es: 'es' };
 export const ogLocale: Record<Locale, string> = { en: 'en_US', es: 'es_PE' };
 
