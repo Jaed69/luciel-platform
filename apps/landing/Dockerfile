@@ -2,7 +2,7 @@
 # Multi-stage: node:26.10.0-slim build -> nginx:1.31.6-alpine runtime (D-02).
 # Build context MUST be repo root — pnpm workspace needs the root lockfile.
 #   docker build -t luciel-platform-landing -f apps/landing/Dockerfile .
-FROM node:26.10.0-slim AS build
+FROM node:26.11.1-slim AS build
 ENV PNPM_CONFIG_STRICT_DEP_BUILDS=false \
     pnpm_config_store_dir=/pnpm/store
 WORKDIR /app
@@ -17,7 +17,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY apps/landing/ apps/landing/
 RUN pnpm --filter @luciel/landing build
 
-FROM nginx:1.31.6-alpine AS runtime
+FROM nginx:1.31.7-alpine AS runtime
 COPY apps/landing/nginx/nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/apps/landing/dist /usr/share/nginx/html
 EXPOSE 8080

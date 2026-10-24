@@ -2,7 +2,7 @@
 # Multi-stage node:26.10.0-slim build + node:26.10.0-slim runtime for Next.js 16 standalone.
 # Build context MUST be repo root — pnpm workspace needs the root lockfile.
 #   docker build -t luciel-platform-tours-web -f apps/tours/web/Dockerfile .
-FROM node:26.10.0-slim AS build
+FROM node:26.11.1-slim AS build
 ENV PNPM_CONFIG_STRICT_DEP_BUILDS=false \
     pnpm_config_store_dir=/pnpm/store
 WORKDIR /app
@@ -19,7 +19,7 @@ COPY apps/tours/web/ apps/tours/web/
 RUN pnpm --filter @luciel-platform/tours build
 
 # Next.js 16 standalone: copy .next/standalone + .next/static + public/
-FROM node:26.10.0-slim AS runtime
+FROM node:26.11.1-slim AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /app/apps/tours/web/.next/standalone ./
