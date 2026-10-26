@@ -8,7 +8,7 @@ x-logging: &default-logging
     max-size: "10m"
     max-file: "3"
 
-# landing/lemon: nginx (alpine) listens on 8080; busybox wget ships in the image.
+# landing/lemon/apruebo: nginx (alpine) listens on 8080; busybox wget ships in the image.
 x-nginx-healthcheck: &nginx-healthcheck
   test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/"]
   interval: 30s
@@ -139,6 +139,38 @@ services:
       - no-new-privileges:true
     # Verified locally: nginx master needs CHOWN/SETUID/SETGID to drop to the
     # worker user; everything else can go. Writable paths only via tmpfs.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /run
+    mem_limit: 128m
+    logging: *default-logging
+
+  # Built and pushed by the private Jaed69/apruebo repo (public image). Its tag is pinned
+  # separately (APRUEBO_TAG, written by the deploy job), not by this repo's IMAGE_TAG.
+  apruebo:
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/apruebo-web:${APRUEBO_TAG:-latest}
+    container_name: apruebo
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.apruebo.rule=Host(`apruebo.luciel.dev`)"
+      - "traefik.http.routers.apruebo.entrypoints=websecure"
+      - "traefik.http.routers.apruebo.tls.certresolver=le"
+      - "traefik.http.routers.apruebo.tls.domains[0].main=apruebo.luciel.dev"
+      - "traefik.http.services.apruebo.loadbalancer.server.port=8080"
+    networks:
+      - traefik-public
+    healthcheck: *nginx-healthcheck
+    security_opt:
+      - no-new-privileges:true
     cap_drop:
       - ALL
     cap_add:

@@ -29,6 +29,19 @@ on:
       - 'env/**'
       - '.sops.yaml'
       - '.github/workflows/release.yml'
+  # apruebo (separate private repo) asks for a deploy after it pushes a new image:
+  #   gh api repos/Jaed69/luciel-platform/dispatches -f event_type=apruebo-release \
+  #     -f 'client_payload[apruebo_tag]=sha-<7>'
+  # A dispatch still waiting when a newer run queues is superseded (see `concurrency`) and
+  # its tag is lost: re-run apruebo's release, or this workflow by hand with the tag.
+  repository_dispatch:
+    types: [apruebo-release]
+  workflow_dispatch:
+    inputs:
+      apruebo_tag:
+        description: 'apruebo-web tag to deploy (sha-<7>); empty keeps the running one'
+        required: false
+        default: ''
 
 # One run at a time, in order. Waiting runs may be superseded by a newer one: that is safe
 # because `changes` diffs against the revision stored in each app's `latest` image, not
@@ -51,6 +64,8 @@ jobs:
   # `latest` already equals HEAD for that app and it is retagged instead. Outputs the build
   # matrix (apps to rebuild) and the names of the apps to retag.
   changes:
+    # Manual runs from another branch must not move `latest` or deploy.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -328,13 +343,27 @@ jobs:
           echo "::add-mask::${blob}"
           echo "PROD_ENV_B64=${blob}" >> "$GITHUB_ENV"
 
+      # Tag of the externally built apruebo image. Only `sha-<7>` is accepted: the value
+      # reaches a remote shell. Empty = keep whatever the VPS runs now.
+      - name: Resolve apruebo tag
+        env:
+          REQUESTED: ${{ github.event.client_payload.apruebo_tag || inputs.apruebo_tag }}
+        run: |
+          set -eu
+          # Whole-value match: a line-based check (grep) would accept an embedded newline.
+          if [ -n "$REQUESTED" ] && ! [[ "$REQUESTED" =~ ^sha-[0-9a-f]{7}$ ]]; then
+            echo "Invalid apruebo tag (expected sha-<7 hex>)" >&2
+            exit 1
+          fi
+          echo "APRUEBO_TAG_REQ=${REQUESTED}" >> "$GITHUB_ENV"
+
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: PROD_ENV_B64
+          envs: PROD_ENV_B64,APRUEBO_TAG_REQ
           script: |
             set -eu
             cd ${{ secrets.DEPLOY_PATH }}
@@ -346,9 +375,14 @@ jobs:
             # Previous tag (from the .env of the last deploy) = rollback target.
             # Empty on a fresh VPS: that first deploy has nothing to roll back to.
             PREV_TAG=""
+            PREV_APRUEBO_TAG=""
             if [ -f .env ]; then
               PREV_TAG="$(sed -n 's/^IMAGE_TAG=//p' .env | head -n1)"
+              PREV_APRUEBO_TAG="$(sed -n 's/^APRUEBO_TAG=//p' .env | head -n1)"
             fi
+            # apruebo is built in its own repo: a dispatch names the new tag, any other
+            # deploy keeps the running one (`latest` only before its first pinned deploy).
+            APRUEBO_TAG="${APRUEBO_TAG_REQ:-${PREV_APRUEBO_TAG:-latest}}"
 
             # Sync compose + configs to EXACTLY the commit this run built images for (fixes the
             # Phase-01-stale-VPS bug; also stops a newer push to main from mixing its config
@@ -390,6 +424,7 @@ jobs:
               echo "# Regenerated on every CI deploy — local manual edits will be wiped."
               echo "# Generated: $(date -u +%FT%TZ)"
               echo "IMAGE_TAG=${PREV_TAG:-${IMAGE_TAG}}"
+              echo "APRUEBO_TAG=${PREV_APRUEBO_TAG:-${APRUEBO_TAG}}"
               cat .env.new
             } > .env.tmp
             chmod 600 .env.tmp
@@ -432,17 +467,17 @@ jobs:
             # over .env for compose interpolation). A failed pull aborts before anything
             # running is touched: .env goes back to .env.prev and the checkout to OLD_HEAD,
             # so the next deploy diffs traefik.yml against what is running.
-            if ! IMAGE_TAG="${IMAGE_TAG}" compose pull; then
+            if ! IMAGE_TAG="${IMAGE_TAG}" APRUEBO_TAG="${APRUEBO_TAG}" compose pull; then
               echo "Pull of ${IMAGE_TAG} FAILED — nothing was changed on the VPS" >&2
               if [ -f .env.prev ]; then
                 cp -p .env.prev .env
               else
-                sed -i '/^IMAGE_TAG=/d' .env  # first deploy: the never-pulled tag is not a baseline
+                sed -i '/^IMAGE_TAG=/d; /^APRUEBO_TAG=/d' .env  # first deploy: the never-pulled tag is not a baseline
               fi
               git reset --hard "$OLD_HEAD"
               exit 1
             fi
-            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env
+            sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/; s/^APRUEBO_TAG=.*/APRUEBO_TAG=${APRUEBO_TAG}/" .env
 
             if rollout && VERIFY_RESOLVE_IP=127.0.0.1 bash scripts/verify-prod.sh; then
               echo "Deploy ${IMAGE_TAG} OK"
@@ -451,7 +486,9 @@ jobs:
             else
               echo "Deploy ${IMAGE_TAG} FAILED (rollout or smoke test)" >&2
               compose ps >&2 || true
-              if [ -n "${PREV_TAG}" ] && [ "${PREV_TAG}" != "${IMAGE_TAG}" ]; then
+              # An apruebo dispatch redeploys the running IMAGE_TAG: a changed APRUEBO_TAG
+              # is a rollback target too.
+              if [ -n "${PREV_TAG}" ] && { [ "${PREV_TAG}" != "${IMAGE_TAG}" ] || [ "${PREV_APRUEBO_TAG}" != "${APRUEBO_TAG}" ]; }; then
                 echo "Rolling back to ${PREV_TAG} (checkout ${OLD_HEAD})" >&2
                 cp -p .env.prev .env
                 # Restore compose/Traefik config too, and recreate Traefik if the failed
@@ -472,7 +509,7 @@ jobs:
                 # the failed IMAGE_TAG so the next deploy does not treat it as its rollback
                 # target (compose falls back to `latest`).
                 if [ -z "${PREV_TAG}" ]; then
-                  sed -i '/^IMAGE_TAG=/d' .env
+                  sed -i '/^IMAGE_TAG=/d; /^APRUEBO_TAG=/d' .env
                 fi
                 # Keep the checkout at NEW_HEAD: the new containers are still running and
                 # their bind-mounted config (e.g. traefik/dynamic/) must stay on disk.

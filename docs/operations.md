@@ -91,7 +91,8 @@ Once the restored data is confirmed good, delete the `*.before-restore-*` files 
 ## Monitoring
 
 Nothing here alerts on downtime. Point an external uptime monitor (UptimeRobot,
-Better Stack, ...) at each public host: `luciel.dev`, `lemon.luciel.dev`, `tours.luciel.dev`.
+Better Stack, ...) at each public host: `luciel.dev`, `lemon.luciel.dev`, `tours.luciel.dev`,
+`apruebo.luciel.dev`.
 
 ## Configuration & secrets
 

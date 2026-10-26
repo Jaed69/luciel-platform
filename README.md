@@ -12,6 +12,7 @@ The point is not the screenshots, it is the engineering: every push to `main` th
 |-----|-----|------------|-------|
 | `landing` | [luciel.dev](https://luciel.dev) | Root domain. Currently an "under construction" page; the content hub is on the roadmap. | Astro, Tailwind, nginx |
 | `lemon` | [lemon.luciel.dev](https://lemon.luciel.dev) | A personal digital memory book (photos, video, music, public guestbook). | Astro, Tailwind, Supabase (guestbook) |
+| `apruebo` | [apruebo.luciel.dev](https://apruebo.luciel.dev) | Grade tracker for students: what grade they need on the remaining evaluations. Code lives in a separate private repo; this platform only runs its image. | SvelteKit, Go (WebAssembly), nginx |
 | `tours` | [tours.luciel.dev](https://tours.luciel.dev) | Double-entry accounting panel for a tour agency/hotel in Cusco: sales, commissions, settlements, audit log. **Login-only back-office for a real client; there are no public routes beyond the sign-in page.** | Next.js, FastAPI, SQLite (WAL) |
 
 `tours.luciel.dev` has no public demo. The code is here; see [`apps/tours/STATUS.md`](apps/tours/STATUS.md) for what it does and how it was built.
@@ -23,6 +24,7 @@ flowchart LR
     U[Internet] -->|80/443| T[Traefik v3<br/>TLS via Let's Encrypt]
     T --> L[landing<br/>nginx]
     T --> M[lemon<br/>nginx]
+    T --> Q[apruebo<br/>nginx]
     T --> W[tours-web<br/>Next.js]
     W -->|internal network| A[tours-api<br/>FastAPI]
     A --> D[(SQLite WAL<br/>Docker volume)]
