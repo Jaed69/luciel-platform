@@ -30,7 +30,10 @@ on:
       - '.sops.yaml'
       - '.github/workflows/release.yml'
   # apruebo (separate private repo) asks for a deploy after it pushes a new image:
-  #   gh api repos/Jaed69/luciel-platform/dispatches -f event_type=apruebo-release   #     -f 'client_payload[apruebo_tag]=sha-<7>'
+  #   gh api repos/Jaed69/luciel-platform/dispatches -f event_type=apruebo-release \
+  #     -f 'client_payload[apruebo_tag]=sha-<7>'
+  # A dispatch still waiting when a newer run queues is superseded (see `concurrency`) and
+  # its tag is lost: re-run apruebo's release, or this workflow by hand with the tag.
   repository_dispatch:
     types: [apruebo-release]
   workflow_dispatch:
@@ -61,6 +64,8 @@ jobs:
   # `latest` already equals HEAD for that app and it is retagged instead. Outputs the build
   # matrix (apps to rebuild) and the names of the apps to retag.
   changes:
+    # Manual runs from another branch must not move `latest` or deploy.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -345,7 +350,8 @@ jobs:
           REQUESTED: ${{ github.event.client_payload.apruebo_tag || inputs.apruebo_tag }}
         run: |
           set -eu
-          if [ -n "$REQUESTED" ] && ! printf '%s' "$REQUESTED" | grep -Eqx 'sha-[0-9a-f]{7}'; then
+          # Whole-value match: a line-based check (grep) would accept an embedded newline.
+          if [ -n "$REQUESTED" ] && ! [[ "$REQUESTED" =~ ^sha-[0-9a-f]{7}$ ]]; then
             echo "Invalid apruebo tag (expected sha-<7 hex>)" >&2
             exit 1
           fi
@@ -480,7 +486,9 @@ jobs:
             else
               echo "Deploy ${IMAGE_TAG} FAILED (rollout or smoke test)" >&2
               compose ps >&2 || true
-              if [ -n "${PREV_TAG}" ] && [ "${PREV_TAG}" != "${IMAGE_TAG}" ]; then
+              # An apruebo dispatch redeploys the running IMAGE_TAG: a changed APRUEBO_TAG
+              # is a rollback target too.
+              if [ -n "${PREV_TAG}" ] && { [ "${PREV_TAG}" != "${IMAGE_TAG}" ] || [ "${PREV_APRUEBO_TAG}" != "${APRUEBO_TAG}" ]; }; then
                 echo "Rolling back to ${PREV_TAG} (checkout ${OLD_HEAD})" >&2
                 cp -p .env.prev .env
                 # Restore compose/Traefik config too, and recreate Traefik if the failed
@@ -501,7 +509,7 @@ jobs:
                 # the failed IMAGE_TAG so the next deploy does not treat it as its rollback
                 # target (compose falls back to `latest`).
                 if [ -z "${PREV_TAG}" ]; then
-                  sed -i '/^IMAGE_TAG=/d' .env
+                  sed -i '/^IMAGE_TAG=/d; /^APRUEBO_TAG=/d' .env
                 fi
                 # Keep the checkout at NEW_HEAD: the new containers are still running and
                 # their bind-mounted config (e.g. traefik/dynamic/) must stay on disk.
