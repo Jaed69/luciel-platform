@@ -42,6 +42,7 @@ run_case "placeholder in optional var fails" fail "$good"$'\nOPTIONAL_C=__FILL_M
 run_case "missing required var fails" fail "REQUIRED_A=a"
 run_case "empty required var fails" fail $'REQUIRED_A=a\nREQUIRED_B='
 run_case "stray IMAGE_TAG fails" fail "$good"$'\nIMAGE_TAG=sha-abc1234'
+run_case "stray APRUEBO_TAG fails" fail "$good"$'\nAPRUEBO_TAG=sha-abc1234'
 run_case 'value with $ passes' pass $'REQUIRED_A=$2y$10$abc.DEF/ghi\nREQUIRED_B=b'
 run_case "value with quotes passes" pass $'REQUIRED_A="quoted"\nREQUIRED_B=it\'s'
 run_case "value with = passes" pass $'REQUIRED_A=a=b==\nREQUIRED_B=b'

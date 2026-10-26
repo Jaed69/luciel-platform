@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # check-env.sh — gate for a decrypted production env file. Exits non-zero when it is not deployable.
 #  1. No value is still the __FILL_ME__ placeholder.
-#  2. IMAGE_TAG is absent (the deploy computes it per release).
+#  2. IMAGE_TAG and APRUEBO_TAG are absent (the deploy computes them per release).
 #  3. Every variable docker-compose.yml requires via ${VAR:?...} is present and non-empty.
 # Prints variable NAMES only, never values (CI log safety).
 #
@@ -23,9 +23,11 @@ while IFS= read -r line || [ -n "$line" ]; do
   fi
 done < "$file"
 
-if grep -q '^IMAGE_TAG=' "$file"; then
-  echo "IMAGE_TAG must not be set in the env file (computed per deploy)" >&2; fail=1
-fi
+for key in IMAGE_TAG APRUEBO_TAG; do
+  if grep -q "^${key}=" "$file"; then
+    echo "$key must not be set in the env file (computed per deploy)" >&2; fail=1
+  fi
+done
 
 for key in $(grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*:\?' "$compose" | sed 's/^\${//; s/:?$//' | sort -u); do
   if [ -z "$(val "$key")" ]; then

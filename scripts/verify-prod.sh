@@ -11,7 +11,7 @@
 set -euo pipefail
 
 hosts=("$@")
-[ ${#hosts[@]} -eq 0 ] && hosts=(luciel.dev lemon.luciel.dev tours.luciel.dev)
+[ ${#hosts[@]} -eq 0 ] && hosts=(luciel.dev lemon.luciel.dev tours.luciel.dev apruebo.luciel.dev)
 ip="${VERIFY_RESOLVE_IP:-}"
 connect="${ip:-luciel.dev}"
 
