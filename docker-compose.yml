@@ -197,6 +197,8 @@ services:
       - APRUEBO_WEB_ORIGIN=https://apruebo.luciel.dev
       # Public by design (the sign-in page shows it), so it lives here, not in the SOPS file.
       - GOOGLE_CLIENT_ID=753901411481-3vqfg82vuppv7e00pv9n9jkc2ukkhqrk.apps.googleusercontent.com
+      # Accounts that may read the feedback at /admin/comentarios, comma-separated.
+      - APRUEBO_ADMIN_EMAILS=twofigsthree@gmail.com
       # Email sign-in stays off until APRUEBO_SMTP_ADDR and APRUEBO_MAIL_FROM are added with
       # `sops edit env/production.env`.
       - APRUEBO_SMTP_ADDR=${APRUEBO_SMTP_ADDR:-}
