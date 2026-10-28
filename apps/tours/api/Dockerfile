@@ -15,7 +15,10 @@ COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,id=uv,target=/root/.cache/uv \
     uv export --frozen --no-dev --no-emit-project -o /tmp/requirements.txt \
     && uv pip install --system -r /tmp/requirements.txt \
-    && rm /tmp/requirements.txt
+    && rm /tmp/requirements.txt \
+    && pip uninstall -y uv pip
+# pip and uv only install; the app never runs them. Left in, they ship their own vendored
+# CA bundles (both failed the Trivy scan), so the runtime image drops both.
 COPY app/ app/
 COPY migrations/ migrations/
 EXPOSE 8000
