@@ -185,6 +185,90 @@ services:
     mem_limit: 128m
     logging: *default-logging
 
+  # Apruebo's optional accounts API (same repo and APRUEBO_TAG as `apruebo`): the same host's
+  # /api goes here, everything else to the web container. SQLite in apruebo-db-data.
+  apruebo-api:
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/apruebo-api:${APRUEBO_TAG:-latest}
+    container_name: apruebo-api
+    restart: unless-stopped
+    environment:
+      - APRUEBO_DB=/data/apruebo.db
+      - APRUEBO_ADDR=:8081
+      - APRUEBO_WEB_ORIGIN=https://apruebo.luciel.dev
+      # Public by design (the sign-in page shows it), so it lives here, not in the SOPS file.
+      - GOOGLE_CLIENT_ID=753901411481-3vqfg82vuppv7e00pv9n9jkc2ukkhqrk.apps.googleusercontent.com
+      # Email sign-in stays off until APRUEBO_SMTP_ADDR and APRUEBO_MAIL_FROM are added with
+      # `sops edit env/production.env`.
+      - APRUEBO_SMTP_ADDR=${APRUEBO_SMTP_ADDR:-}
+      - APRUEBO_SMTP_USER=${APRUEBO_SMTP_USER:-}
+      - APRUEBO_SMTP_PASSWORD=${APRUEBO_SMTP_PASSWORD:-}
+      - APRUEBO_MAIL_FROM=${APRUEBO_MAIL_FROM:-}
+    volumes:
+      - apruebo-db-data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.apruebo-api.rule=Host(`apruebo.luciel.dev`) && PathPrefix(`/api`)"
+      # Above the host-only `apruebo` router, whatever the rule lengths.
+      - "traefik.http.routers.apruebo-api.priority=100"
+      - "traefik.http.routers.apruebo-api.entrypoints=websecure"
+      - "traefik.http.routers.apruebo-api.tls.certresolver=le"
+      - "traefik.http.routers.apruebo-api.tls.domains[0].main=apruebo.luciel.dev"
+      - "traefik.http.services.apruebo-api.loadbalancer.server.port=8081"
+    # traefik-public also gives the egress Google key fetches and SMTP need.
+    networks:
+      - traefik-public
+    # Distroless (no shell or wget): the binary checks its own /api/health.
+    healthcheck:
+      test: ["CMD", "/api", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 128m
+    logging: *default-logging
+
+  # Opt-in (`--profile backup`), like tours-backup: replicates apruebo.db to the same bucket
+  # under the `apruebo` path.
+  apruebo-backup:
+    image: litestream/litestream:0.5.17
+    container_name: apruebo-backup
+    profiles: [backup]
+    # The API image runs as distroless nonroot (65532), which owns /data; root with every
+    # capability dropped could not write Litestream's files next to the database.
+    user: "65532:65532"
+    restart: unless-stopped
+    command: ["replicate", "-config", "/etc/litestream/litestream.yml"]
+    environment:
+      - LITESTREAM_BUCKET=${LITESTREAM_BUCKET:-}
+      - LITESTREAM_ENDPOINT=${LITESTREAM_ENDPOINT:-}
+      - LITESTREAM_REGION=${LITESTREAM_REGION:-auto}
+      - LITESTREAM_ACCESS_KEY_ID=${LITESTREAM_ACCESS_KEY_ID:-}
+      - LITESTREAM_SECRET_ACCESS_KEY=${LITESTREAM_SECRET_ACCESS_KEY:-}
+    volumes:
+      - apruebo-db-data:/data
+      - ./apps/apruebo/litestream:/etc/litestream:ro
+    networks:
+      - apruebo-backup-egress
+    depends_on:
+      apruebo-api:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    mem_limit: 128m
+    logging: *default-logging
+
   tours-web:
     image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-tours-web:${IMAGE_TAG:-latest}
     container_name: tours-web
@@ -313,7 +397,11 @@ networks:
     internal: true
   # tours-backup -> internet only (no other service attached).
   tours-backup-egress: {}
+  # apruebo-backup -> internet only.
+  apruebo-backup-egress: {}
 
 volumes:
   tours-db-data:
     name: tours-db-data
+  apruebo-db-data:
+    name: apruebo-db-data
