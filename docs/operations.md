@@ -51,7 +51,10 @@ Set these in `env/production.env` (any S3-compatible bucket: Cloudflare R2, OCI 
 `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_REGION` (`auto` for R2),
 `LITESTREAM_ACCESS_KEY_ID`, `LITESTREAM_SECRET_ACCESS_KEY`.
 The deploy enables the `backup` profile only when `LITESTREAM_ACCESS_KEY_ID` is non-empty.
-Check: `docker logs tours-backup`.
+Two sidecars share the bucket under their own paths: `tours-backup` (`tours`) and
+`apruebo-backup` (`apruebo`, database `/data/apruebo.db` in the `apruebo-db-data` volume; restore
+it like tours below, with those names and `apps/apruebo/litestream`).
+Check: `docker logs tours-backup` and `docker logs apruebo-backup`.
 
 ## Restore from backup
 
@@ -92,7 +95,7 @@ Once the restored data is confirmed good, delete the `*.before-restore-*` files 
 
 Nothing here alerts on downtime. Point an external uptime monitor (UptimeRobot,
 Better Stack, ...) at each public host: `luciel.dev`, `lemon.luciel.dev`, `tours.luciel.dev`,
-`apruebo.luciel.dev`.
+`apruebo.luciel.dev`, and `apruebo.luciel.dev/api/health` for the Apruebo accounts API.
 
 ## Configuration & secrets
 

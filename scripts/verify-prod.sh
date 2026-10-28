@@ -4,14 +4,15 @@
 #  2. Every public host answers over HTTPS with a 2xx/3xx (cert is verified, so a
 #     Traefik default/self-signed cert fails here too).
 #
-# Usage: scripts/verify-prod.sh [host ...]   (default: all platform hosts)
+# Usage: scripts/verify-prod.sh [host[/path] ...]   (default: all platform hosts, plus the
+# Apruebo API health path)
 # VERIFY_RESOLVE_IP=127.0.0.1 makes every request hit that IP instead of public DNS;
 # the deploy job sets it so the check does not depend on the VPS reaching its own
 # public address. TLS name and cert validation are unchanged.
 set -euo pipefail
 
 hosts=("$@")
-[ ${#hosts[@]} -eq 0 ] && hosts=(luciel.dev lemon.luciel.dev tours.luciel.dev apruebo.luciel.dev)
+[ ${#hosts[@]} -eq 0 ] && hosts=(luciel.dev lemon.luciel.dev tours.luciel.dev apruebo.luciel.dev apruebo.luciel.dev/api/health)
 ip="${VERIFY_RESOLVE_IP:-}"
 connect="${ip:-luciel.dev}"
 
@@ -25,14 +26,17 @@ fi
 echo "✓ Production LE cert confirmed: $issuer"
 
 fail=0
-for host in "${hosts[@]}"; do
+for target in "${hosts[@]}"; do
+  host="${target%%/*}"
+  path="/"
+  [ "$target" != "$host" ] && path="/${target#*/}"
   args=(-s -o /dev/null -w '%{http_code}' --max-time 10 --retry 5 --retry-delay 3 --retry-connrefused)
   [ -n "$ip" ] && args+=(--resolve "$host:443:$ip")
-  code=$(curl "${args[@]}" "https://$host/" 2>/dev/null) || code=000
+  code=$(curl "${args[@]}" "https://$host$path" 2>/dev/null) || code=000
   if [[ "$code" =~ ^[23] ]]; then
-    echo "✓ $host -> $code"
+    echo "✓ $target -> $code"
   else
-    echo "✗ $host -> $code"
+    echo "✗ $target -> $code"
     fail=1
   fi
 done

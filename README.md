@@ -12,7 +12,7 @@ The point is not the screenshots, it is the engineering: every push to `main` th
 |-----|-----|------------|-------|
 | `landing` | [luciel.dev](https://luciel.dev) | Root domain. Currently an "under construction" page; the content hub is on the roadmap. | Astro, Tailwind, nginx |
 | `lemon` | [lemon.luciel.dev](https://lemon.luciel.dev) | A personal digital memory book (photos, video, music, public guestbook). | Astro, Tailwind, Supabase (guestbook) |
-| `apruebo` | [apruebo.luciel.dev](https://apruebo.luciel.dev) | Grade tracker for students: what grade they need on the remaining evaluations. Code lives in a separate private repo; this platform only runs its image. | SvelteKit, Go (WebAssembly), nginx |
+| `apruebo` | [apruebo.luciel.dev](https://apruebo.luciel.dev) | Grade tracker for students: what grade they need on the remaining evaluations. Optional accounts (Google sign-in) sync saved data through `apruebo-api`, served on the same host under `/api`. Code lives in a separate private repo; this platform only runs its images. | SvelteKit, Go (WebAssembly), nginx; Go API on SQLite |
 | `tours` | [tours.luciel.dev](https://tours.luciel.dev) | Double-entry accounting panel for a tour agency/hotel in Cusco: sales, commissions, settlements, audit log. **Login-only back-office for a real client; there are no public routes beyond the sign-in page.** | Next.js, FastAPI, SQLite (WAL) |
 
 `tours.luciel.dev` has no public demo. The code is here; see [`apps/tours/STATUS.md`](apps/tours/STATUS.md) for what it does and how it was built.
@@ -25,6 +25,9 @@ flowchart LR
     T --> L[landing<br/>nginx]
     T --> M[lemon<br/>nginx]
     T --> Q[apruebo<br/>nginx]
+    T -->|/api| QA[apruebo-api<br/>Go]
+    QA --> QD[(SQLite<br/>Docker volume)]
+    QD -.->|opt-in replication| B
     T --> W[tours-web<br/>Next.js]
     W -->|internal network| A[tours-api<br/>FastAPI]
     A --> D[(SQLite WAL<br/>Docker volume)]
@@ -48,7 +51,7 @@ flowchart LR
 - **CI/CD pipeline** ([`.github/workflows/release.yml`](.github/workflows/release.yml)). A `changes` job diffs each app against the revision label of its current `latest` image ([`scripts/needs-build.sh`](scripts/needs-build.sh)), so only changed apps rebuild; the rest are retagged registry-side. Builds run on native arm64 runners (no QEMU), run each app's tests/lint first, push a `sha-<7>` tag, gate on a Trivy scan (fixable CRITICAL fails the run), and only then promote `latest`. Third-party actions are pinned to full commit SHAs.
 - **Deploy with rollback** ([`docs/operations.md`](docs/operations.md)). One SSH step pins the whole stack to the built commit, runs `docker compose up -d --wait`, then a smoke test ([`scripts/verify-prod.sh`](scripts/verify-prod.sh)) checks the production Let's Encrypt cert and HTTPS on every host. On failure it restores the previous `.env` and git checkout and brings the old stack back.
 - **Secrets with SOPS + age** ([`.sops.yaml`](.sops.yaml), [`env/production.env`](env/production.env)). Production config is committed encrypted. The runner decrypts it, masks every value, and validates it ([`scripts/check-env.sh`](scripts/check-env.sh)) before deploy. Only SSH access and the age key live in GitHub secrets.
-- **Backups** ([`apps/tours/litestream/litestream.yml`](apps/tours/litestream/litestream.yml)). Optional Litestream sidecar replicates the SQLite DB to an S3-compatible bucket; the restore procedure with an integrity check is documented in [`docs/operations.md`](docs/operations.md). It is enabled only when its credentials are set.
+- **Backups** ([`apps/tours/litestream/litestream.yml`](apps/tours/litestream/litestream.yml), [`apps/apruebo/litestream/litestream.yml`](apps/apruebo/litestream/litestream.yml)). Optional Litestream sidecars replicate each SQLite DB to an S3-compatible bucket; the restore procedure with an integrity check is documented in [`docs/operations.md`](docs/operations.md). It is enabled only when its credentials are set.
 - **Dependabot policy** ([`.github/dependabot.yml`](.github/dependabot.yml)). Weekly, grouped minor/patch updates across GitHub Actions, pnpm, uv, Docker base images and compose images; majors are taken deliberately.
 - **Tests.** `tours-api`: 21 pytest modules in [`apps/tours/api/tests/`](apps/tours/api/tests) covering double-entry balance, RBAC, audit log, commissions, settlements. `tours-web`: 15 vitest files in [`apps/tours/web/tests/`](apps/tours/web/tests). The pipeline helpers have their own shell tests ([`scripts/test-check-env.sh`](scripts/test-check-env.sh), [`scripts/test-needs-build.sh`](scripts/test-needs-build.sh)).
 - **Lint gate.** `tours-web` must pass ESLint ([`eslint.config.mjs`](apps/tours/web/eslint.config.mjs)) before its image is built.

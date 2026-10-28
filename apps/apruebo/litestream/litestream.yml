@@ -1,0 +1,14 @@
+# Litestream (v0.5.x) config: continuous replication of the Apruebo accounts SQLite DB to the
+# same S3-compatible bucket as tours, under its own path.
+# ${VAR} values are expanded from the container environment (see docker-compose.yml
+# service `apruebo-backup`), so no secret lives in this file.
+dbs:
+  - path: /data/apruebo.db
+    replica:
+      type: s3
+      bucket: ${LITESTREAM_BUCKET}
+      path: apruebo
+      endpoint: ${LITESTREAM_ENDPOINT}
+      region: ${LITESTREAM_REGION}
+      access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+      secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
