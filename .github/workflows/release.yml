@@ -297,12 +297,16 @@ jobs:
           persist-credentials: false
 
       # Cheap guards for the scripts the pipeline trusts: the env validator before it sees the
-      # real file, and the build/skip decision behind every retag.
+      # real file, the build/skip decision behind every retag, and the smoke test that decides
+      # a rollback.
       - name: Test check-env
         run: bash scripts/test-check-env.sh
 
       - name: Test needs-build
         run: bash scripts/test-needs-build.sh
+
+      - name: Test verify-prod
+        run: bash scripts/test-verify-prod.sh
 
       # Pinned release binary, verified against the checksum published with that release.
       - name: Install sops
