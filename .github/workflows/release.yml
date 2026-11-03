@@ -97,7 +97,6 @@ jobs:
           shared='package.json pnpm-lock.yaml pnpm-workspace.yaml .dockerignore'
           apps="$(jq -n --arg s "$shared" '[
             {"name":"landing","context":".","file":"apps/landing/Dockerfile","paths":("apps/landing " + $s)},
-            {"name":"lemon","context":".","file":"apps/lemon/Dockerfile","paths":("apps/lemon " + $s)},
             {"name":"tours-web","context":".","file":"apps/tours/web/Dockerfile","paths":("apps/tours/web " + $s)},
             {"name":"tours-api","context":"apps/tours/api","file":"apps/tours/api/Dockerfile","paths":"apps/tours/api"}
           ]')"

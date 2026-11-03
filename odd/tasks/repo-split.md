@@ -140,3 +140,8 @@ the compose `image:` accordingly; the old packages stay in place, untouched.
 - L15 — 2026-11-02. Correct order for the next attempt: (1) `gh auth refresh -h github.com
   -s workflow`, (2) push the lemon repo so the image exists in GHCR, (3) only then declare
   `LEMON_TAG` and repoint compose in one PR. Never step 3 before step 2.
+- L16 — 2026-11-03. Steps 1 and 2 done: `Jaed69/lemon` published, built from the groundwork branch
+  with no tag recording. First build proved the gate: Trivy blocked CVE-2026-111497 in
+  `brotli-libs` from the nginx base, patched in the lemon Dockerfile. `ghcr.io/jaed69/lemon:sha-8780c30`
+  is arm64 and `latest`. Step 3 committed; `landing` shares that base and will hit the same gate.
+  `apps/lemon` stays until T5 because the root pnpm lockfile still lists it.
