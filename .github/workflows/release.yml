@@ -308,6 +308,10 @@ jobs:
       - name: Test verify-prod
         run: bash scripts/test-verify-prod.sh
 
+      # Rewrites env/tags.env from app repos via the reusable build-and-release workflow.
+      - name: Test record-tag
+        run: bash scripts/test-record-tag.sh
+
       # Pinned release binary, verified against the checksum published with that release.
       - name: Install sops
         env:
