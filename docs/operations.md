@@ -141,7 +141,7 @@ value is `__FILL_ME__` or a variable required by `docker-compose.yml` (`${VAR:?.
   `TRAEFIK_DASHBOARD_PASS_HASH` keeps its `$` signs.
 - **Add a variable:** add the line with `sops edit env/production.env` and reference it in
   `docker-compose.yml`. No workflow change.
-- **Local dev:** `docker compose --env-file env/development.env up -d`. It holds dummy values only.
+- **Local dev:** `docker compose --env-file env/development.env --env-file env/tags.env up -d`. It holds dummy values only.
   Personal overrides go in `env/<name>.local.env` (gitignored), passed as a later `--env-file`.
 - **Key backup:** the age private key is `%APPDATA%\sops\age\keys.txt` (Windows) or
   `~/.config/sops/age/keys.txt`. Keep a copy in a password manager. Losing it means losing
