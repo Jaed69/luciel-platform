@@ -12,6 +12,11 @@ ssh-key-*.key.pub
 env/*.local.env
 env/*.dec*
 
+# Deploy scratch on the VPS (DEPLOY_PATH is the checkout): resolved image tags
+.tags.wanted
+.tags.now
+.tags.next
+
 # Let's Encrypt cert store (contains private key material — D-13, D-20, T-01-03)
 traefik/letsencrypt/
 traefik/acme.json

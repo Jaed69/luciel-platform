@@ -1,0 +1,275 @@
+# Reusable: build an app image on arm64, scan it, promote it to `latest`, and record the
+# new tag in the deployment repo. Called by each app repo's own release workflow.
+#
+# This file is the ONE place that holds the build contract (arm64 runner, pinned action
+# SHAs, Trivy gate, tag format). App repos pass inputs; they do not copy these steps.
+#
+# The caller must declare:
+#   permissions: { contents: read, packages: write }
+# because a reusable workflow cannot grant itself more than the caller has.
+#
+# Example caller (app repo .github/workflows/release.yml):
+#   jobs:
+#     release:
+#       uses: Jaed69/luciel-platform/.github/workflows/build-and-release.yml@main
+#       permissions: { contents: read, packages: write }
+#       with:
+#         image-name: lemon
+#         tag-var: LEMON_TAG
+#       secrets:
+#         platform-token: ${{ secrets.PLATFORM_DEPLOY_TOKEN }}
+#
+# A PRIVATE app repo has no free arm64 runner and adds:
+#         runner: ubuntu-24.04
+#         emulate: true
+name: Build and release (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: 'GHCR package name: ghcr.io/<owner>/<image-name>. Lowercased automatically.'
+        required: true
+        type: string
+      context:
+        description: 'Docker build context.'
+        required: false
+        type: string
+        default: '.'
+      dockerfile:
+        description: 'Path to the Dockerfile, relative to the repo root.'
+        required: false
+        type: string
+        default: 'Dockerfile'
+      runtime:
+        description: 'Toolchain to set up before `test-command`: none | pnpm | uv.'
+        required: false
+        type: string
+        default: 'none'
+      node-version:
+        description: 'Node version when runtime=pnpm.'
+        required: false
+        type: string
+        default: '26'
+      uv-cache-glob:
+        description: 'Lockfile glob for the uv cache when runtime=uv.'
+        required: false
+        type: string
+        default: 'uv.lock'
+      working-directory:
+        description: 'Directory `test-command` runs in.'
+        required: false
+        type: string
+        default: '.'
+      test-command:
+        description: 'Checks that must pass before an image is built. Empty = no gate.'
+        required: false
+        type: string
+        default: ''
+      runner:
+        description: >-
+          Runner label. `ubuntu-24.04-arm` builds arm64 natively and is free on PUBLIC
+          repos only. A private repo must use `ubuntu-24.04` with `emulate: true`.
+        required: false
+        type: string
+        default: 'ubuntu-24.04-arm'
+      emulate:
+        description: >-
+          Set up QEMU and cross-build arm64. Required when `runner` is not an arm64 label.
+          Much slower than a native build — only for private repos.
+        required: false
+        type: boolean
+        default: false
+      tag-var:
+        description: >-
+          Variable in the deployment repo tags file to bump, e.g. LEMON_TAG.
+          Empty = build and promote only, record nothing (no deploy is triggered).
+        required: false
+        type: string
+        default: ''
+      platform-repo:
+        description: 'Deployment repo that holds the tags file.'
+        required: false
+        type: string
+        default: 'Jaed69/luciel-platform'
+      tags-file:
+        description: 'Path to the tags file inside the deployment repo.'
+        required: false
+        type: string
+        default: 'env/tags.env'
+    secrets:
+      platform-token:
+        description: >-
+          Token with `contents: write` on `platform-repo` ONLY. Required when tag-var is set.
+        required: false
+    outputs:
+      tag:
+        description: 'The sha-<7> tag that was built and pushed.'
+        value: ${{ jobs.build.outputs.tag }}
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    # Default: native arm64 runner (free on public repos), no emulation, matches the arm64
+    # VPS. Private repos have no free arm64 runner and must pass runner + emulate.
+    runs-on: ${{ inputs.runner }}
+    permissions:
+      contents: read
+      packages: write  # GITHUB_TOKEN of the CALLER repo pushes to its own GHCR namespace
+    outputs:
+      tag: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # --- CI gate: the app's own checks must pass before an image is built. ---
+      - name: Set up pnpm
+        if: inputs.runtime == 'pnpm'
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        if: inputs.runtime == 'pnpm'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+
+      - name: Install JS dependencies
+        if: inputs.runtime == 'pnpm'
+        working-directory: ${{ inputs.working-directory }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up uv
+        if: inputs.runtime == 'uv'
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          enable-cache: true
+          cache-dependency-glob: ${{ inputs.uv-cache-glob }}
+
+      - name: Run checks
+        if: inputs.test-command != ''
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.test-command }}
+
+      # --- Build, push the sha tag, scan, then promote to latest. ---
+      - name: Set up QEMU
+        if: inputs.emulate
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          # metadata-action lowercases the image name (GHCR requires lowercase).
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ inputs.image-name }}
+          # Only the sha tag here: `latest` is moved after the Trivy scan passes.
+          tags: |
+            type=sha,prefix=sha-
+
+      - name: Build and push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ inputs.image-name }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.image-name }}
+
+      # Fail the job (and therefore the deploy) on fixable CRITICAL vulnerabilities.
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_USERNAME: ${{ github.actor }}
+          TRIVY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          # Images are arm64-only; Trivy defaults to linux/amd64 and fails with "no child with platform".
+          TRIVY_PLATFORM: linux/arm64
+        with:
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Promote to latest
+        env:
+          SHA_REF: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+        run: docker buildx imagetools create -t "${SHA_REF%%:*}:latest" "$SHA_REF"
+
+  # Record the new tag in the deployment repo. That commit is what triggers the deploy,
+  # so git — not a workflow payload — is the source of truth for what runs in production.
+  # The rewrite itself is scripts/record-tag.sh IN THE DEPLOYMENT REPO (tested there), so
+  # the file format and its guards have one owner.
+  record:
+    needs: build
+    if: inputs.tag-var != ''
+    runs-on: ubuntu-latest
+    permissions: {}  # uses `platform-token`, never the caller's GITHUB_TOKEN
+    steps:
+      - name: Bump ${{ inputs.tag-var }} in ${{ inputs.platform-repo }}
+        env:
+          GH_TOKEN: ${{ secrets.platform-token }}
+          PLATFORM_REPO: ${{ inputs.platform-repo }}
+          TAGS_FILE: ${{ inputs.tags-file }}
+          TAG_VAR: ${{ inputs.tag-var }}
+          NEW_TAG: ${{ needs.build.outputs.tag }}
+          SOURCE_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::tag-var is set but the platform-token secret is missing" >&2
+            exit 1
+          fi
+
+          git config --global user.name 'luciel-deploy-bot'
+          git config --global user.email 'luciel-deploy-bot@users.noreply.github.com'
+
+          # Another app repo may push between our clone and our push. Re-clone and retry:
+          # the bump is idempotent, so a lost race costs one attempt, never a wrong tag.
+          attempt=1
+          while [ "$attempt" -le 5 ]; do
+            rm -rf platform
+            gh repo clone "$PLATFORM_REPO" platform -- --depth 1 --branch main --quiet
+
+            # record-tag.sh validates the tag and the variable name, refuses an undeclared
+            # variable, and leaves the file untouched on any refused input.
+            result="$(bash platform/scripts/record-tag.sh \
+              "platform/${TAGS_FILE}" "$TAG_VAR" "$NEW_TAG")"
+
+            if [ "$result" = unchanged ]; then
+              echo "${TAG_VAR} is already ${NEW_TAG} — nothing to record"
+              exit 0
+            fi
+
+            git -C platform add -- "$TAGS_FILE"
+            git -C platform commit -q \
+              -m "chore(deploy): ${TAG_VAR}=${NEW_TAG}" \
+              -m "Built from ${SOURCE_REPO}@${NEW_TAG#sha-}."
+
+            if git -C platform push origin main; then
+              echo "Recorded ${TAG_VAR}=${NEW_TAG} in ${PLATFORM_REPO}"
+              exit 0
+            fi
+
+            echo "push rejected (attempt ${attempt}/5) — another app probably recorded first"
+            attempt=$((attempt + 1))
+            sleep $((attempt * 3))
+          done
+
+          echo "::error::could not record ${TAG_VAR}=${NEW_TAG} after 5 attempts" >&2
+          exit 1
