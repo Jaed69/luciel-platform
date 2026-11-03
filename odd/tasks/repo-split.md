@@ -38,13 +38,14 @@ source of truth, and a superseded run loses the tag (see `release.yml` `on:` com
       `scripts/test-record-tag.sh`, wired into the deploy job's guard steps.
       Route: inline (small, understood, additive). RED observed (7 failures, script
       absent) then GREEN 21/21.
-- [~] T2 — S1, S3, S5, S6. Migrate `lemon`. Deployment-repo half DONE: `env/tags.env`
-      seeded `LEMON_TAG=sha-2b5beb8`, compose pins `ghcr.io/jaed69/lemon:${LEMON_TAG:?}`,
-      lemon out of the build matrix, generic tag handling via `scripts/deploy-tags.sh`
-      (+ tests), `check-env.sh` takes an optional tags file (+ tests). Lemon repo built and
-      committed locally at `2b5beb8` (33 commits of history preserved), verified with
-      `pnpm build`, `docker build` and a running container. PENDING: the GitHub repo does
-      not exist yet and `PLATFORM_DEPLOY_TOKEN` needs the user. Route: inline.
+- [ ] T2 — S1, S3, S5, S6. Migrate `lemon`. REOPENED by review (see L12): the cutover was
+      reverted, lemon is built in-repo again and `env/tags.env` declares no app. What stands:
+      the generic tag machinery (`scripts/deploy-tags.sh`, `scripts/record-tag.sh`,
+      `check-env.sh` tags support, the reusable workflow) and `env/tags.env` itself, all
+      additive. The lemon repo is built and committed locally at `2b5beb8` (33 commits of
+      history preserved; `pnpm build`, `docker build` and a running container verified), and
+      `Jaed69/lemon` exists but is EMPTY: the push was rejected because the `gh` token lacks
+      the `workflow` scope. Route: inline.
 - [ ] T3 — S1, S3, S5, S6. Migrate `landing` (has `tests/`). Route: inline.
 - [ ] T4 — S1, S3, S5, S6. Migrate `tours` (two images, `pytest` + `vitest`). Route: inline.
 - [ ] T5 — S3, S6. Move `apruebo` off `repository_dispatch` onto `env/tags.env`; delete the
@@ -119,3 +120,23 @@ the compose `image:` accordingly; the old packages stay in place, untouched.
   `ghcr.io/jaed69/lemon:sha-2b5beb8` while `landing` still resolves to
   `luciel-platform-landing:${IMAGE_TAG}` — the two schemes coexist, as L4 planned — and that
   dropping the tags file makes `config -q` fail loudly on `LEMON_TAG`.
+- L12 — 2026-11-02. Native review (lineage `review-1c5df96cf2b35d40`, tier high, 4 lenses)
+  returned `correction_required` with two BLOCKER/CRITICAL findings that are one defect:
+  `R1-lemon-image-unpublished` (risk) and `R3-lemon-image-has-no-producer` (reliability).
+  Repointing `lemon` to `ghcr.io/jaed69/lemon:${LEMON_TAG:?}` while deleting lemon from the
+  only workflow that builds an image left that image with NO producer, so the next push to
+  main would fail `compose pull` and wedge the WHOLE-STACK deploy for every app, not just
+  lemon — an availability regression against the baseline, and a violation of this document's
+  own S6 ("Never an app with no build"). The ordering was known and communicated, but the
+  committed candidate was broken standalone; that is the defect.
+- L13 — 2026-11-02. Correction (bounded, 60 lines): compose back to
+  `luciel-platform-lemon:${IMAGE_TAG:-latest}`, lemon restored in the build matrix, and
+  `env/tags.env` kept with its contract but declaring no app. Lesson folded into the file's
+  header: a variable may only be declared once its repo actually publishes the image,
+  because `${VAR:?}` is strict by design and wedges the whole stack otherwise.
+- L14 — 2026-11-02. Removing the only variable exposed a second defect in the same change:
+  `grep -vE ... env/tags.env` exits 1 on no match, which aborts the decrypt step under
+  `set -eu`. Guarded with `|| true`.
+- L15 — 2026-11-02. Correct order for the next attempt: (1) `gh auth refresh -h github.com
+  -s workflow`, (2) push the lemon repo so the image exists in GHCR, (3) only then declare
+  `LEMON_TAG` and repoint compose in one PR. Never step 3 before step 2.

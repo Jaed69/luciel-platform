@@ -97,6 +97,7 @@ jobs:
           shared='package.json pnpm-lock.yaml pnpm-workspace.yaml .dockerignore'
           apps="$(jq -n --arg s "$shared" '[
             {"name":"landing","context":".","file":"apps/landing/Dockerfile","paths":("apps/landing " + $s)},
+            {"name":"lemon","context":".","file":"apps/lemon/Dockerfile","paths":("apps/lemon " + $s)},
             {"name":"tours-web","context":".","file":"apps/tours/web/Dockerfile","paths":("apps/tours/web " + $s)},
             {"name":"tours-api","context":"apps/tours/api","file":"apps/tours/api/Dockerfile","paths":"apps/tours/api"}
           ]')"
@@ -352,8 +353,9 @@ jobs:
           # (they name public images) and must stay readable in the deploy log. It is
           # validated here — NAME=sha-<7> on every line — before it reaches the VPS.
           bash scripts/check-env.sh "$dec" docker-compose.yml env/tags.env
-          echo "Tags to deploy:"
-          grep -vE '^\s*(#|$)' env/tags.env | sed 's/^/  /'
+          echo "Recorded tags to deploy:"
+          # `|| true`: no app records a tag yet, and grep exits 1 on no match under `set -e`.
+          grep -vE '^[[:space:]]*(#|$)' env/tags.env | sed 's/^/  /' || true
 
           tags_blob="$(base64 -w0 env/tags.env)"
           echo "TAGS_B64=${tags_blob}" >> "$GITHUB_ENV"
