@@ -2,6 +2,11 @@
 
 Single Oracle ARM VPS, Docker Compose + Traefik. Everything below runs on the VPS in `DEPLOY_PATH`.
 
+This repo is the **deployment repo**: it owns compose, Traefik, production config and the
+deploy itself. Apps that live in their own repo build their image there and record its tag in
+`env/tags.env` here; that commit is what deploys them. Apps still in `apps/` are built by this
+repo's own `release.yml`. `env/tags.env` is the source of truth for what runs in production.
+
 ## How a deploy works
 
 `.github/workflows/release.yml` on push to `main`. Runs are serialized (one at a time, in order).
@@ -21,6 +26,11 @@ Single Oracle ARM VPS, Docker Compose + Traefik. Everything below runs on the VP
    `.env.prev`, regenerates `.env` from the decrypted file, then `docker compose pull` +
    `up -d --remove-orphans --wait` for the whole stack (Traefik, docker-socket-proxy, apps).
    `.env` switches to `IMAGE_TAG=sha-<7>` only after the pull.
+
+   Tags from `env/tags.env` follow the same rule: the deploy re-validates every line on the
+   VPS (`scripts/deploy-tags.sh validate`), keeps the tag the VPS already runs in `.env`
+   during the pull (`resolve`), and switches to the new one only once the images are there.
+   A failed pull therefore never leaves `.env` naming an image that was never pulled.
 4. Runs `scripts/verify-prod.sh` (LE cert + HTTPS 2xx/3xx on every host).
 5. If step 3 or 4 fails, it restores the previous `.env` (`.env.prev`: previous `IMAGE_TAG` and
    config) **and** the previous git checkout (recreating Traefik if its static config differs),
@@ -34,6 +44,26 @@ Single Oracle ARM VPS, Docker Compose + Traefik. Everything below runs on the VP
 
 `traefik/traefik.yml` is static config: the deploy recreates Traefik when it changed.
 Files in `traefik/dynamic/` hot-reload.
+
+## Image tags (`env/tags.env`)
+
+Each app in its own repo has one line, plain text (these name public images; they are not
+secrets, and a bump has to be readable in the diff):
+
+```env
+LEMON_TAG=sha-2b5beb8
+```
+
+- **A variable must be declared here before its app repo can record into it.**
+  `scripts/record-tag.sh` refuses an undeclared name rather than appending one, so a typo
+  cannot create a dead variable that never deploys.
+- `docker-compose.yml` pins each of these with `${<APP>_TAG:?...}` — strict on purpose: a
+  missing tag fails the deploy instead of silently serving `latest`.
+- An app repo's release rewrites its own line and pushes to `main`, which triggers the deploy.
+- **Roll one app back:** revert its `chore(deploy): <APP>_TAG=...` commit and push. The next
+  deploy pulls the older image. This replaces hand-editing `.env` on the VPS for those apps.
+- Locally, compose needs the file too:
+  `docker compose --env-file env/development.env --env-file env/tags.env config -q`.
 
 ## Manual rollback
 

@@ -48,6 +48,47 @@ run_case "value with quotes passes" pass $'REQUIRED_A="quoted"\nREQUIRED_B=it\'s
 run_case "value with = passes" pass $'REQUIRED_A=a=b==\nREQUIRED_B=b'
 run_case "no trailing newline passes" pass "$(printf 'REQUIRED_A=a\nREQUIRED_B=b')"
 
+# --- optional tags file: declares the deployed image tag per app ---------------------
+# Rules 1 (placeholder) and 2 (stray computed tags) stay scoped to the env file; the
+# ${VAR:?} completeness check sees the env file AND the tags file together.
+cat > "$tmp/tags-compose.yml" <<'YML'
+services:
+  app:
+    image: ghcr.io/o/app:${LEMON_TAG:?set LEMON_TAG}
+    environment:
+      A: ${REQUIRED_A:?set REQUIRED_A}
+YML
+
+# tags_case <name> <expected> <env content> <tags content|__MISSING__>
+tags_case() {
+  local name="$1" expect="$2" env_content="$3" tags_content="$4" got=pass
+  printf '%s\n' "$env_content" > "$tmp/case.env"
+  local tags="$tmp/case.tags.env"
+  rm -f "$tags"
+  if [ "$tags_content" != "__MISSING__" ]; then
+    printf '%s\n' "$tags_content" > "$tags"
+  fi
+  bash "$check" "$tmp/case.env" "$tmp/tags-compose.yml" "$tags" >/dev/null 2>&1 || got=fail
+  if [ "$got" = "$expect" ]; then
+    echo "ok   - $name"
+  else
+    echo "FAIL - $name (expected $expect, got $got)"; failures=$((failures + 1))
+  fi
+}
+
+echo "# tags file"
+tags_case "tag supplied by the tags file passes" pass 'REQUIRED_A=a' 'LEMON_TAG=sha-2b5beb8'
+tags_case "tags file comments and blanks pass" pass 'REQUIRED_A=a' $'# recorded by app repos\n\nLEMON_TAG=sha-2b5beb8'
+tags_case "tag missing from both fails" fail 'REQUIRED_A=a' 'OTHER_TAG=sha-2b5beb8'
+tags_case "empty tag fails" fail 'REQUIRED_A=a' 'LEMON_TAG='
+tags_case "env var still required when tags file is given" fail 'OTHER=x' 'LEMON_TAG=sha-2b5beb8'
+tags_case "malformed tag value fails" fail 'REQUIRED_A=a' 'LEMON_TAG=latest'
+tags_case "tag with the wrong hex length fails" fail 'REQUIRED_A=a' 'LEMON_TAG=sha-2b5beb'
+tags_case "lowercase name in the tags file fails" fail 'REQUIRED_A=a' $'LEMON_TAG=sha-2b5beb8\nlemon_tag=sha-2b5beb8'
+tags_case "tag in the env file is still refused" fail $'REQUIRED_A=a\nIMAGE_TAG=sha-2b5beb8' 'LEMON_TAG=sha-2b5beb8'
+tags_case "a declared tag may live in the tags file" pass 'REQUIRED_A=a' $'LEMON_TAG=sha-2b5beb8\nAPRUEBO_TAG=sha-d09db04'
+tags_case "missing tags file fails" fail 'REQUIRED_A=a' '__MISSING__'
+
 if [ "$failures" -ne 0 ]; then
   echo "$failures test(s) failed" >&2
   exit 1

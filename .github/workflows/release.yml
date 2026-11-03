@@ -97,7 +97,6 @@ jobs:
           shared='package.json pnpm-lock.yaml pnpm-workspace.yaml .dockerignore'
           apps="$(jq -n --arg s "$shared" '[
             {"name":"landing","context":".","file":"apps/landing/Dockerfile","paths":("apps/landing " + $s)},
-            {"name":"lemon","context":".","file":"apps/lemon/Dockerfile","paths":("apps/lemon " + $s)},
             {"name":"tours-web","context":".","file":"apps/tours/web/Dockerfile","paths":("apps/tours/web " + $s)},
             {"name":"tours-api","context":"apps/tours/api","file":"apps/tours/api/Dockerfile","paths":"apps/tours/api"}
           ]')"
@@ -312,6 +311,10 @@ jobs:
       - name: Test record-tag
         run: bash scripts/test-record-tag.sh
 
+      # Decides which tag .env carries during the pull — the rollback invariant.
+      - name: Test deploy-tags
+        run: bash scripts/test-deploy-tags.sh
+
       # Pinned release binary, verified against the checksum published with that release.
       - name: Install sops
         env:
@@ -345,7 +348,15 @@ jobs:
             fi
           done < "$dec"
 
-          bash scripts/check-env.sh "$dec"
+          # env/tags.env is NOT merged into the secrets blob: its values are not secret
+          # (they name public images) and must stay readable in the deploy log. It is
+          # validated here — NAME=sha-<7> on every line — before it reaches the VPS.
+          bash scripts/check-env.sh "$dec" docker-compose.yml env/tags.env
+          echo "Tags to deploy:"
+          grep -vE '^\s*(#|$)' env/tags.env | sed 's/^/  /'
+
+          tags_blob="$(base64 -w0 env/tags.env)"
+          echo "TAGS_B64=${tags_blob}" >> "$GITHUB_ENV"
 
           blob="$(base64 -w0 "$dec")"
           echo "::add-mask::${blob}"
@@ -371,7 +382,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: PROD_ENV_B64,APRUEBO_TAG_REQ
+          envs: PROD_ENV_B64,TAGS_B64,APRUEBO_TAG_REQ
           script: |
             set -eu
             cd ${{ secrets.DEPLOY_PATH }}
@@ -412,6 +423,22 @@ jobs:
               TRAEFIK_RECREATE=1
             fi
 
+            # Image tags recorded in env/tags.env by each app repo's release. They are
+            # written into .env and sourced to pull, so they are re-validated HERE with the
+            # checkout's own script: trusting the runner's blob would turn it into a
+            # remote-shell injection. See scripts/deploy-tags.sh (tested in CI).
+            printf '%s' "${TAGS_B64}" | base64 -d > .tags.wanted
+            if ! bash scripts/deploy-tags.sh validate .tags.wanted; then
+              echo "Refusing the recorded tags — nothing was changed on the VPS" >&2
+              exit 1
+            fi
+            TAG_NAMES="$(sed -n 's/^\([A-Z][A-Z0-9_]*\)=.*/\1/p' .tags.wanted)"
+            tagval() { sed -n "s/^$1=//p" "$2" | head -n1; }
+            # .env carries the tags the VPS already runs until the new images are pulled.
+            bash scripts/deploy-tags.sh resolve .tags.wanted .env > .tags.now
+            # Same shape, with every app at its NEW tag: comparable to .tags.now.
+            bash scripts/deploy-tags.sh resolve .tags.wanted "" > .tags.next
+
             # Rebuild .env from the decrypted env/production.env (idempotent — overwrites on
             # every CI deploy; manual edits on the VPS are wiped). To add a var, see the
             # workflow header comment.
@@ -433,6 +460,7 @@ jobs:
               echo "# Generated: $(date -u +%FT%TZ)"
               echo "IMAGE_TAG=${PREV_TAG:-${IMAGE_TAG}}"
               echo "APRUEBO_TAG=${PREV_APRUEBO_TAG:-${APRUEBO_TAG}}"
+              cat .tags.now
               cat .env.new
             } > .env.tmp
             chmod 600 .env.tmp
@@ -475,17 +503,29 @@ jobs:
             # over .env for compose interpolation). A failed pull aborts before anything
             # running is touched: .env goes back to .env.prev and the checkout to OLD_HEAD,
             # so the next deploy diffs traefik.yml against what is running.
-            if ! IMAGE_TAG="${IMAGE_TAG}" APRUEBO_TAG="${APRUEBO_TAG}" compose pull; then
+            # Sourcing .tags.wanted is safe: every line was matched whole against
+            # NAME=sha-<7 hex> above. A subshell keeps the new tags out of the parent
+            # environment, where they would override .env for `rollout` too.
+            if ! (
+              set -a; . ./.tags.wanted; set +a
+              IMAGE_TAG="${IMAGE_TAG}" APRUEBO_TAG="${APRUEBO_TAG}" compose pull
+            ); then
               echo "Pull of ${IMAGE_TAG} FAILED — nothing was changed on the VPS" >&2
               if [ -f .env.prev ]; then
                 cp -p .env.prev .env
               else
-                sed -i '/^IMAGE_TAG=/d; /^APRUEBO_TAG=/d' .env  # first deploy: the never-pulled tag is not a baseline
+                # first deploy: a never-pulled tag is not a baseline
+                sed -i '/^IMAGE_TAG=/d; /^APRUEBO_TAG=/d' .env
+                for n in $TAG_NAMES; do sed -i "/^${n}=/d" .env; done
               fi
               git reset --hard "$OLD_HEAD"
               exit 1
             fi
             sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/; s/^APRUEBO_TAG=.*/APRUEBO_TAG=${APRUEBO_TAG}/" .env
+            # The images are present now, so .env may name them.
+            for n in $TAG_NAMES; do
+              sed -i "s/^${n}=.*/${n}=$(tagval "$n" .tags.wanted)/" .env
+            done
 
             if rollout && VERIFY_RESOLVE_IP=127.0.0.1 bash scripts/verify-prod.sh; then
               echo "Deploy ${IMAGE_TAG} OK"
@@ -494,9 +534,11 @@ jobs:
             else
               echo "Deploy ${IMAGE_TAG} FAILED (rollout or smoke test)" >&2
               compose ps >&2 || true
-              # An apruebo dispatch redeploys the running IMAGE_TAG: a changed APRUEBO_TAG
-              # is a rollback target too.
-              if [ -n "${PREV_TAG}" ] && { [ "${PREV_TAG}" != "${IMAGE_TAG}" ] || [ "${PREV_APRUEBO_TAG}" != "${APRUEBO_TAG}" ]; }; then
+              # A deploy triggered by a recorded tag redeploys the running IMAGE_TAG:
+              # a changed app tag (or APRUEBO_TAG) is a rollback target too.
+              TAGS_CHANGED=0
+              if ! cmp -s .tags.now .tags.next; then TAGS_CHANGED=1; fi
+              if [ -n "${PREV_TAG}" ] && { [ "${PREV_TAG}" != "${IMAGE_TAG}" ] || [ "${PREV_APRUEBO_TAG}" != "${APRUEBO_TAG}" ] || [ "${TAGS_CHANGED}" = "1" ]; }; then
                 echo "Rolling back to ${PREV_TAG} (checkout ${OLD_HEAD})" >&2
                 cp -p .env.prev .env
                 # Restore compose/Traefik config too, and recreate Traefik if the failed
@@ -518,6 +560,7 @@ jobs:
                 # target (compose falls back to `latest`).
                 if [ -z "${PREV_TAG}" ]; then
                   sed -i '/^IMAGE_TAG=/d; /^APRUEBO_TAG=/d' .env
+                  for n in $TAG_NAMES; do sed -i "/^${n}=/d" .env; done
                 fi
                 # Keep the checkout at NEW_HEAD: the new containers are still running and
                 # their bind-mounted config (e.g. traefik/dynamic/) must stay on disk.

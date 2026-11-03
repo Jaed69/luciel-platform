@@ -38,9 +38,13 @@ source of truth, and a superseded run loses the tag (see `release.yml` `on:` com
       `scripts/test-record-tag.sh`, wired into the deploy job's guard steps.
       Route: inline (small, understood, additive). RED observed (7 failures, script
       absent) then GREEN 21/21.
-- [ ] T2 — S1, S3, S5, S6. Migrate `lemon`: new repo via `git subtree split`, its caller
-      workflow, `env/tags.env` seeded with `LEMON_TAG`, compose points at it, lemon leaves
-      the build matrix. Route: inline.
+- [~] T2 — S1, S3, S5, S6. Migrate `lemon`. Deployment-repo half DONE: `env/tags.env`
+      seeded `LEMON_TAG=sha-2b5beb8`, compose pins `ghcr.io/jaed69/lemon:${LEMON_TAG:?}`,
+      lemon out of the build matrix, generic tag handling via `scripts/deploy-tags.sh`
+      (+ tests), `check-env.sh` takes an optional tags file (+ tests). Lemon repo built and
+      committed locally at `2b5beb8` (33 commits of history preserved), verified with
+      `pnpm build`, `docker build` and a running container. PENDING: the GitHub repo does
+      not exist yet and `PLATFORM_DEPLOY_TOKEN` needs the user. Route: inline.
 - [ ] T3 — S1, S3, S5, S6. Migrate `landing` (has `tests/`). Route: inline.
 - [ ] T4 — S1, S3, S5, S6. Migrate `tours` (two images, `pytest` + `vitest`). Route: inline.
 - [ ] T5 — S3, S6. Move `apruebo` off `repository_dispatch` onto `env/tags.env`; delete the
@@ -95,3 +99,23 @@ the compose `image:` accordingly; the old packages stay in place, untouched.
   reusable workflow cannot hardcode the runner: it takes `runner` + `emulate`, defaulting to
   the native arm64 path. This also makes T5 possible — private `apruebo` can call the same
   workflow instead of keeping its own copy of the build steps.
+- L8 — 2026-11-02. Tag handling was made generic instead of copying the `APRUEBO_TAG`
+  pattern a third time: `scripts/deploy-tags.sh` (`validate`, `resolve`) owns the rollback
+  invariant and is covered by `scripts/test-deploy-tags.sh`, so T3/T4 add one line to
+  `env/tags.env` rather than more remote-script plumbing. It runs from the VPS checkout
+  AFTER `git reset --hard <sha>`, so the script matches the commit being deployed, and the
+  runner's blob is re-validated there — trusting it would make the blob a remote-shell
+  injection.
+- L9 — 2026-11-02. `check-env.sh` rule 2 (IMAGE_TAG/APRUEBO_TAG must be absent) was inverted
+  by this design, so it is now scoped to the ENV file, while the `${VAR:?}` completeness
+  check reads env + tags together and a new rule 4 requires every tags line to be exactly
+  `NAME=sha-<7 hex>`. The 12 pre-existing tests still pass unchanged — that is the
+  regression proof for the shared script.
+- L10 — 2026-11-02. `env/tags.env` is seeded with `sha-2b5beb8`, which is the lemon repo's
+  local HEAD, so lemon's very first CI run finds its tag already recorded and the record job
+  exits `unchanged` instead of failing on an undeclared variable. Pushing any other commit
+  first would break that.
+- L11 — 2026-11-02. Verified locally that compose resolves `lemon` to
+  `ghcr.io/jaed69/lemon:sha-2b5beb8` while `landing` still resolves to
+  `luciel-platform-landing:${IMAGE_TAG}` — the two schemes coexist, as L4 planned — and that
+  dropping the tags file makes `config -q` fail loudly on `LEMON_TAG`.

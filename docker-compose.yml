@@ -121,7 +121,8 @@ services:
     logging: *default-logging
 
   lemon:
-    image: ghcr.io/${GHCR_OWNER:-jaed69}/luciel-platform-lemon:${IMAGE_TAG:-latest}
+    # Built and pushed by the Jaed69/lemon repo; its tag is pinned by env/tags.env.
+    image: ghcr.io/${GHCR_OWNER:-jaed69}/lemon:${LEMON_TAG:?lemon tag missing from env/tags.env}
     container_name: lemon
     restart: unless-stopped
     labels:
