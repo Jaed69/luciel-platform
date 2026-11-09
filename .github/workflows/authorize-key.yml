@@ -1,0 +1,67 @@
+# One-off helper to re-authorize an SSH public key on the VPS, for when the
+# local private key that pairs with VPS_SSH_KEY was lost. It reuses the same
+# deploy secrets (VPS_HOST/VPS_USER/VPS_SSH_KEY) and ONLY appends the supplied
+# public key to ~/.ssh/authorized_keys. It touches nothing else: no pull, no
+# compose, no production deploy. Run it from the Actions tab (or `gh workflow
+# run authorize-key.yml -f public_key='ssh-ed25519 AAAA... comment'`), then
+# delete this file once access is recovered.
+name: Authorize SSH key (manual recovery)
+
+on:
+  workflow_dispatch:
+    inputs:
+      public_key:
+        description: 'Public key line to authorize (ssh-ed25519 / ssh-rsa / ecdsa-sha2-nistp256 ...)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency: authorize-key
+
+jobs:
+  authorize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Append the public key to authorized_keys on the VPS
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          envs: NEW_PUBKEY
+          # The value reaches a remote shell, so it is validated there and only
+          # ever written with printf '%s' (never eval'd) before being appended.
+          script: |
+            set -eu
+
+            # Reject anything that is not a single well-formed public-key line.
+            case "$NEW_PUBKEY" in
+              *$'\n'* ) echo "Public key must be a single line" >&2; exit 1 ;;
+            esac
+            if ! printf '%s' "$NEW_PUBKEY" \
+              | grep -Eq '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256) AAAA[0-9A-Za-z+/]+=*( .*)?$'; then
+              echo "Not a valid OpenSSH public key line" >&2
+              exit 1
+            fi
+
+            mkdir -p "$HOME/.ssh"
+            chmod 700 "$HOME/.ssh"
+            touch "$HOME/.ssh/authorized_keys"
+            chmod 600 "$HOME/.ssh/authorized_keys"
+
+            # Compare on the key type + material only, so a different trailing
+            # comment is not treated as a new key.
+            key_body="$(printf '%s' "$NEW_PUBKEY" | cut -d' ' -f1,2)"
+            if cut -d' ' -f1,2 "$HOME/.ssh/authorized_keys" | grep -qxF "$key_body"; then
+              echo "Key already authorized; nothing to do."
+            else
+              printf '%s\n' "$NEW_PUBKEY" >> "$HOME/.ssh/authorized_keys"
+              echo "Key appended."
+            fi
+
+            echo "Fingerprint now authorized:"
+            printf '%s' "$NEW_PUBKEY" | ssh-keygen -lf - || true
+            echo "authorized_keys line count: $(wc -l < "$HOME/.ssh/authorized_keys")"
+        env:
+          NEW_PUBKEY: ${{ github.event.inputs.public_key }}
