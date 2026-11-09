@@ -1,7 +1,7 @@
 # One-off helper to re-authorize an SSH public key on the VPS, for when the
 # local private key that pairs with VPS_SSH_KEY was lost. It reuses the same
-# deploy secrets (VPS_HOST/VPS_USER/VPS_SSH_KEY) and ONLY appends the supplied
-# public key to ~/.ssh/authorized_keys. It touches nothing else: no pull, no
+# deploy secrets (VPS_HOST/VPS_USER/VPS_SSH_KEY) and ONLY rewrites the supplied
+# public key into ~/.ssh/authorized_keys. It touches nothing else: no pull, no
 # compose, no production deploy. Run it from the Actions tab (or `gh workflow
 # run authorize-key.yml -f public_key='ssh-ed25519 AAAA... comment'`), then
 # delete this file once access is recovered.
@@ -23,23 +23,26 @@ jobs:
   authorize:
     runs-on: ubuntu-latest
     steps:
-      - name: Append the public key to authorized_keys on the VPS
+      - name: Re-authorize the public key on the VPS
         uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           envs: NEW_PUBKEY
-          # The value reaches a remote shell, so it is validated there and only
-          # ever written with printf '%s' (never eval'd) before being appended.
+          # The value reaches a remote shell, so it is sanitized (CRLF and stray
+          # whitespace stripped — the key often comes from a Windows file) and
+          # validated there, and only ever written with printf '%s' (never
+          # eval'd). Any earlier copy of the same key body is removed first, so a
+          # previously mangled line cannot linger.
           script: |
             set -eu
 
-            # Reject anything that is not a single well-formed public-key line.
-            case "$NEW_PUBKEY" in
-              *$'\n'* ) echo "Public key must be a single line" >&2; exit 1 ;;
-            esac
-            if ! printf '%s' "$NEW_PUBKEY" \
+            # Strip CR, surrounding whitespace, and collapse to one line.
+            clean="$(printf '%s' "$NEW_PUBKEY" | tr -d '\r' | tr '\n' ' ' \
+              | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+
+            if ! printf '%s' "$clean" \
               | grep -Eq '^(ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256) AAAA[0-9A-Za-z+/]+=*( .*)?$'; then
               echo "Not a valid OpenSSH public key line" >&2
               exit 1
@@ -50,18 +53,31 @@ jobs:
             touch "$HOME/.ssh/authorized_keys"
             chmod 600 "$HOME/.ssh/authorized_keys"
 
-            # Compare on the key type + material only, so a different trailing
-            # comment is not treated as a new key.
-            key_body="$(printf '%s' "$NEW_PUBKEY" | cut -d' ' -f1,2)"
-            if cut -d' ' -f1,2 "$HOME/.ssh/authorized_keys" | grep -qxF "$key_body"; then
-              echo "Key already authorized; nothing to do."
-            else
-              printf '%s\n' "$NEW_PUBKEY" >> "$HOME/.ssh/authorized_keys"
-              echo "Key appended."
-            fi
+            key_body="$(printf '%s' "$clean" | cut -d' ' -f1,2)"
 
+            # Show what is there now, with control characters visible (^M = stray CR).
+            echo "=== BEFORE (last 3 lines, control chars shown) ==="
+            tail -n 3 "$HOME/.ssh/authorized_keys" | cat -A || true
+
+            # Drop any existing entry with the same key body (handles a mangled copy),
+            # then append exactly one clean line.
+            tmp="$(mktemp)"
+            awk -v b="$key_body" '{ k=$1" "$2 } k != b { print }' \
+              "$HOME/.ssh/authorized_keys" > "$tmp" || true
+            printf '%s\n' "$clean" >> "$tmp"
+            cat "$tmp" > "$HOME/.ssh/authorized_keys"
+            rm -f "$tmp"
+            chmod 600 "$HOME/.ssh/authorized_keys"
+
+            echo "=== AFTER (last line, control chars shown) ==="
+            tail -n 1 "$HOME/.ssh/authorized_keys" | cat -A
             echo "Fingerprint now authorized:"
-            printf '%s' "$NEW_PUBKEY" | ssh-keygen -lf - || true
+            printf '%s' "$clean" | ssh-keygen -lf - || true
             echo "authorized_keys line count: $(wc -l < "$HOME/.ssh/authorized_keys")"
+
+            # Non-secret account diagnostics (home path shows as *** if it is secret).
+            echo "=== account ==="
+            id
+            stat -c '%n  %A  %U:%G' "$HOME" "$HOME/.ssh" "$HOME/.ssh/authorized_keys"
         env:
           NEW_PUBKEY: ${{ github.event.inputs.public_key }}
