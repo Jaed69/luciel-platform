@@ -39,7 +39,7 @@ services:
     logging: *default-logging
 
   traefik:
-    image: traefik:v3.7.15
+    image: traefik:v3.7.17
     container_name: traefik
     restart: unless-stopped
     ports:
@@ -240,7 +240,7 @@ services:
   # Opt-in (`--profile backup`), like tours-backup: replicates apruebo.db to the same bucket
   # under the `apruebo` path.
   apruebo-backup:
-    image: litestream/litestream:0.5.17
+    image: litestream/litestream:0.5.18
     container_name: apruebo-backup
     profiles: [backup]
     # The API image runs as distroless nonroot (65532), which owns /data; root with every
@@ -353,7 +353,7 @@ services:
   # storage (R2 / OCI Object Storage). Reads the same volume as tours-api; WAL
   # coordination works across containers on one host.
   tours-backup:
-    image: litestream/litestream:0.5.17
+    image: litestream/litestream:0.5.18
     container_name: tours-backup
     profiles: [backup]
     restart: unless-stopped
